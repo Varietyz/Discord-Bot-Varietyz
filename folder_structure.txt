@@ -1,28 +1,32 @@
+├─ 📄 .eslintignore
+├─ 📄 .eslintrc.js
+├─ 📄 jsdoc.json
 ├─ 📄 LICENSE
 ├─ 📄 package.json
-├─ 📄 readME.md
-└─ 📂 src
-    ├─ 📂 config
-    │   └─ 📄 constants.js
-    ├─ 📂 data
-    │   └─ 📄 database.sqlite
-    ├─ 📄 main.js
-    ├─ 📂 modules
-    │   ├─ 📂 commands
-    │   │   ├─ 📄 removersn.js
-    │   │   ├─ 📄 rsn.js
-    │   │   └─ 📄 rsnlist.js
-    │   ├─ 📂 functions
-    │   │   ├─ 📄 active_members.js
-    │   │   ├─ 📄 auto_roles.js
-    │   │   ├─ 📄 logger.js
-    │   │   ├─ 📄 member_channel.js
-    │   │   ├─ 📄 name_changes.js
-    │   │   └─ 📄 player_data_extractor.js
-    │   ├─ 📄 tasks.js
-    │   └─ 📄 utils.js
-    ├─ 📂 scripts
-    │   └─ 📄 create_db.js
-    └─ 📂 utils
-        ├─ 📄 dbUtils.js
-        └─ 📄 normalize.js
+├─ 📄 README.md
+├─ 📂 src
+│   ├─ 📂 config
+│   │   └─ 📄 constants.js
+│   ├─ 📂 data
+│   │   └─ 📄 database.sqlite
+│   ├─ 📄 main.js
+│   ├─ 📂 modules
+│   │   ├─ 📂 commands
+│   │   │   ├─ 📄 removersn.js
+│   │   │   ├─ 📄 rsn.js
+│   │   │   └─ 📄 rsnlist.js
+│   │   ├─ 📂 functions
+│   │   │   ├─ 📄 active_members.js
+│   │   │   ├─ 📄 auto_roles.js
+│   │   │   ├─ 📄 logger.js
+│   │   │   ├─ 📄 member_channel.js
+│   │   │   ├─ 📄 name_changes.js
+│   │   │   └─ 📄 player_data_extractor.js
+│   │   ├─ 📄 tasks.js
+│   │   └─ 📄 utils.js
+│   ├─ 📂 scripts
+│   │   └─ 📄 create_db.js
+│   └─ 📂 utils
+│       ├─ 📄 dbUtils.js
+│       └─ 📄 normalize.js
+└─ 📄 template.hbs

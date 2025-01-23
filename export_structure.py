@@ -5,7 +5,7 @@ def save_tree_structure(start_path, exclude_entries=None, output_file="folder_st
         exclude_entries = [
             ".env", ".git", ".gitattributes", ".gitignore", ".vscode",
             "export_structure.py", "folder_structure.txt", "logs",
-            "node_modules", "package-lock.json"
+            "node_modules", "package-lock.json", "prompts", "docs"
         ]
 
     def walk_directory(directory, depth=0, prefix=""):

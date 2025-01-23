@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>utils/dbUtils.js - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#createAchievementRoles">createAchievementRoles</a></li><li><a href="global.html#createUpdateOsrsRoles">createUpdateOsrsRoles</a></li><li><a href="global.html#data">data</a></li><li><a href="global.html#ensurePlayerDataTable">ensurePlayerDataTable</a></li><li><a href="global.html#execute">execute</a></li><li><a href="global.html#fetchAndProcessMember">fetchAndProcessMember</a></li><li><a href="global.html#fetchAndSaveRegisteredPlayerData">fetchAndSaveRegisteredPlayerData</a></li><li><a href="global.html#fetchAndUpdatePlayerData">fetchAndUpdatePlayerData</a></li><li><a href="global.html#fetchNameChanges">fetchNameChanges</a></li><li><a href="global.html#fetchPlayerData">fetchPlayerData</a></li><li><a href="global.html#fetchWithRetry">fetchWithRetry</a></li><li><a href="global.html#formatDataForSql">formatDataForSql</a></li><li><a href="global.html#getAll">getAll</a></li><li><a href="global.html#getOne">getOne</a></li><li><a href="global.html#getPlayerDataForRSN">getPlayerDataForRSN</a></li><li><a href="global.html#getRankColor">getRankColor</a></li><li><a href="global.html#getRankEmoji">getRankEmoji</a></li><li><a href="global.html#getUserRSNs">getUserRSNs</a></li><li><a href="global.html#handleHiscoresData">handleHiscoresData</a></li><li><a href="global.html#isValidEmbedSize">isValidEmbedSize</a></li><li><a href="global.html#loadClanMembers">loadClanMembers</a></li><li><a href="global.html#loadRSNData">loadRSNData</a></li><li><a href="global.html#loadRegisteredRsnData">loadRegisteredRsnData</a></li><li><a href="global.html#mapActivityToRole">mapActivityToRole</a></li><li><a href="global.html#mapBossToRole">mapBossToRole</a></li><li><a href="global.html#maybeAssignActivityRole">maybeAssignActivityRole</a></li><li><a href="global.html#maybeAssignBossRole">maybeAssignBossRole</a></li><li><a href="global.html#mergeRsnData">mergeRsnData</a></li><li><a href="global.html#normalizeRSN">normalizeRSN</a></li><li><a href="global.html#normalizeRsn">normalizeRsn</a></li><li><a href="global.html#prepareUserContent">prepareUserContent</a></li><li><a href="global.html#processNameChanges">processNameChanges</a></li><li><a href="global.html#removeNonMatchingPlayers">removeNonMatchingPlayers</a></li><li><a href="global.html#runQuery">runQuery</a></li><li><a href="global.html#savePlayerDataToDb">savePlayerDataToDb</a></li><li><a href="global.html#saveToDatabase">saveToDatabase</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#standardizeName">standardizeName</a></li><li><a href="global.html#updateRegisteredRSN">updateRegisteredRSN</a></li><li><a href="global.html#validateRsn">validateRsn</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">utils/dbUtils.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>// utils/dbUtils.js
+
+const sqlite3 = require("sqlite3").verbose();
+const path = require("path");
+const logger = require("../modules/functions/logger"); // Import the logger
+
+const dbPath = path.join(__dirname, "../data/database.sqlite");
+
+// Initialize database connection
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    logger.error(`Error connecting to SQLite: ${err.message}`);
+  } else {
+    logger.info("Database connected successfully.");
+  }
+});
+
+/**
+ * Executes a query that modifies data (INSERT, UPDATE, DELETE).
+ * Returns the result object.
+ *
+ * @param {string} query - The SQL query.
+ * @param {Array} params - The query parameters.
+ * @returns {Promise&lt;Object>} - Result of the query.
+ */
+const runQuery = (query, params = []) =>
+  new Promise((resolve, reject) => {
+    db.run(query, params, function (err) {
+      if (err) return reject(err);
+      resolve(this);
+    });
+  });
+
+/**
+ * Executes a SELECT query and returns all rows.
+ *
+ * @param {string} query - The SQL query.
+ * @param {Array} params - The query parameters.
+ * @returns {Promise&lt;Array>} - Array of rows.
+ */
+const getAll = (query, params = []) =>
+  new Promise((resolve, reject) => {
+    db.all(query, params, (err, rows) => {
+      if (err) return reject(err);
+      resolve(rows);
+    });
+  });
+
+/**
+ * Executes a SELECT query and returns a single row.
+ *
+ * @param {string} query - The SQL query.
+ * @param {Array} params - The query parameters.
+ * @returns {Promise&lt;Object>} - Single row object.
+ */
+const getOne = (query, params = []) =>
+  new Promise((resolve, reject) => {
+    db.get(query, params, (err, row) => {
+      if (err) return reject(err);
+      resolve(row);
+    });
+  });
+
+/**
+ * Gracefully closes the database connection on process termination.
+ */
+process.on("SIGINT", () => {
+  db.close((err) => {
+    if (err) {
+      logger.error(`Error closing the database connection: ${err.message}`);
+    } else {
+      logger.info("Database connection closed successfully.");
+    }
+    process.exit(0);
+  });
+});
+
+module.exports = { runQuery, getAll, getOne };
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.4</a> on Thu Jan 23 2025 22:18:17 GMT+0100 (Central European Standard Time) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>
