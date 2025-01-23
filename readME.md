@@ -181,4 +181,4 @@ This project is a robust and feature-rich Discord bot implemented in JavaScript 
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [BSD 2-Clause](LICENSE).
