@@ -1,47 +1,28 @@
-├─ [FILE] .env
-├─ [DIR] .vscode
-├─ [FILE] eslint.config.mjs
-├─ [FILE] export_structure_to_txt.py
-├─ [FILE] folder_structure.txt
-├─ [DIR] logs
-│   ├─ [DIR] 2025
-│   │   └─ [DIR] january
-│   │       ├─ [FILE] 2025-01-18.log
-│   │       ├─ [FILE] 2025-01-19.log
-│   │       ├─ [FILE] 2025-01-20.log
-│   │       ├─ [FILE] 2025-01-21.log
-│   │       ├─ [FILE] 2025-01-22.log
-│   │       └─ [FILE] 2025-01-23.log
-│   └─ [DIR] handler
-│       └─ [FILE] audit.json
-├─ [DIR] node_modules
-├─ [FILE] package-lock.json
-├─ [FILE] package.json
-├─ [FILE] readME.md
-└─ [DIR] src
-    ├─ [DIR] config
-    │   └─ [FILE] constants.js
-    ├─ [DIR] data
-    │   └─ [FILE] database.sqlite
-    ├─ [FILE] main.js
-    ├─ [DIR] modules
-    │   ├─ [DIR] commands
-    │   │   ├─ [FILE] removersn.js
-    │   │   ├─ [FILE] rsn.js
-    │   │   └─ [FILE] rsnlist.js
-    │   ├─ [DIR] functions
-    │   │   ├─ [FILE] active_members.js
-    │   │   ├─ [FILE] auto_roles.js
-    │   │   ├─ [FILE] logger.js
-    │   │   ├─ [FILE] member_channel.js
-    │   │   ├─ [FILE] name_changes.js
-    │   │   └─ [FILE] player_data_extractor.js
-    │   ├─ [FILE] tasks.js
-    │   └─ [FILE] utils.js
-    ├─ [DIR] scripts
-    │   ├─ [FILE] create_db.js
-    │   ├─ [FILE] migrateRSNs.js
-    │   └─ [FILE] migrate_to_sqlite.js
-    └─ [DIR] utils
-        ├─ [FILE] dbUtils.js
-        └─ [FILE] normalize.js
+├─ 📄 LICENSE
+├─ 📄 package.json
+├─ 📄 readME.md
+└─ 📂 src
+    ├─ 📂 config
+    │   └─ 📄 constants.js
+    ├─ 📂 data
+    │   └─ 📄 database.sqlite
+    ├─ 📄 main.js
+    ├─ 📂 modules
+    │   ├─ 📂 commands
+    │   │   ├─ 📄 removersn.js
+    │   │   ├─ 📄 rsn.js
+    │   │   └─ 📄 rsnlist.js
+    │   ├─ 📂 functions
+    │   │   ├─ 📄 active_members.js
+    │   │   ├─ 📄 auto_roles.js
+    │   │   ├─ 📄 logger.js
+    │   │   ├─ 📄 member_channel.js
+    │   │   ├─ 📄 name_changes.js
+    │   │   └─ 📄 player_data_extractor.js
+    │   ├─ 📄 tasks.js
+    │   └─ 📄 utils.js
+    ├─ 📂 scripts
+    │   └─ 📄 create_db.js
+    └─ 📂 utils
+        ├─ 📄 dbUtils.js
+        └─ 📄 normalize.js

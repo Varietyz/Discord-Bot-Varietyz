@@ -1,17 +1,22 @@
 import os
 
-def save_tree_structure(start_path, exclude_dirs=None, output_file="folder_structure.txt"):
-    if exclude_dirs is None:
-        exclude_dirs = ["node_modules", ".vscode"]
+def save_tree_structure(start_path, exclude_entries=None, output_file="folder_structure.txt"):
+    if exclude_entries is None:
+        exclude_entries = [
+            ".env", ".git", ".gitattributes", ".gitignore", ".vscode",
+            "export_structure.py", "folder_structure.txt", "logs",
+            "node_modules", "package-lock.json"
+        ]
 
     def walk_directory(directory, depth=0, prefix=""):
-        # Skip excluded directories
-        if any(excluded in directory for excluded in exclude_dirs):
+        # Skip excluded directories and files
+        if any(excluded in directory for excluded in exclude_entries):
             return []
 
         # List for storing the current directory structure
         tree_lines = []
         entries = os.listdir(directory)
+        entries = [entry for entry in entries if entry not in exclude_entries]  # Filter exclusions
         total_entries = len(entries)
 
         for idx, entry in enumerate(entries):
@@ -21,10 +26,12 @@ def save_tree_structure(start_path, exclude_dirs=None, output_file="folder_struc
             new_prefix = prefix + ("    " if is_last else "│   ")
 
             if os.path.isdir(full_path):  # If directory, recurse
-                tree_lines.append(f"{prefix}{symbol} [DIR] {entry}")
+                emoji = "📂"
+                tree_lines.append(f"{prefix}{symbol} {emoji} {entry}")
                 tree_lines.extend(walk_directory(full_path, depth + 1, new_prefix))
             else:  # If file, add to tree
-                tree_lines.append(f"{prefix}{symbol} [FILE] {entry}")
+                emoji = "📄"
+                tree_lines.append(f"{prefix}{symbol} {emoji} {entry}")
         return tree_lines
 
     # Start by walking the directory from the current folder

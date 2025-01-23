@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 // 1) Database initialization
-const dbPath = path.join(__dirname, "src", "data", "database.sqlite");
+const dbPath = path.join(__dirname, "..", "data", "database.sqlite");
 if (fs.existsSync(dbPath)) {
   fs.unlinkSync(dbPath);
   console.log("Existing database file deleted.");
