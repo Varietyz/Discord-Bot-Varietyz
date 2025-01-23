@@ -1,0 +1,199 @@
+const { Client, GatewayIntentBits } = require("discord.js");
+require("dotenv").config();
+const logger = require("./modules/functions/logger");
+const fs = require("fs");
+const path = require("path");
+const tasks = require("./modules/tasks"); // Import the task list
+
+// Create a new client instance with necessary intents
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
+
+// Arrays to store the loaded commands and functions
+const commands = [];
+const functions = [];
+
+// Dynamically load all command and function files from src/modules
+const loadModules = (type) => {
+  const folderPath = path.join(__dirname, `modules/${type}`);
+  const loadedModules = [];
+
+  fs.readdirSync(folderPath).forEach((file) => {
+    const filePath = path.join(folderPath, file);
+
+    if (file.endsWith(".js")) {
+      const module = require(filePath);
+
+      if (type === "commands") {
+        // Only load commands if the file exports data and execute
+        if (!module.data || !module.data.description || !module.execute) {
+          logger.error(
+            `Invalid command structure in ${file}: Missing description or execute function.`,
+          );
+          return;
+        }
+        commands.push(module); // Push only commands to commands array
+        logger.info(`Command ${module.data.name} loaded.`);
+      } else if (type === "functions") {
+        const funcName = path.basename(file, ".js");
+
+        functions.push(module); // Push functions to a separate array
+        logger.info(`Function ${funcName} loaded.`);
+      }
+    }
+  });
+
+  return loadedModules;
+};
+
+// Register commands and login to Discord
+const initializeBot = async () => {
+  try {
+    loadModules("commands"); // Load all slash commands
+    loadModules("functions"); // Load all functions
+
+    const { REST } = require("@discordjs/rest");
+    const { Routes } = require("discord-api-types/v10");
+
+    const rest = new REST({ version: "10" }).setToken(
+      process.env.DISCORD_TOKEN,
+    );
+
+    // Register the commands with Discord for a specific guild
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID,
+      ),
+      { body: commands.map((cmd) => cmd.data.toJSON()) }, // Make sure this always includes the newest changes to your commands
+    );
+
+    logger.info("Slash commands registered successfully.");
+
+    // Log the bot into Discord
+    await client.login(process.env.DISCORD_TOKEN);
+    logger.info("Bot logged in successfully.");
+  } catch (error) {
+    logger.error("Bot initialization failed: " + error.message);
+  }
+};
+
+// Handling the 'ready' event
+client.once("ready", async () => {
+  logger.info(`${client.user.tag} is online!`);
+  // Execute tasks that should run immediately on bot startup
+  for (let task of tasks) {
+    if (task.runOnStart) {
+      logger.info(`Running task: ${task.name} on startup...`);
+      try {
+        await task.func(client); // Run the task immediately
+      } catch (err) {
+        logger.error(`Error running task: ${task.name} on startup: ${err}`);
+      }
+    }
+  }
+
+  // Schedule tasks that should run at regular intervals (runAsTask is true)
+  tasks.forEach((task) => {
+    if (task.runAsTask) {
+      // Schedule the task to repeat regardless of runOnStart (runOnStart does not block this)
+      const hours = Math.floor(task.interval / 3600); // Extract hours
+      const minutes = Math.floor((task.interval % 3600) / 60); // Extract minutes
+
+      // Format hours and minutes into a string (hh:mm)
+      const intervalFormatted = `${hours > 0 ? `${hours}h ` : ""}${minutes}m`;
+
+      logger.info(
+        `Scheduling task: ${task.name} to run at ${intervalFormatted} intervals.`,
+      );
+      try {
+        setInterval(async () => {
+          logger.info(`Running scheduled task: ${task.name}...`);
+          await task.func(client); // Run at the scheduled interval
+        }, task.interval * 1000); // Convert seconds to milliseconds
+      } catch (err) {
+        logger.error(`Error scheduling task: ${task.name}: ${err}`);
+      }
+    }
+  });
+});
+
+// Handling slash command interactions
+client.on("interactionCreate", async (interaction) => {
+  // Step 1: Validate Interaction Type (slash command or autocomplete)
+  if (interaction.isCommand()) {
+    // Handle regular slash command execution
+    await handleSlashCommand(interaction);
+  } else if (interaction.isAutocomplete()) {
+    // Handle autocomplete specifically
+    await handleAutocomplete(interaction);
+  }
+});
+
+async function handleSlashCommand(interaction) {
+  try {
+    // Find the appropriate command based on the interaction's name
+    const command = commands.find(
+      (cmd) => cmd.data.name === interaction.commandName,
+    );
+
+    // Check if the command exists
+    if (!command) {
+      logger.warn(`Unknown command: ${interaction.commandName}`);
+      return;
+    }
+
+    // Execute the command
+    await command.execute(interaction);
+    logger.info(`${interaction.commandName} command executed successfully.`);
+  } catch (err) {
+    logger.error(`Error executing ${interaction.commandName}: ${err.message}`);
+    await interaction.reply({
+      content: "Something went wrong while processing your command.",
+      flags: 64,
+    });
+  }
+}
+
+async function handleAutocomplete(interaction) {
+  try {
+    // Find the appropriate command based on the interaction's name
+    const command = commands.find(
+      (cmd) => cmd.data.name === interaction.commandName,
+    );
+
+    // Check if the command exists and supports autocomplete
+    if (!command) {
+      logger.warn(
+        `Autocomplete trigger failed: Unknown command ${interaction.commandName}`,
+      );
+      return;
+    }
+
+    if (!command.autocomplete) {
+      logger.warn(
+        `Autocomplete handler not implemented for command: ${interaction.commandName}`,
+      );
+      return;
+    }
+
+    // Handle the autocomplete response
+    await command.autocomplete(interaction);
+    logger.info(
+      `Autocomplete triggered for command ${interaction.commandName}`,
+    );
+  } catch (err) {
+    logger.error(
+      `Error processing autocomplete for ${interaction.commandName}: ${err.message}`,
+    );
+    await interaction.respond([]); // Send empty array to indicate no suggestions if there's an error
+  }
+}
+
+// Run bot initialization
+initializeBot();
