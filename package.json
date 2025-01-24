@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "main": "index.js",
     "scripts": {
-        "generate-readme": "jsdoc2md --files \"src/**/*.js\" > README.md",
+        "generate-readme": "jsdoc2md --files \"src/**/*.js\" > Gen_README.md",
         "test": "echo \"Error: no test specified\" && exit 1",
         "lint-jsdoc": "eslint src/**/*.js",
         "update-readme": "npm run generate-readme",

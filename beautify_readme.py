@@ -41,7 +41,7 @@ def beautify_readme(input_text):
 
 
 # File paths
-input_file = 'README.md'
+input_file = 'Gen_README.md'
 output_file = 'README_BEAUTIFIED.md'
 
 try:

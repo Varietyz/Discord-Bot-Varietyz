@@ -32,3 +32,10 @@ logs
 node_modules
 package-lock.json
 prompts
+Gen_README.md
+jsdoc.json
+eslint-checkstyle-report
+BEAUTIFY_README.py
+BEAUTIFIED.md
+template.hbs
+export_structure.py
