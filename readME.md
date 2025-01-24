@@ -157,45 +157,6 @@ To give you a clearer understanding of how **Varietyz Bot** functions behind the
 
 ### Background Operations
 
-**Folder Structure**
-├─ 📄 .eslintignore
-├─ 📄 .eslintrc.js
-├─ 📄 eslint-checkstyle-report.xml
-├─ 📄 jsdoc.json
-├─ 📄 LICENSE
-├─ 📄 package.json
-├─ 📄 README.md
-├─ 📄 Simplified_README.md
-├─ 📂 src
-│ ├─ 📂 api
-│ │ └─ 📂 wise_old_man
-│ │ └─ 📄 apiClient.js
-│ ├─ 📂 config
-│ │ └─ 📄 constants.js
-│ ├─ 📂 data
-│ │ └─ 📄 database.sqlite
-│ ├─ 📄 main.js
-│ ├─ 📂 modules
-│ │ ├─ 📂 commands
-│ │ │ ├─ 📄 removersn.js
-│ │ │ ├─ 📄 rsn.js
-│ │ │ └─ 📄 rsnlist.js
-│ │ ├─ 📂 functions
-│ │ │ ├─ 📄 active_members.js
-│ │ │ ├─ 📄 auto_roles.js
-│ │ │ ├─ 📄 logger.js
-│ │ │ ├─ 📄 member_channel.js
-│ │ │ ├─ 📄 name_changes.js
-│ │ │ └─ 📄 player_data_extractor.js
-│ │ ├─ 📄 tasks.js
-│ │ └─ 📄 utils.js
-│ ├─ 📂 scripts
-│ │ └─ 📄 create_db.js
-│ └─ 📂 utils
-│ ├─ 📄 dbUtils.js
-│ └─ 📄 normalize.js
-└─ 📄 template.hbs
-
 **Varietyz Bot** operates continuously in the background, performing several key functions to ensure your clan runs smoothly:
 
 1. **Data Fetching:**
