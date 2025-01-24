@@ -31,3 +31,4 @@ replay_pid*
 logs
 node_modules
 package-lock.json
+prompts

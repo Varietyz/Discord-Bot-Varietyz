@@ -7,10 +7,9 @@
  * @module modules/utils
  */
 
-const { RANKS, WOM_RATE_LIMIT, RATE_LIMIT_CACHE } = require('../config/constants');
+const { RANKS } = require('../config/constants');
 const axios = require('axios');
 const logger = require('./functions/logger');
-const { DateTime } = require('luxon');
 
 /**
  * Normalizes a RuneScape Name (RSN) for consistent comparison.
@@ -127,24 +126,6 @@ async function sleep(ms) {
 }
 
 /**
- * Ensures compliance with rate limits by delaying execution if necessary.
- * Checks the last call time against the rate limit and sleeps for the required duration.
- *
- * @returns {Promise<void>}
- * @example
- * // Respect rate limit before making a new request
- * await respectRateLimit();
- */
-async function respectRateLimit() {
-    const now = DateTime.utc().toMillis();
-    if (RATE_LIMIT_CACHE.lastCall && now - RATE_LIMIT_CACHE.lastCall < WOM_RATE_LIMIT) {
-        const delay = WOM_RATE_LIMIT - (now - RATE_LIMIT_CACHE.lastCall);
-        logger.info(`Rate-limited. Waiting for ${delay} ms...`);
-        await sleep(delay);
-    }
-}
-
-/**
  * Makes an HTTP GET request with retry logic in case of failures.
  * Handles rate limiting and not-found errors specifically.
  *
@@ -191,6 +172,5 @@ module.exports = {
     formatExp,
     formatRank,
     sleep,
-    respectRateLimit,
     fetchWithRetry,
 };

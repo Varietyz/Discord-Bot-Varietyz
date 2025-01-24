@@ -1,15 +1,16 @@
 // @ts-nocheck
 /**
  * @fileoverview Utility functions for managing clan members within the Varietyz Bot.
- * This module handles role assignments based on player ranks, updates clan member data,
- * interacts with the WOM API to fetch player information, and manages Discord channel updates.
+ * Handles role assignments, updates clan member data, interacts with the WOM API,
+ * and updates Discord channels with the latest member details.
  *
  * @module modules/functions/member_channel
  */
 
 const { EmbedBuilder } = require('discord.js');
+const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('./logger');
-const { RANKS, WOM_API_URL, WOM_GROUP_ID, MEMBER_CHANNEL_ID, ROLE_CHANNEL_ID } = require('../../config/constants');
+const { RANKS, MEMBER_CHANNEL_ID, ROLE_CHANNEL_ID } = require('../../config/constants');
 const { getRankEmoji, purgeChannel, formatExp, formatRank, getRankColor } = require('../utils');
 const { getAll, runQuery } = require('../../utils/dbUtils');
 require('dotenv').config();
@@ -123,10 +124,7 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
  */
 async function updateData(client) {
     try {
-        const response = await fetch(`${WOM_API_URL}/groups/${WOM_GROUP_ID}/csv`);
-        if (!response.ok) throw new Error(`API request failed: ${response.status}`);
-
-        const csvData = await response.text();
+        const csvData = await WOMApiClient.request('groups', 'getMembersCSV', process.env.WOM_GROUP_ID);
         const csvRows = csvData.split('\n').slice(1);
         const guild = await client.guilds.fetch(process.env.GUILD_ID);
         const newData = [];

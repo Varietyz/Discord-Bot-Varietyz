@@ -7,13 +7,11 @@
  * @module modules/functions/name_changes
  */
 
-const { WOMClient } = require('@wise-old-man/utils');
+const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const { getAll, runQuery } = require('../../utils/dbUtils');
 const logger = require('./logger');
 const { EmbedBuilder } = require('discord.js');
-const { NAME_CHANGE_CHANNEL_ID, WOM_GROUP_ID } = require('../../config/constants');
-
-const client = new WOMClient();
+const { NAME_CHANGE_CHANNEL_ID } = require('../../config/constants');
 
 /**
  * Represents a name change record.
@@ -36,7 +34,7 @@ const client = new WOMClient();
  */
 async function fetchNameChanges() {
     try {
-        const nameChanges = await client.groups.getGroupNameChanges(WOM_GROUP_ID);
+        const nameChanges = await WOMApiClient.request('groups', 'getGroupNameChanges', WOMApiClient.groupId);
         return nameChanges.map((change) => ({
             oldName: change.oldName,
             newName: change.newName,

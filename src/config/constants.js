@@ -26,14 +26,6 @@ module.exports = {
     NAME_CHANGE_CHANNEL_ID: '1126619522871341106',
 
     /**
-     * @namespace WOMApiConfig
-     * @description Configuration settings for the Wise Old Man (WOM) API integration.
-     */
-    WOM_GROUP_ID: '9445',
-    WOM_API_URL: 'https://api.wiseoldman.net/v2',
-    WOM_RATE_LIMIT: 5 * 1000, // Milliseconds between requests (customizable)
-
-    /**
      * @namespace RateLimitCache
      * @description Cache settings for rate limiting WOM API requests.
      */

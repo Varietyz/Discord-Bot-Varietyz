@@ -5,8 +5,7 @@
  *
  * @module modules/functions/player_data_extractor
  */
-const axios = require('axios');
-const { WOM_API_URL } = require('../../config/constants');
+const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('./logger');
 const { runQuery, getAll } = require('../../utils/dbUtils');
 
@@ -175,47 +174,6 @@ async function savePlayerDataToDb(playerName, rawData) {
     for (const [key, val] of Object.entries(formattedData)) {
         await runQuery(insertQuery, [playerId, key, String(val), now]);
     }
-    logger.info(`Saved data in DB for player: ${playerName}`);
-}
-
-/**
- * Makes an HTTP GET request with retry logic.
- * Handles rate limiting (HTTP 429) and not-found errors (HTTP 404).
- *
- * @async
- * @function fetchWithRetry
- * @param {string} url - The URL to fetch.
- * @param {Object} headers - HTTP headers to include in the request.
- * @param {number} [retries=10] - Number of retry attempts.
- * @param {number} [delay=10000] - Delay between retries in milliseconds.
- * @returns {Promise<Object>} - The response data from the HTTP request.
- * @throws {Error} - Throws an error if all retries fail or if a 404 error occurs.
- * @example
- * const data = await fetchWithRetry('https://api.example.com/player', { Authorization: 'Bearer token' });
- */
-async function fetchWithRetry(url, headers, retries = 10, delay = 10000) {
-    let attempt = 0;
-    while (attempt < retries) {
-        try {
-            const response = await axios.get(url, { headers });
-            return response.data; // Return data on success
-        } catch (error) {
-            if (error.response && error.response.status === 429) {
-                const retryAfter = error.response.headers['retry-after'] || delay / 1000;
-                logger.warn(`Rate-limited. Retrying in ${retryAfter}s (URL: ${url})...`);
-                await sleep(retryAfter * 1000);
-            } else if (error.response && error.response.status === 404) {
-                logger.error(`Player not found (404) for URL: ${url}`);
-                throw new Error('404: Player not found');
-            } else {
-                logger.error(`Request failed for URL ${url}: ${error.message}`);
-                throw error;
-            }
-        }
-        attempt++;
-    }
-    logger.error(`Max retries reached for URL: ${url}`);
-    throw new Error('Max retries reached');
 }
 
 /**
@@ -267,7 +225,6 @@ async function loadRegisteredRsnData() {
  * // result = { data: [...], fetchFailed: false }
  */
 async function fetchAndSaveRegisteredPlayerData() {
-    const headers = { 'Content-Type': 'application/json' };
     logger.info('Starting fetch for registered player data...');
 
     try {
@@ -288,30 +245,34 @@ async function fetchAndSaveRegisteredPlayerData() {
         let fetchFailed = false;
 
         for (const playerName of playerIds) {
-            const url = `${WOM_API_URL}/players/${playerName.toLowerCase().trim()}`;
-            logger.info(`Fetching data for player: ${playerName} (URL: ${url})`);
+            logger.info(`Fetching data for player: ${playerName}`);
 
             try {
-                // 1) Retrieve data from WOM API
-                const playerData = await fetchWithRetry(url, headers);
-                logger.info(`Fetched data for ${playerName}:`, playerData);
+                // Retrieve data from WOM API via centralized client
+                const apiPlayerName = playerName.toLowerCase().trim();
+                const playerData = await WOMApiClient.request('players', 'updatePlayer', apiPlayerName);
 
-                // 2) Save data to the database
+                // Save data to the database
                 await savePlayerDataToDb(playerName, playerData);
                 logger.info(`Saved player data to database for: ${playerName}`);
 
-                // 3) Track successfully processed players
+                // Track successfully processed players
                 validMembersWithData.push({
                     username: playerName.toLowerCase().trim(),
                     displayName: playerData.displayName,
                     lastProgressedAt: playerData.lastChangedAt || null,
                 });
 
-                // 4) Rate-limit
+                // Rate-limit delay
                 await sleep(1500);
             } catch (err) {
-                logger.error(`Error processing player ${playerName}: ${err.message}`);
-                fetchFailed = true;
+                // Handle specific non-critical error
+                if (err.message.includes('Cannot convert undefined or null to object')) {
+                    logger.warn(`Non-critical issue processing player ${playerName}: ${err.message}`);
+                } else {
+                    logger.error(`Error processing player ${playerName}: ${err.message}`);
+                    fetchFailed = true;
+                }
             }
         }
 

@@ -17,7 +17,7 @@ module.exports = {
     // Parser options to specify ECMAScript features
     parserOptions: {
         ecmaVersion: 'latest',    // Allows for the parsing of modern ECMAScript features
-        sourceType: 'module'      // Allows for the use of imports
+        sourceType: 'commonjs'      // Allows for the use of imports
     },
 
     // Define custom rules and override default settings

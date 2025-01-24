@@ -1,30 +1,27 @@
+/* eslint-disable no-unused-vars */
 // @ts-nocheck
 /**
  * @fileoverview Utility functions for managing active and inactive clan members within the Varietyz Bot.
- * This module handles fetching player data from the WOM API, processing player activity,
- * calculating active and inactive member counts, and updating Discord voice channel names
- * based on member activity.
+ * This module interacts with the WOM API to fetch player data, calculate member activity,
+ * and update Discord voice channel names based on member activity.
  *
  * @module modules/functions/active_members
  */
 
-const axios = require('axios');
 const { DateTime } = require('luxon');
 const logger = require('./logger');
-const { sleep } = require('../utils');
-const { VOICE_CHANNEL_ID, WOM_API_URL, WOM_GROUP_ID } = require('../../config/constants');
-
+const WOMApiClient = require('../../api/wise_old_man/apiClient');
+const { VOICE_CHANNEL_ID } = require('../../config/constants');
 /**
  * Object to store player progress data.
  * Keys are player names (RSNs), and values are Luxon DateTime objects representing the last progression date.
  *
  * @type {Object.<string, DateTime>}
  */
-const playerProgress = {}; // Object to store player progress data
+const playerProgress = {};
 
 /**
  * Fetches player data from the WOM API and updates the `playerProgress` object.
- * Implements retry logic with exponential backoff in case of failures or rate limiting.
  *
  * @async
  * @function updateVoiceData
@@ -37,33 +34,24 @@ const playerProgress = {}; // Object to store player progress data
  */
 async function updateVoiceData(maxRetries = 3, baseDelay = 5000) {
     let retryCount = 0;
+    logger.info(`Using WOM_GROUP_ID: ${WOMApiClient.groupId}`);
 
     while (retryCount < maxRetries) {
         try {
-            const response = await axios.get(`${WOM_API_URL}/groups/${WOM_GROUP_ID}/csv`);
+            const groupDetails = await WOMApiClient.request('groups', 'getGroupDetails', WOMApiClient.groupId);
 
-            if (response.status === 200) {
-                const rows = response.data.split('\n');
-                rows.shift(); // Skip the header row
-
-                rows.forEach((row, index) => {
-                    if (!row || row.trim() === '') {
-                        logger.warn(`Skipping empty or invalid row at index ${index + 1}`);
-                        return;
-                    }
-
-                    const [player, , , lastProgressedStr] = row.split(',');
-
-                    if (lastProgressedStr) {
-                        const lastProgressed = DateTime.fromFormat(lastProgressedStr, 'M/d/yyyy HH:mm:ss');
-
+            if (groupDetails?.memberships) {
+                groupDetails.memberships.forEach((membership) => {
+                    const { player } = membership;
+                    if (player?.lastChangedAt) {
+                        const lastProgressed = DateTime.fromJSDate(player.lastChangedAt);
                         if (lastProgressed.isValid) {
-                            playerProgress[player] = lastProgressed;
+                            playerProgress[player.username] = lastProgressed;
                         } else {
-                            logger.warn(`Invalid date format for player: ${player}, Last Progress: ${lastProgressedStr}`);
+                            logger.warn(`Invalid date format for player: ${player.username}, Last Progress: ${player.lastChangedAt}`);
                         }
                     } else {
-                        logger.info(`No progress data for player: ${player}`);
+                        logger.info(`No progress data for player: ${player.username}`);
                     }
                 });
 
@@ -71,16 +59,9 @@ async function updateVoiceData(maxRetries = 3, baseDelay = 5000) {
                 return; // Success - exit function
             }
 
-            throw new Error(`API returned status code: ${response.status}`);
+            throw new Error('Failed to fetch group details or memberships data.');
         } catch (error) {
             retryCount++;
-
-            if (error.response?.status === 429) {
-                const retryAfter = error.response.headers['retry-after'] || baseDelay / 1000;
-                logger.warn(`Rate limited. Attempt ${retryCount}/${maxRetries}. Waiting ${retryAfter}s...`);
-                await sleep(retryAfter * 1000);
-                continue;
-            }
 
             if (retryCount === maxRetries) {
                 logger.error(`Failed to fetch data after ${maxRetries} attempts: ${error.message}`);
@@ -89,7 +70,7 @@ async function updateVoiceData(maxRetries = 3, baseDelay = 5000) {
 
             const delay = baseDelay * Math.pow(2, retryCount - 1);
             logger.warn(`Attempt ${retryCount}/${maxRetries} failed. Retrying in ${delay}ms...`);
-            await sleep(delay);
+            await new Promise((resolve) => setTimeout(resolve, delay));
         }
     }
 }
@@ -106,12 +87,7 @@ async function updateVoiceData(maxRetries = 3, baseDelay = 5000) {
 function calculateProgressCount() {
     const currentTime = DateTime.now();
     const daysAgo = currentTime.minus({ days: 7 });
-    // eslint-disable-next-line no-unused-vars
-    const count = Object.entries(playerProgress).filter(([player, lastProgressed]) => {
-        const isActive = lastProgressed >= daysAgo;
-        return isActive;
-    }).length;
-    return count;
+    return Object.entries(playerProgress).filter(([_, lastProgressed]) => lastProgressed >= daysAgo).length;
 }
 
 /**
@@ -129,14 +105,7 @@ function calculateInactivity() {
 
     logger.info(`Calculating inactivity with threshold: ${inactiveDaysAgo.toISO()}`);
 
-    // eslint-disable-next-line no-unused-vars
-    const countInactive = Object.entries(playerProgress).filter(([player, lastProgressed]) => {
-        const isInactive = lastProgressed < inactiveDaysAgo;
-        return isInactive;
-    }).length;
-
-    logger.info(`Inactive players count: ${countInactive}, Current time: ${currentTime.toISO()}, Threshold date: ${inactiveDaysAgo.toISO()}`);
-    return countInactive;
+    return Object.entries(playerProgress).filter(([_, lastProgressed]) => lastProgressed < inactiveDaysAgo).length;
 }
 
 /**

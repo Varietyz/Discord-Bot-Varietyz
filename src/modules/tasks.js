@@ -50,7 +50,7 @@ module.exports = [
     {
         name: 'fetchAndUpdatePlayerData',
         func: async () => await fetchAndUpdatePlayerData(),
-        interval: 3600 * 1, // Runs every 3600 seconds (1 hour)
+        interval: 600 * 1, // Runs every 3600 seconds (1 hour)
         runOnStart: true,
         runAsTask: true,
     },
