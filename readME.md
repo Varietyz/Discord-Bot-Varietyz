@@ -724,7 +724,7 @@ To help you better understand the terminology used in this README, here's a quic
 
 **Q4: Can Varietyz Bot handle multiple RSNs per user?**
 
-- **A4:** Yes, members can register up to three RSNs using the `/rsn` command, allowing for comprehensive tracking of their in-game activities across different accounts.
+- **A4:** Yes, members can register multiple RSNs using the `/rsn` command, allowing for comprehensive tracking of their in-game activities across different accounts.
 
 **Q5: Is my data secure with Varietyz Bot?**
 
