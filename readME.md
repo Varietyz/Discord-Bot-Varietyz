@@ -319,7 +319,7 @@ Before installing **Varietyz Bot**, ensure you have the following:
     Begin by cloning the Varietyz Bot repository to your local machine:
 
     ```bash
-    git clone https://github.com/yourusername/varietyz-bot.git
+    git clone https://github.com/varietyz/varietyz-bot.git
     cd varietyz-bot
     ```
 
