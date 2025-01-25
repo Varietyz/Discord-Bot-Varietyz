@@ -11,7 +11,7 @@ const { EmbedBuilder } = require('discord.js');
 const logger = require('./logger');
 const { ROLE_CHANNEL_ID } = require('../../config/constants');
 const { getAll } = require('../../utils/dbUtils');
-const { standardizeName } = require('../../utils/normalize.js');
+const { normalizeRsn } = require('../../utils/normalizeRsn.js');
 
 /**
  * Retrieves all RuneScape Names (RSNs) associated with a given Discord user from the database.
@@ -43,7 +43,7 @@ async function getUserRSNs(userId) {
  */
 async function getPlayerDataForRSN(rsn) {
     // Normalize RSN for comparison
-    const normalizedRsn = standardizeName(rsn);
+    const normalizedRsn = normalizeRsn(rsn);
 
     // SQL query to normalize stored player_id and compare
     const query = `

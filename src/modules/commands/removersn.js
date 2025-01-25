@@ -10,29 +10,12 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const logger = require('../functions/logger');
 const { runQuery, getAll } = require('../../utils/dbUtils'); // Importing dbUtils functions
+const { normalizeRsn } = require('../../utils/normalizeRsn'); // Importing normalizeRsn function
 
 // Rate Limiting Configuration
 const RATE_LIMIT = 5; // Maximum number of allowed attempts
 const RATE_LIMIT_DURATION = 60 * 1000; // Time window in milliseconds (e.g., 1 minute)
 const rateLimitMap = new Map(); // Map to track user requests
-
-/**
- * Normalizes an RSN for consistent comparison.
- *
- * @function normalizeRsn
- * @param {string} rsn - RSN to normalize.
- * @returns {string} - Normalized RSN.
- * @example
- * const normalized = normalizeRsn('Player-One');
- * logger.info(normalized); // 'player one'
- */
-const normalizeRsn = (rsn) => {
-    return rsn
-        .replace(/[-_]/g, ' ') // Replace hyphens and underscores with spaces
-        .replace(/\s+/g, ' ') // Replace multiple spaces with a single space
-        .trim() // Remove leading and trailing spaces
-        .toLowerCase(); // Convert to lowercase
-};
 
 /**
  * Defines the `/removersn` slash command using Discord's SlashCommandBuilder.

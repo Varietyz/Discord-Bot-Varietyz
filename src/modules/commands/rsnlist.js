@@ -8,9 +8,10 @@
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder } = require('discord.js');
-const { normalizeRSN, getRankEmoji } = require('../utils');
+const { getRankEmoji } = require('../utils');
 const logger = require('../functions/logger');
 const { getAll } = require('../../utils/dbUtils'); // Importing dbUtils functions
+const { normalizeRsn } = require('../../utils/normalizeRsn'); // Importing normalizeRsn function
 
 /**
  * Validates whether the embed description size is within Discord's allowed limit.
@@ -82,8 +83,8 @@ function prepareUserContent(userId, rsns, clanMembers) {
     const userTag = `\n<@${userId}>`;
     const rsnContent = rsns
         .map((rsn) => {
-            const normalizedRSN = normalizeRSN(rsn);
-            const member = clanMembers.find((member) => normalizeRSN(member.name) === normalizedRSN);
+            const normalizedRSN = normalizeRsn(rsn);
+            const member = clanMembers.find((member) => normalizeRsn(member.name) === normalizedRSN);
             const rank = member ? member.rank : '';
             const emoji = member ? getRankEmoji(rank) : '';
             const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(rsn.replace(/ /g, '%20').toLowerCase())}`;
@@ -103,7 +104,7 @@ function prepareUserContent(userId, rsns, clanMembers) {
  * // This command can be registered with Discord's API
  * const rsnListCommand = module.exports.data;
  */
-module.exports.data = new SlashCommandBuilder().setName('rsnlist').setDescription('View all registered RSNs and their associated ranks for clan members.').setDefaultMemberPermissions(1); // Administrator permissions
+module.exports.data = new SlashCommandBuilder().setName('rsnlist').setDescription('View all registered RSNs and their associated ranks for clan members.').setDefaultMemberPermissions(0); // Administrator permissions
 
 /**
  * Executes the `/rsnlist` command, fetching and displaying all registered RSNs and their ranks.

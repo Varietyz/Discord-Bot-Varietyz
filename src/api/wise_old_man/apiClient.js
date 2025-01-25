@@ -75,7 +75,7 @@ class WOMApiClient {
      * @returns {Promise<any>} The result of the API call, or `null` if a non-critical error occurs.
      * @throws {Error} Throws an error if all retries fail and the error is critical.
      */
-    async retryRequest(endpoint, methodName, params, retries = 5) {
+    async retryRequest(endpoint, methodName, params, retries = 15) {
         const nonCriticalErrors = ['has been updated recently', 'Invalid username', 'Failed to load hiscores'];
 
         for (let attempt = 1; attempt <= retries; attempt++) {

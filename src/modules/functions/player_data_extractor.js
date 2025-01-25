@@ -8,19 +8,8 @@
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('./logger');
 const { runQuery, getAll } = require('../../utils/dbUtils');
-
-/**
- * Pauses execution for a specified number of milliseconds.
- *
- * @param {number} ms - Milliseconds to sleep.
- * @returns {Promise<void>} - A promise that resolves after the specified delay.
- * @example
- * // Sleeps for 2 seconds
- * await sleep(2000);
- */
-async function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const { sleep } = require('../utils');
+const { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable } = require('../../utils/lastFetchedTime');
 
 /**
  * Flattens a nested object into a single-level object with concatenated keys.
@@ -214,15 +203,12 @@ async function loadRegisteredRsnData() {
 
 /**
  * Fetches and saves registered player data by retrieving data from the WOM API
- * and storing it in the SQLite database.
+ * and storing it in the SQLite database. Decides which API endpoint to call
+ * based on the last fetched time.
  *
  * @async
  * @function fetchAndSaveRegisteredPlayerData
- * @returns {Promise<{data: Array<Object>, fetchFailed: boolean}>} - An object containing the processed clan data and a flag indicating if any fetches failed.
- * @throws {Error} - Throws an error if critical operations fail.
- * @example
- * const result = await fetchAndSaveRegisteredPlayerData();
- * // result = { data: [...], fetchFailed: false }
+ * @returns {Promise<{data: Array<Object>, fetchFailed: boolean}>}
  */
 async function fetchAndSaveRegisteredPlayerData() {
     logger.info('Starting fetch for registered player data...');
@@ -230,13 +216,13 @@ async function fetchAndSaveRegisteredPlayerData() {
     try {
         // Fetch registered RSNs from the database
         const registeredRsnData = await loadRegisteredRsnData();
-        logger.info('Loaded registered RSNs from database:', registeredRsnData);
+        logger.info('Loaded registered RSNs from database.');
 
         // Flatten the RSN map { user1: [rsn1, rsn2], user2: [rsn3] } => [rsn1, rsn2, rsn3]
-        const playerIds = Object.values(registeredRsnData).flat();
-        logger.info(`Found ${playerIds.length} RSNs to process:`, playerIds);
+        const rsns = Object.values(registeredRsnData).flat();
+        logger.info(`Found ${rsns.length} RSNs to process.`);
 
-        if (playerIds.length === 0) {
+        if (rsns.length === 0) {
             logger.warn('No RSNs found. Aborting data fetch.');
             return { data: [], fetchFailed: false };
         }
@@ -244,21 +230,42 @@ async function fetchAndSaveRegisteredPlayerData() {
         const validMembersWithData = [];
         let fetchFailed = false;
 
-        for (const playerName of playerIds) {
-            logger.info(`Fetching data for player: ${playerName}`);
+        for (const rsn of rsns) {
+            logger.info(`Processing player: ${rsn}`);
 
             try {
-                // Retrieve data from WOM API via centralized client
-                const apiPlayerName = playerName.toLowerCase().trim();
-                const playerData = await WOMApiClient.request('players', 'updatePlayer', apiPlayerName);
+                const normalizedRsn = rsn.toLowerCase().trim();
+
+                // Retrieve the last fetched time
+                const lastFetched = await getLastFetchedTime(normalizedRsn);
+                const now = new Date();
+                let playerData;
+
+                if (lastFetched) {
+                    const hoursSinceLastFetch = (now.getTime() - lastFetched.getTime()) / (1000 * 60 * 60);
+                    if (hoursSinceLastFetch > 24) {
+                        logger.info(`More than 24 hours since last fetch for ${rsn}. Using 'updatePlayer'.`);
+                        playerData = await WOMApiClient.request('players', 'updatePlayer', normalizedRsn);
+                    } else {
+                        logger.info(`Within 24 hours since last fetch for ${rsn}. Using 'getPlayerDetails'.`);
+                        playerData = await WOMApiClient.request('players', 'getPlayerDetails', normalizedRsn);
+                    }
+                } else {
+                    // If never fetched before, use 'updatePlayer'
+                    logger.info(`No previous fetch found for ${rsn}. Using 'updatePlayer'.`);
+                    playerData = await WOMApiClient.request('players', 'updatePlayer', normalizedRsn);
+                }
 
                 // Save data to the database
-                await savePlayerDataToDb(playerName, playerData);
-                logger.info(`Saved player data to database for: ${playerName}`);
+                await savePlayerDataToDb(rsn, playerData);
+                logger.info(`Saved player data to database for: ${rsn}`);
+
+                // Update the last fetched time
+                await setLastFetchedTime(normalizedRsn);
 
                 // Track successfully processed players
                 validMembersWithData.push({
-                    username: playerName.toLowerCase().trim(),
+                    username: normalizedRsn,
                     displayName: playerData.displayName,
                     lastProgressedAt: playerData.lastChangedAt || null,
                 });
@@ -268,9 +275,9 @@ async function fetchAndSaveRegisteredPlayerData() {
             } catch (err) {
                 // Handle specific non-critical error
                 if (err.message.includes('Cannot convert undefined or null to object')) {
-                    logger.warn(`Non-critical issue processing player ${playerName}: ${err.message}`);
+                    logger.warn(`Non-critical issue processing player ${rsn}: ${err.message}`);
                 } else {
-                    logger.error(`Error processing player ${playerName}: ${err.message}`);
+                    logger.error(`Error processing player ${rsn}: ${err.message}`);
                     fetchFailed = true;
                 }
             }
@@ -322,6 +329,9 @@ async function removeNonMatchingPlayers(currentClanUsers) {
  */
 async function fetchAndUpdatePlayerData() {
     logger.info('Starting player data update process.');
+    // Ensure necessary tables exist
+    await ensurePlayerDataTable();
+    await ensurePlayerFetchTimesTable();
 
     const { data: clanData, fetchFailed } = await fetchAndSaveRegisteredPlayerData();
 
