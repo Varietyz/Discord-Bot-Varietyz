@@ -9,7 +9,7 @@
 
 const { EmbedBuilder } = require('discord.js');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
-const logger = require('./logger');
+const logger = require('../../utils/logger');
 const { RANKS, MEMBER_CHANNEL_ID, ROLE_CHANNEL_ID } = require('../../config/constants');
 const { getRankEmoji, purgeChannel, formatExp, formatRank, getRankColor } = require('../utils');
 const { getAll, runQuery } = require('../../utils/dbUtils');

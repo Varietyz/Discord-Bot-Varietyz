@@ -9,7 +9,7 @@
  */
 
 const { DateTime } = require('luxon');
-const logger = require('./logger');
+const logger = require('../../utils/logger');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const { VOICE_CHANNEL_ID } = require('../../config/constants');
 /**

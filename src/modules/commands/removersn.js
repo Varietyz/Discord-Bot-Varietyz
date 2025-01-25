@@ -8,7 +8,7 @@
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const logger = require('../functions/logger');
+const logger = require('../../utils/logger');
 const { runQuery, getAll } = require('../../utils/dbUtils'); // Importing dbUtils functions
 const { normalizeRsn } = require('../../utils/normalizeRsn'); // Importing normalizeRsn function
 

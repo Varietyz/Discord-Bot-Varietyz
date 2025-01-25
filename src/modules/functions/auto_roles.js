@@ -8,7 +8,7 @@
  */
 
 const { EmbedBuilder } = require('discord.js');
-const logger = require('./logger');
+const logger = require('../../utils/logger.js');
 const { ROLE_CHANNEL_ID } = require('../../config/constants');
 const { getAll } = require('../../utils/dbUtils');
 const { normalizeRsn } = require('../../utils/normalizeRsn.js');

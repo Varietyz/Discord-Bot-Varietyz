@@ -7,7 +7,7 @@
 
 const { Client, GatewayIntentBits } = require('discord.js');
 require('dotenv').config();
-const logger = require('./modules/functions/logger');
+const logger = require('./utils/logger');
 const fs = require('fs');
 const path = require('path');
 const tasks = require('./modules/tasks'); // Import the task list

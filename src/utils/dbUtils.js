@@ -8,7 +8,7 @@
 
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const logger = require('../modules/functions/logger'); // Import the logger
+const logger = require('./logger'); // Import the logger
 
 /**
  * Path to the SQLite database file.

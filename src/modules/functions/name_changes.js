@@ -9,7 +9,7 @@
 
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const { getAll, runQuery } = require('../../utils/dbUtils');
-const logger = require('./logger');
+const logger = require('../../utils/logger');
 const { EmbedBuilder } = require('discord.js');
 const { NAME_CHANGE_CHANNEL_ID } = require('../../config/constants');
 

@@ -9,7 +9,7 @@
 
 const { RANKS } = require('../config/constants');
 const axios = require('axios');
-const logger = require('./functions/logger');
+const logger = require('../utils/logger');
 
 /**
  * Normalizes a RuneScape Name (RSN) for consistent comparison.

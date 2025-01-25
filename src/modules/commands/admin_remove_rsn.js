@@ -9,7 +9,7 @@
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
-const logger = require('../functions/logger');
+const logger = require('../../utils/logger');
 const { runQuery, getAll } = require('../../utils/dbUtils'); // Importing dbUtils functions
 const { normalizeRsn } = require('../../utils/normalizeRsn'); // Importing normalizeRsn function
 
@@ -212,23 +212,45 @@ module.exports = {
                 const members = await guild.members.fetch({ user: userIds }).catch(() => new Map());
 
                 // Map the members to suggestion choices, filtering based on input
-                const choices = Array.from(members.values())
-                    .filter((member) => {
+                const choices = await Promise.all(
+                    Array.from(members.values()).map(async (member) => {
+                        const userId = member.user.id;
                         const username = member.user.username.toLowerCase();
                         const discriminator = member.user.discriminator.toLowerCase();
                         const tag = `${member.user.username}#${member.user.discriminator}`.toLowerCase();
-                        const displayName = member.displayName.toLowerCase();
-                        const userId = member.user.id.toLowerCase();
 
-                        return username.includes(input) || discriminator.includes(input) || tag.includes(input) || displayName.includes(input) || userId.includes(input);
-                    })
+                        // Fetch RSNs linked to this user ID
+                        const rsns = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userId]);
 
-                    .map((member) => ({
-                        name: `${member.user.displayName} (${member.user.id}) - ${member.user.username}`,
-                        value: member.user.id, // We'll use the user ID to resolve later
-                    }));
+                        // Normalize RSNs for comparison
+                        const normalizedRsns = rsns.map((row) => ({
+                            original: row.rsn, // Keep the original RSN for display
+                            normalized: normalizeRsn(row.rsn),
+                        }));
 
-                await interaction.respond(choices.slice(0, 25)); // Discord allows a maximum of 25 choices
+                        // Filter RSNs that match the input
+                        const matchingRsns = normalizedRsns.filter((rsn) => rsn.normalized.includes(input));
+
+                        // Determine the RSN to display:
+                        const rsnDisplay =
+                            matchingRsns.length > 0
+                                ? matchingRsns.map((rsn) => rsn.original).join(', ') // Display all matching RSNs
+                                : 'No matching RSNs';
+
+                        // Return the member as a choice if any field or RSN matches the input
+                        if (username.includes(input) || discriminator.includes(input) || tag.includes(input) || userId.includes(input) || matchingRsns.length > 0) {
+                            return {
+                                name: `${rsnDisplay} (${userId}) - ${member.user.username}`,
+                                value: userId,
+                            };
+                        }
+
+                        return null; // Exclude members that don't match
+                    }),
+                );
+
+                // Filter out null entries and limit to 25 choices
+                await interaction.respond(choices.filter(Boolean).slice(0, 25));
             } else if (focusedOption.name === 'rsn') {
                 // Autocomplete for the 'rsn' field: suggest RSNs for the selected target user
 

@@ -8,51 +8,17 @@
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const logger = require('../functions/logger');
+const logger = require('../../utils/logger');
 const { runQuery, getOne } = require('../../utils/dbUtils');
-const axios = require('axios');
 const { easterEggs } = require('../../config/easterEggs');
 const { normalizeRsn } = require('../../utils/normalizeRsn');
 const { validateRsn } = require('../../utils/validateRsn');
+const { fetchPlayerData } = require('../../utils/fetchPlayerData');
 
 // Rate Limiting Configuration
 const RATE_LIMIT = 5; // Maximum number of allowed attempts
 const RATE_LIMIT_DURATION = 60 * 1000; // Time window in milliseconds (e.g., 1 minute)
 const rateLimitMap = new Map(); // Map to track user requests
-
-/**
- * Fetches player data from the Wise Old Man (WOM) API.
- *
- * @async
- * @function fetchPlayerData
- * @param {string} rsn - The RSN to fetch data for.
- * @returns {Promise<Object|null>} - Player data from WOM API or `null` if unavailable.
- * @throws {Error} - Throws an error if rate limited or an unexpected error occurs.
- * @example
- * const playerData = await fetchPlayerData('PlayerOne');
- * if (playerData) {
- * logger.info(playerData);
- * }
- */
-async function fetchPlayerData(rsn) {
-    const url = `https://api.wiseoldman.net/v2/players/${encodeURIComponent(rsn)}`;
-
-    try {
-        const response = await axios.get(url);
-        return response.data;
-    } catch (error) {
-        if (error.response && error.response.status === 404) {
-            logger.warn(`[fetchPlayerData] RSN '${rsn}' not found on Wise Old Man.`);
-            return null; // Handle 404 errors gracefully
-        } else if (error.response && error.response.status === 429) {
-            logger.warn('[fetchPlayerData] Rate limited by WOM API. Please try again later.');
-            throw new Error('Rate limited by WOM API.');
-        } else {
-            logger.error(`[fetchPlayerData] Unexpected error fetching RSN '${rsn}': ${error.message}`);
-            throw error; // Rethrow unexpected errors
-        }
-    }
-}
 
 /**
  * Defines the `/rsn` slash command using Discord's SlashCommandBuilder.

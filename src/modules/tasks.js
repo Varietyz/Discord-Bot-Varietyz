@@ -13,7 +13,7 @@ const { fetchAndProcessMember } = require('./functions/auto_roles');
 const { updateVoiceChannel } = require('./functions/active_members');
 require('dotenv').config();
 const { getAll } = require('../utils/dbUtils');
-const logger = require('./functions/logger');
+const logger = require('../utils/logger');
 
 /**
  * Represents a scheduled task.

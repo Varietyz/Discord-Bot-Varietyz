@@ -6,7 +6,7 @@
  * @module modules/functions/player_data_extractor
  */
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
-const logger = require('./logger');
+const logger = require('../../utils/logger');
 const { runQuery, getAll } = require('../../utils/dbUtils');
 const { sleep } = require('../utils');
 const { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable } = require('../../utils/lastFetchedTime');

@@ -1,6 +1,6 @@
 /* eslint-disable node/no-unpublished-require */
 const { WOMClient } = require('@wise-old-man/utils');
-const logger = require('../../modules/functions/logger');
+const logger = require('../../utils/logger');
 
 // Rate limit settings for WOM API
 const RATE_LIMIT_ACTIVE = 100; // 100 requests per 60 seconds for active API keys

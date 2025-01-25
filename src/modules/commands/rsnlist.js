@@ -9,7 +9,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder } = require('discord.js');
 const { getRankEmoji } = require('../utils');
-const logger = require('../functions/logger');
+const logger = require('../../utils/logger');
 const { getAll } = require('../../utils/dbUtils'); // Importing dbUtils functions
 const { normalizeRsn } = require('../../utils/normalizeRsn'); // Importing normalizeRsn function
 
