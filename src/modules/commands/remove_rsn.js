@@ -8,6 +8,7 @@
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const logger = require('../../utils/logger');
 const { runQuery, getAll } = require('../../utils/dbUtils'); // Importing dbUtils functions
 const { normalizeRsn } = require('../../utils/normalizeRsn'); // Importing normalizeRsn function
@@ -18,7 +19,7 @@ const RATE_LIMIT_DURATION = 60 * 1000; // Time window in milliseconds (e.g., 1 m
 const rateLimitMap = new Map(); // Map to track user requests
 
 /**
- * Defines the `/removersn` slash command using Discord's SlashCommandBuilder.
+ * Defines the `/remove_rsn` slash command using Discord's SlashCommandBuilder.
  *
  * @constant {SlashCommandBuilder}
  * @example
@@ -27,11 +28,11 @@ const rateLimitMap = new Map(); // Map to track user requests
  */
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('removersn')
+        .setName('remove_rsn')
         .setDescription('Remove up to three registered RSNs from your list')
-        .addStringOption((option) => option.setName('3rd').setDescription('The third RSN you want to remove (optional)').setAutocomplete(true))
+        .addStringOption((option) => option.setName('1st').setDescription('The first RSN you want to remove').setRequired(true).setAutocomplete(true))
         .addStringOption((option) => option.setName('2nd').setDescription('The second RSN you want to remove (optional)').setAutocomplete(true))
-        .addStringOption((option) => option.setName('1st').setDescription('The first RSN you want to remove').setAutocomplete(true)),
+        .addStringOption((option) => option.setName('3rd').setDescription('The third RSN you want to remove (optional)').setAutocomplete(true)),
 
     /**
      * Executes the `/removersn` command, allowing users to remove up to three RSNs from their account.
@@ -43,7 +44,7 @@ module.exports = {
      * @returns {Promise<void>} - Resolves when the command has been executed.
      * @example
      * // Handler in your bot's command execution logic
-     * if (commandName === 'removersn') {
+     * if (commandName === 'remove_rsn') {
      * await commands.removersn.execute(interaction);
      * }
      */
@@ -82,13 +83,7 @@ module.exports = {
             logger.info(`User ${userID} attempting to remove RSNs: ${rsnsToRemove.join(', ')}`);
 
             // Fetch all RSNs registered to the user
-            const userRSNs = await getAll(
-                `
-                SELECT rsn FROM registered_rsn
-                WHERE user_id = ?
-                `,
-                [userID],
-            );
+            const userRSNs = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userID]);
 
             // If no RSNs are registered, inform the user
             if (!userRSNs.length) {
@@ -99,50 +94,66 @@ module.exports = {
             }
 
             const normalizedUserRSNs = userRSNs.map((row) => normalizeRsn(row.rsn));
-            const successfullyRemoved = [];
-            const notFoundRSNs = [];
 
-            for (const rsn of rsnsToRemove) {
-                const normalizedRsn = normalizeRsn(rsn);
+            // Filter RSNs that are valid for removal
+            const validRSNs = rsnsToRemove.filter((rsn) => normalizedUserRSNs.includes(normalizeRsn(rsn)));
 
-                if (!normalizedUserRSNs.includes(normalizedRsn)) {
-                    notFoundRSNs.push(rsn);
-                    continue;
-                }
-
-                // Remove the RSN from the user's account
-                await runQuery(
-                    `
-                    DELETE FROM registered_rsn
-                    WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
-                    `,
-                    [userID, normalizedRsn],
-                );
-
-                successfullyRemoved.push(rsn);
+            if (validRSNs.length === 0) {
+                return await interaction.reply({
+                    content: '⚠️ None of the provided RSNs were found in your account. Please check and try again.',
+                    flags: 64,
+                });
             }
 
-            // Construct the response message
-            let response = '';
-
-            if (successfullyRemoved.length > 0) {
-                response += '✅ The following RSNs have been successfully removed from your account:\n';
-                response += successfullyRemoved.map((rsn) => `- \`${rsn}\``).join('\n') + '\n\n';
-            }
-
-            if (notFoundRSNs.length > 0) {
-                response += '⚠️ The following RSNs were not found in your account:\n';
-                response += notFoundRSNs.map((rsn) => `- \`${rsn}\``).join('\n') + '\n\n';
-            }
-
-            // If no RSNs were removed
-            if (successfullyRemoved.length === 0) {
-                response = '❌ No RSNs were removed.\n\nPlease ensure that the RSNs provided are registered to your account.';
-            }
+            // Confirmation prompt
+            const confirmationRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('confirm_removersn').setLabel('Confirm').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId('cancel_removersn').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
+            );
 
             await interaction.reply({
-                content: response.trim(),
+                content: `⚠️ **Confirmation Required**\nYou are about to remove the following RSNs from your account:\n${validRSNs.map((rsn) => `- \`${rsn}\``).join('\n')}\n\nClick **Confirm** to proceed or **Cancel** to abort.`,
+                components: [confirmationRow],
                 flags: 64,
+            });
+
+            const filter = (i) => i.user.id === interaction.user.id;
+            const collector = interaction.channel.createMessageComponentCollector({
+                filter,
+                time: 15000,
+                max: 1,
+            });
+
+            collector.on('collect', async (i) => {
+                if (i.customId === 'confirm_removersn') {
+                    // Proceed with RSN removal
+                    for (const rsn of validRSNs) {
+                        await runQuery('DELETE FROM registered_rsn WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ?', [userID, normalizeRsn(rsn)]);
+                    }
+
+                    logger.info(`User ${userID} successfully removed RSNs: ${validRSNs.join(', ')}`);
+                    await i.update({
+                        content: `✅ The following RSNs have been successfully removed from your account:\n${validRSNs.map((rsn) => `- \`${rsn}\``).join('\n')}`,
+                        components: [],
+                        flags: 64,
+                    });
+                } else if (i.customId === 'cancel_removersn') {
+                    await i.update({
+                        content: '❌ RSN removal has been canceled.',
+                        components: [],
+                        flags: 64,
+                    });
+                }
+            });
+
+            collector.on('end', async (collected, reason) => {
+                if (reason === 'time' && collected.size === 0) {
+                    await interaction.editReply({
+                        content: '⌛ Confirmation timed out. RSN removal has been canceled.',
+                        components: [],
+                        flags: 64,
+                    });
+                }
             });
         } catch (error) {
             logger.error(`Error executing /removersn command: ${error.message}`);
@@ -152,7 +163,6 @@ module.exports = {
             });
         }
     },
-
     /**
      * Handles the autocomplete functionality for RSN options in the `/removersn` command.
      * Suggests RSNs that the user has registered and match the current input.
@@ -168,30 +178,34 @@ module.exports = {
      * }
      */
     async autocomplete(interaction) {
+        const focusedOption = interaction.options.getFocused(true);
         const userID = interaction.user.id;
-        const rsnOption = interaction.options.getFocused(); // Get the currently focused input
 
         try {
-            const normalizedInput = normalizeRsn(rsnOption);
-
-            // Fetch RSNs registered to the user that include the input substring
-            const rsnsResult = await getAll(
-                `
-                SELECT rsn FROM registered_rsn
-                WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) LIKE ?
-                `,
-                [userID, `%${normalizedInput}%`],
-            );
+            const normalizedInput = normalizeRsn(focusedOption.value);
+            const rsnsResult = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) LIKE ?', [userID, `%${normalizedInput}%`]);
 
             const choices = rsnsResult.map((row) => ({
                 name: row.rsn,
                 value: row.rsn,
             }));
 
-            await interaction.respond(choices.slice(0, 25)); // Discord allows a maximum of 25 choices
+            // Handle the autocomplete for each option dynamically
+            if (focusedOption.name === '1st') {
+                await interaction.respond(choices.slice(0, 25)); // Provide suggestions for the first RSN
+            } else if (focusedOption.name === '2nd') {
+                const firstRsn = interaction.options.getString('1st');
+                const filteredChoices = choices.filter((choice) => choice.value !== firstRsn);
+                await interaction.respond(filteredChoices.slice(0, 25)); // Exclude the first RSN
+            } else if (focusedOption.name === '3rd') {
+                const firstRsn = interaction.options.getString('1st');
+                const secondRsn = interaction.options.getString('2nd');
+                const filteredChoices = choices.filter((choice) => choice.value !== firstRsn && choice.value !== secondRsn);
+                await interaction.respond(filteredChoices.slice(0, 25)); // Exclude the first and second RSNs
+            }
         } catch (error) {
-            logger.error(`Error in autocomplete for /removersn: ${error.message}`);
-            await interaction.respond([]); // Send empty array to indicate no suggestions if there's an error
+            logger.error(`Error in autocomplete for /remove_rsn: ${error.message}`);
+            await interaction.respond([]);
         }
     },
 };

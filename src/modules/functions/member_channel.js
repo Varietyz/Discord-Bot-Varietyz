@@ -10,53 +10,10 @@
 const { EmbedBuilder } = require('discord.js');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('../../utils/logger');
-const { RANKS, MEMBER_CHANNEL_ID, ROLE_CHANNEL_ID } = require('../../config/constants');
+const { RANKS, MEMBER_CHANNEL_ID, ROLE_CHANNEL_ID, rankHierarchy } = require('../../config/constants');
 const { getRankEmoji, purgeChannel, formatExp, formatRank, getRankColor } = require('../utils');
 const { getAll, runQuery } = require('../../utils/dbUtils');
 require('dotenv').config();
-
-/**
- * Represents the hierarchy of roles based on their rank names.
- * Lower index indicates a lower rank.
- *
- * @constant {Array<string>}
- */
-const roleRange = [
-    'guest',
-    'bronze',
-    'iron',
-    'steel',
-    'mithril',
-    'adamant',
-    'rune',
-    'dragon',
-    'onyx',
-    'zenyte',
-    'legend',
-    'myth',
-    'tztok',
-    'tzkal',
-    'soul',
-    'wild',
-    'quester',
-    'looter',
-    'helper',
-    'competitor',
-    'special',
-    'bingo jury',
-    'nurse',
-    'moderator',
-];
-
-/**
- * Maps each role name to its hierarchy index for quick reference.
- *
- * @constant {Object.<string, number>}
- */
-const rankHierarchy = roleRange.reduce((acc, roleName, index) => {
-    acc[roleName.toLowerCase()] = index;
-    return acc;
-}, {});
 
 /**
  * Handles the assignment and removal of roles for a Discord guild member based on their rank.

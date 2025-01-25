@@ -6,6 +6,52 @@
  * @module config/constants
  */
 
+/**
+ * Represents the hierarchy of roles based on their rank names.
+ * Lower index indicates a lower rank.
+ *
+ * @constant {Array<string>}
+ */
+const roleRange = [
+    'guest',
+    'bronze',
+    'iron',
+    'steel',
+    'mithril',
+    'adamant',
+    'rune',
+    'dragon',
+    'onyx',
+    'zenyte',
+    'legend',
+    'myth',
+    'tztok',
+    'tzkal',
+    'soul',
+    'wild',
+    'quester',
+    'looter',
+    'helper',
+    'competitor',
+    'special',
+    'bingo jury',
+    'nurse',
+    'moderator',
+    'administrator',
+    'deputy owner',
+    'owner',
+];
+
+/**
+ * Maps each role name to its hierarchy index for quick reference.
+ *
+ * @constant {Object.<string, number>}
+ */
+const rankHierarchy = roleRange.reduce((acc, roleName, index) => {
+    acc[roleName.toLowerCase()] = index;
+    return acc;
+}, {});
+
 module.exports = {
     /**
      * @namespace GeneralBotConstants
@@ -34,6 +80,7 @@ module.exports = {
         delay: 5, // Delay in seconds between requests
     },
 
+    rankHierarchy,
     /**
      * @typedef {Object} Rank
      * @property {string} emoji - The emoji associated with the rank.
