@@ -7,7 +7,7 @@
 │   ├─ 📄 settings.json
 │   └─ 📄 Varietyz Bot.code-workspace
 ├─ 📄 CODE_OF_CONDUCT.md
-├─ 📄 Gen_README.md
+├─ 📄 JSDOC_README.md
 ├─ 📄 jsdoc.json
 ├─ 📄 LICENSE
 ├─ 📄 package.json

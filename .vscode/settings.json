@@ -23,7 +23,7 @@
       {
         "cmd": "npm run precommit", // Run the script from package.json
         "message": "Packaging docs and readme",
-        "messageAfter": "Finished packing docs and generating Gen_README.md in root folder.",
+        "messageAfter": "Finished packing docs and generating JSDOC_README.md in root folder.",
         "autoShowOutputPanel": "always" // Automatically show the output panel
       }
     ]

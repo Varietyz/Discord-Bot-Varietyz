@@ -32,7 +32,6 @@ logs/handler
 node_modules
 package-lock.json
 prompts
-Gen_README.md
 eslint-checkstyle-report
 BEAUTIFY_README.py
 BEAUTIFIED.md
