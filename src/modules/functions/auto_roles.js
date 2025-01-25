@@ -14,6 +14,51 @@ const { getAll } = require('../../utils/dbUtils');
 const { normalizeRsn } = require('../../utils/normalizeRsn.js');
 
 /**
+ * Maps a boss name to its corresponding Discord role name.
+ *
+ * @function mapBossToRole
+ * @param {string} bossName - The name of the boss.
+ * @returns {string} - The corresponding Discord role name.
+ * @example
+ * const roleName = mapBossToRole('K\'ril Tsutsaroth'); // 'K\'ril Tsutsaroth'
+ */
+function mapBossToRole(bossName) {
+    const roleMap = {
+        'Chambers Of Xeric Challenge Mode': 'CoX: Challenge Mode',
+        'Theatre Of Blood Hard Mode': 'ToB: Hard Mode',
+        'Tombs Of Amascut Expert': 'ToA: Expert Mode',
+        'Kree\'Arra': 'Kree\'Arra',
+        'K\'ril Tsutsaroth': 'K\'ril Tsutsaroth',
+        'Calvar\'ion': 'Calvar\'ion',
+        'Vet\'ion': 'Vet\'ion',
+        // Add more mappings as needed
+    };
+    return roleMap[bossName] || bossName;
+}
+
+/**
+ * Maps an activity name to its corresponding Discord role name.
+ *
+ * @function mapActivityToRole
+ * @param {string} activityName - The name of the activity.
+ * @returns {string} - The corresponding Discord role name.
+ * @example
+ * const roleName = mapActivityToRole('Clue Scrolls All'); // 'Clue Solver'
+ */
+function mapActivityToRole(activityName) {
+    const roleMap = {
+        'Clue Scrolls All': 'Clue Solver',
+        'Colosseum Glory': 'Colosseum',
+        'Last Man Standing': 'Last Man Standing (LMS)',
+        'Soul Wars Zeal': 'Soul Wars',
+        'League Points': 'League Compete',
+        'Pvp Arena': 'PvP Arena',
+        // Add more mappings as needed
+    };
+    return roleMap[activityName] || activityName;
+}
+
+/**
  * Retrieves all RuneScape Names (RSNs) associated with a given Discord user from the database.
  *
  * @async
@@ -202,52 +247,6 @@ async function createAchievementRoles(guild, member, hiscoresData, channelUpdate
         }
     }
 }
-
-/**
- * Maps a boss name to its corresponding Discord role name.
- *
- * @function mapBossToRole
- * @param {string} bossName - The name of the boss.
- * @returns {string} - The corresponding Discord role name.
- * @example
- * const roleName = mapBossToRole('K\'ril Tsutsaroth'); // 'K\'ril Tsutsaroth'
- */
-function mapBossToRole(bossName) {
-    const roleMap = {
-        'Chambers Of Xeric Challenge Mode': 'CoX: Challenge Mode',
-        'Theatre Of Blood Hard Mode': 'ToB: Hard Mode',
-        'Tombs Of Amascut Expert': 'ToA: Expert Mode',
-        'Kree\'Arra': 'Kree\'Arra',
-        'K\'ril Tsutsaroth': 'K\'ril Tsutsaroth',
-        'Calvar\'ion': 'Calvar\'ion',
-        'Vet\'ion': 'Vet\'ion',
-        // Add more mappings as needed
-    };
-    return roleMap[bossName] || bossName;
-}
-
-/**
- * Maps an activity name to its corresponding Discord role name.
- *
- * @function mapActivityToRole
- * @param {string} activityName - The name of the activity.
- * @returns {string} - The corresponding Discord role name.
- * @example
- * const roleName = mapActivityToRole('Clue Scrolls All'); // 'Clue Solver'
- */
-function mapActivityToRole(activityName) {
-    const roleMap = {
-        'Clue Scrolls All': 'Clue Solver',
-        'Colosseum Glory': 'Colosseum',
-        'Last Man Standing': 'Last Man Standing (LMS)',
-        'Soul Wars Zeal': 'Soul Wars',
-        'League Points': 'League Compete',
-        'Pvp Arena': 'PvP Arena',
-        // Add more mappings as needed
-    };
-    return roleMap[activityName] || activityName;
-}
-
 /**
  * Assigns a boss-related Discord role to a member if they meet the kill threshold.
  * Sends an embed message to the designated channel upon successful role assignment.

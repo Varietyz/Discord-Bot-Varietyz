@@ -10,8 +10,19 @@
 const { EmbedBuilder } = require('discord.js');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('../../utils/logger');
-const { RANKS, MEMBER_CHANNEL_ID, ROLE_CHANNEL_ID, rankHierarchy } = require('../../config/constants');
-const { getRankEmoji, purgeChannel, formatExp, formatRank, getRankColor } = require('../utils');
+const {
+    RANKS,
+    MEMBER_CHANNEL_ID,
+    ROLE_CHANNEL_ID,
+    rankHierarchy
+} = require('../../config/constants');
+const {
+    getRankEmoji,
+    purgeChannel,
+    formatExp,
+    formatRank,
+    getRankColor
+} = require('../utils');
 const { getAll, runQuery } = require('../../utils/dbUtils');
 require('dotenv').config();
 
@@ -31,10 +42,14 @@ require('dotenv').config();
  * await handleMemberRoles(member, 'Iron', guild, 'PlayerOne', 'Iron');
  */
 async function handleMemberRoles(member, roleName, guild, player, rank) {
-    const targetRole = guild.roles.cache.find((r) => r.name.toLowerCase() === roleName.toLowerCase());
+    const targetRole = guild.roles.cache.find(
+        (r) => r.name.toLowerCase() === roleName.toLowerCase()
+    );
 
     if (!targetRole) {
-        logger.warn(`[handleMemberRoles] Role '${roleName}' not found in the guild.`);
+        logger.warn(
+            `[handleMemberRoles] Role '${roleName}' not found in the guild.`
+        );
         return;
     }
 
@@ -55,16 +70,22 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
 
         const embed = new EmbedBuilder()
             .setTitle('Rank Updated!')
-            .setDescription(`<@${member.id}>\n🎉 **Good news!** Your rank has been updated to ${targetRole}.\n\nThe following roles were removed to reflect the change:\n- ${removedRoles}. 🔄`)
+            .setDescription(
+                `<@${member.id}>\n🎉 **Good news!** Your rank has been updated to ${targetRole}.\n\nThe following roles were removed to reflect the change:\n- ${removedRoles}. 🔄`
+            )
             .setColor(color);
 
         await roleChannel.send({ embeds: [embed] });
-        logger.info(`[handleMemberRoles] Removed roles for ${player}: ${removedRoles}`);
+        logger.info(
+            `[handleMemberRoles] Removed roles for ${player}: ${removedRoles}`
+        );
     }
 
     if (!member.roles.cache.has(targetRole.id)) {
         await member.roles.add(targetRole);
-        logger.info(`[handleMemberRoles] Assigned role '${roleName}' to ${player}`);
+        logger.info(
+            `[handleMemberRoles] Assigned role '${roleName}' to ${player}`
+        );
     }
 }
 
@@ -81,7 +102,11 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
  */
 async function updateData(client) {
     try {
-        const csvData = await WOMApiClient.request('groups', 'getMembersCSV', process.env.WOM_GROUP_ID);
+        const csvData = await WOMApiClient.request(
+            'groups',
+            'getMembersCSV',
+            process.env.WOM_GROUP_ID
+        );
         const csvRows = csvData.split('\n').slice(1);
         const guild = await client.guilds.fetch(process.env.GUILD_ID);
         const newData = [];
@@ -89,7 +114,8 @@ async function updateData(client) {
         const discordIdCache = {};
 
         for (const row of csvRows) {
-            const [player, rank, experience, lastProgressed, lastUpdated] = row.split(',');
+            const [player, rank, experience, lastProgressed, lastUpdated] =
+                row.split(',');
             if (!player || rank.toLowerCase() === 'private') continue;
 
             const formattedRank = formatRank(rank);
@@ -99,7 +125,7 @@ async function updateData(client) {
                 rank: formattedRank,
                 experience: experience || 'N/a',
                 lastProgressed: lastProgressed || 'N/a',
-                lastUpdated: lastUpdated || 'N/a',
+                lastUpdated: lastUpdated || 'N/a'
             });
 
             const roleName = RANKS[formattedRank.toLowerCase()]?.role;
@@ -107,14 +133,27 @@ async function updateData(client) {
 
             // Use cached Discord IDs or query once
             if (!discordIdCache[player.toLowerCase()]) {
-                const result = await getAll('SELECT user_id FROM registered_rsn WHERE LOWER(rsn) = LOWER(?)', [player]);
-                if (result.length > 0) discordIdCache[player.toLowerCase()] = result[0].user_id;
+                const result = await getAll(
+                    'SELECT user_id FROM registered_rsn WHERE LOWER(rsn) = LOWER(?)',
+                    [player]
+                );
+                if (result.length > 0)
+                    discordIdCache[player.toLowerCase()] = result[0].user_id;
             }
 
             const discordId = discordIdCache[player.toLowerCase()];
             if (discordId) {
-                const member = await guild.members.fetch(discordId).catch(() => null);
-                if (member) await handleMemberRoles(member, roleName, guild, player, rank);
+                const member = await guild.members
+                    .fetch(discordId)
+                    .catch(() => null);
+                if (member)
+                    await handleMemberRoles(
+                        member,
+                        roleName,
+                        guild,
+                        player,
+                        rank
+                    );
             }
         }
 
@@ -122,7 +161,9 @@ async function updateData(client) {
         if (changesDetected) {
             await updateClanChannel(client, cachedData);
         } else {
-            logger.info('No changes detected. Skipping channel purge and update.');
+            logger.info(
+                'No changes detected. Skipping channel purge and update.'
+            );
         }
     } catch (error) {
         logger.error(`Failed to update data: ${error.message}`);
@@ -145,13 +186,25 @@ async function updateData(client) {
  */
 async function updateDatabase(newData) {
     const currentData = await getAll('SELECT name, rank FROM clan_members');
-    const currentDataSet = new Set(currentData.map(({ name, rank }) => `${name},${rank}`));
-    const newDataSet = new Set(newData.map(({ player, rank }) => `${player},${rank}`));
+    const currentDataSet = new Set(
+        currentData.map(({ name, rank }) => `${name},${rank}`)
+    );
+    const newDataSet = new Set(
+        newData.map(({ player, rank }) => `${player},${rank}`)
+    );
 
-    if (currentDataSet.size !== newDataSet.size || ![...newDataSet].every((entry) => currentDataSet.has(entry))) {
+    if (
+        currentDataSet.size !== newDataSet.size ||
+        ![...newDataSet].every((entry) => currentDataSet.has(entry))
+    ) {
         await runQuery('DELETE FROM clan_members');
-        const insertQuery = 'INSERT INTO clan_members (name, rank) VALUES (?, ?)';
-        await Promise.all(newData.map(({ player, rank }) => runQuery(insertQuery, [player, rank])));
+        const insertQuery =
+            'INSERT INTO clan_members (name, rank) VALUES (?, ?)';
+        await Promise.all(
+            newData.map(({ player, rank }) =>
+                runQuery(insertQuery, [player, rank])
+            )
+        );
         logger.info('Database updated with new clan member data.');
         return true;
     }
@@ -181,7 +234,9 @@ async function updateClanChannel(client, cachedData) {
     for (const { player, rank, experience, lastProgressed } of cachedData) {
         const rankEmoji = getRankEmoji(rank);
         const color = getRankColor(rank);
-        const playerNameForLink = encodeURIComponent(player.replace(/ /g, '%20'));
+        const playerNameForLink = encodeURIComponent(
+            player.replace(/ /g, '%20')
+        );
         const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
 
         const embed = new EmbedBuilder()
@@ -192,13 +247,13 @@ async function updateClanChannel(client, cachedData) {
                 {
                     name: '**Total Exp:**',
                     value: `\`${formatExp(experience)}\``,
-                    inline: true,
+                    inline: true
                 },
                 {
                     name: '⏳**Last Progressed:**',
                     value: `\`${lastProgressed}\`\n🔗[Profile Link](${profileLink})`,
-                    inline: false,
-                },
+                    inline: false
+                }
             );
 
         embeds.push(embed);

@@ -68,7 +68,9 @@ async function purgeChannel(channel) {
     try {
         // Fetch up to 100 messages at a time
         do {
-            const fetchedMessages = await channel.messages.fetch({ limit: 100 });
+            const fetchedMessages = await channel.messages.fetch({
+                limit: 100
+            });
             if (fetchedMessages.size === 0) {
                 break;
             }
@@ -109,7 +111,9 @@ function formatExp(experience) {
  * formatRank('clan_leader');
  */
 function formatRank(rank) {
-    return rank.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+    return rank
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 /**
@@ -147,14 +151,19 @@ async function fetchWithRetry(url, headers, retries = 10, delay = 10000) {
             return response.data;
         } catch (error) {
             if (error.response?.status === 429) {
-                const retryAfter = error.response.headers['retry-after'] || delay / 1000;
-                logger.warn(`Rate-limited. Retrying in ${retryAfter} seconds...`);
+                const retryAfter =
+                    error.response.headers['retry-after'] || delay / 1000;
+                logger.warn(
+                    `Rate-limited. Retrying in ${retryAfter} seconds...`
+                );
                 await sleep(retryAfter * 1000);
             } else if (error.response?.status === 404) {
                 logger.error(`Player not found (404) for URL: ${url}`);
                 throw new Error('404: Player not found');
             } else {
-                logger.error(`Request failed for URL: ${url} - ${error.message}`);
+                logger.error(
+                    `Request failed for URL: ${url} - ${error.message}`
+                );
                 throw error;
             }
         }
@@ -172,5 +181,5 @@ module.exports = {
     formatExp,
     formatRank,
     sleep,
-    fetchWithRetry,
+    fetchWithRetry
 };

@@ -12,6 +12,8 @@ const { DateTime } = require('luxon');
 const logger = require('../../utils/logger');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const { VOICE_CHANNEL_ID } = require('../../config/constants');
+const { getAll, runQuery } = require('../../utils/dbUtils');
+const { calculateInactivity, calculateProgressCount, ensureActiveInactiveTable } = require('../../utils/calculateActivity');
 /**
  * Object to store player progress data.
  * Keys are player names (RSNs), and values are Luxon DateTime objects representing the last progression date.
@@ -21,13 +23,13 @@ const { VOICE_CHANNEL_ID } = require('../../config/constants');
 const playerProgress = {};
 
 /**
- * Fetches player data from the WOM API and updates the `playerProgress` object.
+ * Fetches player data from the WOM API and updates the 'active_inactive' database table.
  *
  * @async
  * @function updateVoiceData
  * @param {number} [maxRetries=3] - The maximum number of retry attempts in case of failure.
  * @param {number} [baseDelay=5000] - The base delay in milliseconds before retrying after a failure.
- * @returns {Promise<void>} - Resolves when data is successfully fetched and processed.
+ * @returns {Promise<void>} Resolves when data is successfully fetched and processed.
  * @throws {Error} - Throws an error if all retry attempts fail.
  * @example
  * await updateVoiceData(5, 10000);
@@ -41,19 +43,28 @@ async function updateVoiceData(maxRetries = 3, baseDelay = 5000) {
             const groupDetails = await WOMApiClient.request('groups', 'getGroupDetails', WOMApiClient.groupId);
 
             if (groupDetails?.memberships) {
-                groupDetails.memberships.forEach((membership) => {
+                await ensureActiveInactiveTable();
+
+                for (const membership of groupDetails.memberships) {
                     const { player } = membership;
+
                     if (player?.lastChangedAt) {
                         const lastProgressed = DateTime.fromJSDate(player.lastChangedAt);
                         if (lastProgressed.isValid) {
-                            playerProgress[player.username] = lastProgressed;
+                            // Save to the database
+                            await runQuery(
+                                `INSERT INTO active_inactive (username, last_progressed)
+                                 VALUES (?, ?)
+                                 ON CONFLICT(username) DO UPDATE SET last_progressed = excluded.last_progressed`,
+                                [player.username, lastProgressed.toISO()],
+                            );
                         } else {
                             logger.warn(`Invalid date format for player: ${player.username}, Last Progress: ${player.lastChangedAt}`);
                         }
                     } else {
                         logger.info(`No progress data for player: ${player.username}`);
                     }
-                });
+                }
 
                 logger.info('Successfully fetched and processed player data.');
                 return; // Success - exit function
@@ -76,39 +87,6 @@ async function updateVoiceData(maxRetries = 3, baseDelay = 5000) {
 }
 
 /**
- * Calculates the number of active players who have progressed in the last 7 days.
- *
- * @function calculateProgressCount
- * @returns {number} - The count of active players.
- * @example
- * const activeCount = calculateProgressCount();
- * logger.info(`Active Players: ${activeCount}`);
- */
-function calculateProgressCount() {
-    const currentTime = DateTime.now();
-    const daysAgo = currentTime.minus({ days: 7 });
-    return Object.entries(playerProgress).filter(([_, lastProgressed]) => lastProgressed >= daysAgo).length;
-}
-
-/**
- * Calculates the number of inactive players who have not progressed in the last 21 days.
- *
- * @function calculateInactivity
- * @returns {number} - The count of inactive players.
- * @example
- * const inactiveCount = calculateInactivity();
- * logger.info(`Inactive Players: ${inactiveCount}`);
- */
-function calculateInactivity() {
-    const currentTime = DateTime.now();
-    const inactiveDaysAgo = currentTime.minus({ days: 21 });
-
-    logger.info(`Calculating inactivity with threshold: ${inactiveDaysAgo.toISO()}`);
-
-    return Object.entries(playerProgress).filter(([_, lastProgressed]) => lastProgressed < inactiveDaysAgo).length;
-}
-
-/**
  * Updates the Discord voice channel name to reflect the current number of active clan members.
  * It fetches and processes player data, calculates the active member count, and updates the channel name accordingly.
  *
@@ -127,7 +105,7 @@ async function updateVoiceChannel(client) {
             if (voiceChannel) {
                 await updateVoiceData(3, 5000);
                 const emoji = '🟢';
-                const count = calculateProgressCount();
+                const count = await calculateProgressCount();
                 const newChannelName = `${emoji}Active Clannies: ${count}`;
 
                 await voiceChannel.setName(newChannelName);

@@ -1,0 +1,16 @@
+{
+  "folders": [
+    {
+      "path": "..",
+    },
+  ],
+  "settings": {
+    "vs-code-prettier-eslint.prettierLast": false,
+    "eslint.validate": [
+      "javascript",
+      "javascriptreact",
+    ],
+    "js/ts.implicitProjectConfig.checkJs": true,
+    "files.autoSave": "onFocusChange",
+  },
+}

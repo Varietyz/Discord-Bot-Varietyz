@@ -34,14 +34,20 @@ const { NAME_CHANGE_CHANNEL_ID } = require('../../config/constants');
  */
 async function fetchNameChanges() {
     try {
-        const nameChanges = await WOMApiClient.request('groups', 'getGroupNameChanges', WOMApiClient.groupId);
+        const nameChanges = await WOMApiClient.request(
+            'groups',
+            'getGroupNameChanges',
+            WOMApiClient.groupId
+        );
         return nameChanges.map((change) => ({
             oldName: change.oldName,
             newName: change.newName,
-            resolvedAt: change.resolvedAt,
+            resolvedAt: change.resolvedAt
         }));
     } catch (error) {
-        logger.error(`[fetchNameChanges] Failed to fetch data: ${error.message}`);
+        logger.error(
+            `[fetchNameChanges] Failed to fetch data: ${error.message}`
+        );
         return [];
     }
 }
@@ -61,7 +67,9 @@ async function saveToDatabase(nameChanges) {
     const deleteAllQuery = 'DELETE FROM recent_name_changes';
     try {
         await runQuery(deleteAllQuery);
-        logger.info('[saveToDatabase] Cleared existing rows from recent_name_changes.');
+        logger.info(
+            '[saveToDatabase] Cleared existing rows from recent_name_changes.'
+        );
     } catch (error) {
         logger.error(`[saveToDatabase] Error clearing table: ${error.message}`);
         return;
@@ -76,7 +84,9 @@ async function saveToDatabase(nameChanges) {
         try {
             await runQuery(insertQuery, [oldName, newName, resolvedAt]);
         } catch (error) {
-            logger.error(`[saveToDatabase] Error saving name change: ${oldName} -> ${newName} | ${error.message}`);
+            logger.error(
+                `[saveToDatabase] Error saving name change: ${oldName} -> ${newName} | ${error.message}`
+            );
         }
     }
 }
@@ -113,7 +123,9 @@ async function updateRegisteredRSN(oldName, newName, channelManager) {
         const oldNameEntry = await getAll(oldNameQuery, [oldName]);
 
         if (oldNameEntry.length === 0) {
-            logger.warn(`[updateRegisteredRSN] No entry found for oldName: "${oldName}".`);
+            logger.warn(
+                `[updateRegisteredRSN] No entry found for oldName: "${oldName}".`
+            );
             return false; // Skip if `oldName` does not exist
         }
 
@@ -135,14 +147,20 @@ async function updateRegisteredRSN(oldName, newName, channelManager) {
             `;
             await runQuery(deleteOldNameQuery, [oldUserId, oldName]);
 
-            logger.info(`[updateRegisteredRSN] Removed outdated RSN: "${oldName}" for user_id ${oldUserId} as "${newName}" already exists.`);
+            logger.info(
+                `[updateRegisteredRSN] Removed outdated RSN: "${oldName}" for user_id ${oldUserId} as "${newName}" already exists.`
+            );
             // Send confirmation embed for successful removal and update
             if (channelManager) {
-                const channel = await channelManager.fetch(NAME_CHANGE_CHANNEL_ID).catch(() => null);
+                const channel = await channelManager
+                    .fetch(NAME_CHANGE_CHANNEL_ID)
+                    .catch(() => null);
                 if (channel) {
                     const embed = new EmbedBuilder()
                         .setTitle('🔄 RSN Name Change')
-                        .setDescription(`<@${oldUserId}>\nYour RSN has been successfully updated:\n\n📛 **Old Name:** \`${oldName}\`\n🔗 **New Name:** \`${newName}\``)
+                        .setDescription(
+                            `<@${oldUserId}>\nYour RSN has been successfully updated:\n\n📛 **Old Name:** \`${oldName}\`\n🔗 **New Name:** \`${newName}\``
+                        )
                         .setColor(0x3498db) // Blue for confirmation
                         .setTimestamp();
 
@@ -170,11 +188,15 @@ async function updateRegisteredRSN(oldName, newName, channelManager) {
 
                 // Notify the conflicting user
                 if (channelManager) {
-                    const channel = await channelManager.fetch(NAME_CHANGE_CHANNEL_ID).catch(() => null);
+                    const channel = await channelManager
+                        .fetch(NAME_CHANGE_CHANNEL_ID)
+                        .catch(() => null);
                     if (channel) {
                         const embed = new EmbedBuilder()
                             .setTitle('⚠️ Outdated RSN Removed')
-                            .setDescription(`**Hey there, <@${newUserId}>!**\nWe noticed the RSN \`${rsn}\` conflicted with a recent name change and has been removed.\n\nIf this was your RSN, please register a new one using the \`/rsn\` command. 😊`)
+                            .setDescription(
+                                `**Hey there, <@${newUserId}>!**\nWe noticed the RSN \`${rsn}\` conflicted with a recent name change and has been removed.\n\nIf this was your RSN, please register a new one using the \`/rsn\` command. 😊`
+                            )
                             .setColor(0xff6347) // Tomato color for warning
                             .setTimestamp();
 
@@ -191,10 +213,14 @@ async function updateRegisteredRSN(oldName, newName, channelManager) {
             WHERE LOWER(rsn) = LOWER(?)
         `;
         await runQuery(updateQuery, [newName, oldName]);
-        logger.info(`[updateRegisteredRSN] Updated RSN: "${oldName}" to "${newName}" for user_id ${oldUserId}.`);
+        logger.info(
+            `[updateRegisteredRSN] Updated RSN: "${oldName}" to "${newName}" for user_id ${oldUserId}.`
+        );
         return true;
     } catch (error) {
-        logger.error(`[updateRegisteredRSN] Error updating RSN: ${oldName} -> ${newName} | ${error.message}`);
+        logger.error(
+            `[updateRegisteredRSN] Error updating RSN: ${oldName} -> ${newName} | ${error.message}`
+        );
         return false;
     }
 }
@@ -236,15 +262,19 @@ async function processNameChanges(client) {
             dependencyGraph.set(oldName.toLowerCase(), {
                 newName: newName.toLowerCase(),
                 resolvedAt,
-                userId: userIdEntry[0].user_id,
+                userId: userIdEntry[0].user_id
             });
         } else {
-            logger.warn(`[processNameChanges] No user_id found for RSN: "${oldName}". Skipping.`);
+            logger.warn(
+                `[processNameChanges] No user_id found for RSN: "${oldName}". Skipping.`
+            );
         }
     }
 
     // Step 2: Sort changes by resolved_at (latest first)
-    const sortedChanges = Array.from(dependencyGraph.entries()).sort((a, b) => b[1].resolvedAt - a[1].resolvedAt);
+    const sortedChanges = Array.from(dependencyGraph.entries()).sort(
+        (a, b) => b[1].resolvedAt - a[1].resolvedAt
+    );
 
     // Step 3: Process changes dynamically
     const processedNames = new Set();
@@ -265,27 +295,38 @@ async function processNameChanges(client) {
         const newNameEntries = await getAll(newNameQuery, [newName]);
 
         if (newNameEntries.length > 0) {
-            const { user_id: existingUserId, registered_at } = newNameEntries[0];
+            const { user_id: existingUserId, registered_at } =
+                newNameEntries[0];
 
             if (existingUserId === userId && registered_at > resolvedAt) {
-                logger.info(`[processNameChanges] Skipping ${oldName} -> ${newName} for user_id ${userId} as ${newName} has a newer timestamp (${registered_at}).`);
+                logger.info(
+                    `[processNameChanges] Skipping ${oldName} -> ${newName} for user_id ${userId} as ${newName} has a newer timestamp (${registered_at}).`
+                );
                 continue;
             }
         }
 
         // Step 3.2: Update the registered RSN if valid
-        const updated = await updateRegisteredRSN(oldName, newName, client.channels);
+        const updated = await updateRegisteredRSN(
+            oldName,
+            newName,
+            client.channels
+        );
         if (updated) {
             changesApplied++;
             processedNames.add(oldName);
             processedNames.add(newName);
-            logger.info(`[processNameChanges] Updated RSN for user_id ${userId}: ${oldName} -> ${newName}.`);
+            logger.info(
+                `[processNameChanges] Updated RSN for user_id ${userId}: ${oldName} -> ${newName}.`
+            );
         }
     }
 
-    logger.info(`[processNameChanges] Successfully applied ${changesApplied} name changes.`);
+    logger.info(
+        `[processNameChanges] Successfully applied ${changesApplied} name changes.`
+    );
 }
 
 module.exports = {
-    processNameChanges,
+    processNameChanges
 };

@@ -21,7 +21,7 @@ const validateRsn = (rsn) => {
     if (typeof rsn !== 'string') {
         return {
             valid: false,
-            message: 'RSN must be a string.',
+            message: 'RSN must be a string.'
         };
     }
 
@@ -30,7 +30,7 @@ const validateRsn = (rsn) => {
     if (trimmedRsn.length < 1 || trimmedRsn.length > 12) {
         return {
             valid: false,
-            message: 'RSN must be between 1 and 12 characters long.',
+            message: 'RSN must be between 1 and 12 characters long.'
         };
     }
 
@@ -39,15 +39,21 @@ const validateRsn = (rsn) => {
     if (!/^[a-zA-Z0-9]+(?: [a-zA-Z0-9]+)*$/.test(trimmedRsn)) {
         return {
             valid: false,
-            message: 'RSN can only contain letters, numbers, and single spaces between words. (If your RSN includes a hyphen or underscore, replace it with a space)',
+            message:
+                'RSN can only contain letters, numbers, and single spaces between words. (If your RSN includes a hyphen or underscore, replace it with a space)'
         };
     }
 
     const forbiddenPhrases = ['Java', 'Mod', 'Jagex'];
-    if (forbiddenPhrases.some((phrase) => trimmedRsn.toLowerCase().includes(phrase.toLowerCase()))) {
+    if (
+        forbiddenPhrases.some((phrase) =>
+            trimmedRsn.toLowerCase().includes(phrase.toLowerCase())
+        )
+    ) {
         return {
             valid: false,
-            message: 'RSN cannot contain forbidden phrases like "Java", "Mod", or "Jagex".',
+            message:
+                'RSN cannot contain forbidden phrases like "Java", "Mod", or "Jagex".'
         };
     }
 

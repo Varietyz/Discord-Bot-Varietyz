@@ -28,7 +28,8 @@ async function ensurePlayerFetchTimesTable() {
  * const lastFetched = await getLastFetchedTime('playerone');
  */
 async function getLastFetchedTime(rsn) {
-    const query = 'SELECT last_fetched_at FROM player_fetch_times WHERE rsn = ?';
+    const query =
+        'SELECT last_fetched_at FROM player_fetch_times WHERE rsn = ?';
     const rows = await getAll(query, [rsn]);
     if (rows.length > 0) {
         return new Date(rows[0].last_fetched_at);
@@ -55,8 +56,12 @@ async function setLastFetchedTime(rsn) {
         VALUES (?, ?)
         ON CONFLICT(rsn) DO UPDATE SET last_fetched_at = excluded.last_fetched_at
     `,
-        [rsn, now],
+        [rsn, now]
     );
 }
 
-module.exports = { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable };
+module.exports = {
+    setLastFetchedTime,
+    getLastFetchedTime,
+    ensurePlayerFetchTimesTable
+};

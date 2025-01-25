@@ -30,9 +30,25 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('remove_rsn')
         .setDescription('Remove up to three registered RSNs from your list')
-        .addStringOption((option) => option.setName('1st').setDescription('The first RSN you want to remove').setRequired(true).setAutocomplete(true))
-        .addStringOption((option) => option.setName('2nd').setDescription('The second RSN you want to remove (optional)').setAutocomplete(true))
-        .addStringOption((option) => option.setName('3rd').setDescription('The third RSN you want to remove (optional)').setAutocomplete(true)),
+        .addStringOption((option) =>
+            option
+                .setName('1st')
+                .setDescription('The first RSN you want to remove')
+                .setRequired(true)
+                .setAutocomplete(true)
+        )
+        .addStringOption((option) =>
+            option
+                .setName('2nd')
+                .setDescription('The second RSN you want to remove (optional)')
+                .setAutocomplete(true)
+        )
+        .addStringOption((option) =>
+            option
+                .setName('3rd')
+                .setDescription('The third RSN you want to remove (optional)')
+                .setAutocomplete(true)
+        ),
 
     /**
      * Executes the `/removersn` command, allowing users to remove up to three RSNs from their account.
@@ -51,22 +67,30 @@ module.exports = {
     async execute(interaction) {
         try {
             // Extract RSNs to remove from the interaction options
-            const rsnsToRemove = [interaction.options.getString('3rd'), interaction.options.getString('2nd'), interaction.options.getString('1st')].filter(Boolean); // Filter out null/undefined values
+            const rsnsToRemove = [
+                interaction.options.getString('3rd'),
+                interaction.options.getString('2nd'),
+                interaction.options.getString('1st')
+            ].filter(Boolean); // Filter out null/undefined values
 
             const userID = interaction.user.id;
             const currentTime = Date.now();
             const userData = rateLimitMap.get(userID) || {
                 count: 0,
-                firstRequest: currentTime,
+                firstRequest: currentTime
             };
 
             // Rate Limiting Check
             if (currentTime - userData.firstRequest < RATE_LIMIT_DURATION) {
                 if (userData.count >= RATE_LIMIT) {
-                    const retryAfter = Math.ceil((RATE_LIMIT_DURATION - (currentTime - userData.firstRequest)) / 1000);
+                    const retryAfter = Math.ceil(
+                        (RATE_LIMIT_DURATION -
+                            (currentTime - userData.firstRequest)) /
+                            1000
+                    );
                     return await interaction.reply({
                         content: `🚫 You're using this command too frequently. Please wait \`${retryAfter}\` second(s) before trying again. ⏳`,
-                        flags: 64,
+                        flags: 64
                     });
                 }
                 userData.count += 1;
@@ -80,68 +104,91 @@ module.exports = {
             // Schedule removal of the user's rate limit data after RATE_LIMIT_DURATION
             setTimeout(() => rateLimitMap.delete(userID), RATE_LIMIT_DURATION);
 
-            logger.info(`User ${userID} attempting to remove RSNs: ${rsnsToRemove.join(', ')}`);
+            logger.info(
+                `User ${userID} attempting to remove RSNs: ${rsnsToRemove.join(', ')}`
+            );
 
             // Fetch all RSNs registered to the user
-            const userRSNs = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userID]);
+            const userRSNs = await getAll(
+                'SELECT rsn FROM registered_rsn WHERE user_id = ?',
+                [userID]
+            );
 
             // If no RSNs are registered, inform the user
             if (!userRSNs.length) {
                 return await interaction.reply({
-                    content: '⚠️ You have no registered RSNs. Please register an RSN first to use this command. 📝',
-                    flags: 64,
+                    content:
+                        '⚠️ You have no registered RSNs. Please register an RSN first to use this command. 📝',
+                    flags: 64
                 });
             }
 
-            const normalizedUserRSNs = userRSNs.map((row) => normalizeRsn(row.rsn));
+            const normalizedUserRSNs = userRSNs.map((row) =>
+                normalizeRsn(row.rsn)
+            );
 
             // Filter RSNs that are valid for removal
-            const validRSNs = rsnsToRemove.filter((rsn) => normalizedUserRSNs.includes(normalizeRsn(rsn)));
+            const validRSNs = rsnsToRemove.filter((rsn) =>
+                normalizedUserRSNs.includes(normalizeRsn(rsn))
+            );
 
             if (validRSNs.length === 0) {
                 return await interaction.reply({
-                    content: '⚠️ None of the provided RSNs were found in your account. Please check and try again.',
-                    flags: 64,
+                    content:
+                        '⚠️ None of the provided RSNs were found in your account. Please check and try again.',
+                    flags: 64
                 });
             }
 
             // Confirmation prompt
             const confirmationRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('confirm_removersn').setLabel('Confirm').setStyle(ButtonStyle.Danger),
-                new ButtonBuilder().setCustomId('cancel_removersn').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('confirm_removersn')
+                    .setLabel('Confirm')
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setCustomId('cancel_removersn')
+                    .setLabel('Cancel')
+                    .setStyle(ButtonStyle.Secondary)
             );
 
             await interaction.reply({
                 content: `⚠️ **Confirmation Required**\nYou are about to remove the following RSNs from your account:\n${validRSNs.map((rsn) => `- \`${rsn}\``).join('\n')}\n\nClick **Confirm** to proceed or **Cancel** to abort.`,
                 components: [confirmationRow],
-                flags: 64,
+                flags: 64
             });
 
             const filter = (i) => i.user.id === interaction.user.id;
-            const collector = interaction.channel.createMessageComponentCollector({
-                filter,
-                time: 15000,
-                max: 1,
-            });
+            const collector =
+                interaction.channel.createMessageComponentCollector({
+                    filter,
+                    time: 15000,
+                    max: 1
+                });
 
             collector.on('collect', async (i) => {
                 if (i.customId === 'confirm_removersn') {
                     // Proceed with RSN removal
                     for (const rsn of validRSNs) {
-                        await runQuery('DELETE FROM registered_rsn WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ?', [userID, normalizeRsn(rsn)]);
+                        await runQuery(
+                            'DELETE FROM registered_rsn WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ?',
+                            [userID, normalizeRsn(rsn)]
+                        );
                     }
 
-                    logger.info(`User ${userID} successfully removed RSNs: ${validRSNs.join(', ')}`);
+                    logger.info(
+                        `User ${userID} successfully removed RSNs: ${validRSNs.join(', ')}`
+                    );
                     await i.update({
                         content: `✅ The following RSNs have been successfully removed from your account:\n${validRSNs.map((rsn) => `- \`${rsn}\``).join('\n')}`,
                         components: [],
-                        flags: 64,
+                        flags: 64
                     });
                 } else if (i.customId === 'cancel_removersn') {
                     await i.update({
                         content: '❌ RSN removal has been canceled.',
                         components: [],
-                        flags: 64,
+                        flags: 64
                     });
                 }
             });
@@ -149,17 +196,21 @@ module.exports = {
             collector.on('end', async (collected, reason) => {
                 if (reason === 'time' && collected.size === 0) {
                     await interaction.editReply({
-                        content: '⌛ Confirmation timed out. RSN removal has been canceled.',
+                        content:
+                            '⌛ Confirmation timed out. RSN removal has been canceled.',
                         components: [],
-                        flags: 64,
+                        flags: 64
                     });
                 }
             });
         } catch (error) {
-            logger.error(`Error executing /removersn command: ${error.message}`);
+            logger.error(
+                `Error executing /removersn command: ${error.message}`
+            );
             await interaction.reply({
-                content: '❌ An error occurred while processing your request. Please try again later. 🛠️',
-                flags: 64,
+                content:
+                    '❌ An error occurred while processing your request. Please try again later. 🛠️',
+                flags: 64
             });
         }
     },
@@ -183,11 +234,14 @@ module.exports = {
 
         try {
             const normalizedInput = normalizeRsn(focusedOption.value);
-            const rsnsResult = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) LIKE ?', [userID, `%${normalizedInput}%`]);
+            const rsnsResult = await getAll(
+                'SELECT rsn FROM registered_rsn WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) LIKE ?',
+                [userID, `%${normalizedInput}%`]
+            );
 
             const choices = rsnsResult.map((row) => ({
                 name: row.rsn,
-                value: row.rsn,
+                value: row.rsn
             }));
 
             // Handle the autocomplete for each option dynamically
@@ -195,17 +249,24 @@ module.exports = {
                 await interaction.respond(choices.slice(0, 25)); // Provide suggestions for the first RSN
             } else if (focusedOption.name === '2nd') {
                 const firstRsn = interaction.options.getString('1st');
-                const filteredChoices = choices.filter((choice) => choice.value !== firstRsn);
+                const filteredChoices = choices.filter(
+                    (choice) => choice.value !== firstRsn
+                );
                 await interaction.respond(filteredChoices.slice(0, 25)); // Exclude the first RSN
             } else if (focusedOption.name === '3rd') {
                 const firstRsn = interaction.options.getString('1st');
                 const secondRsn = interaction.options.getString('2nd');
-                const filteredChoices = choices.filter((choice) => choice.value !== firstRsn && choice.value !== secondRsn);
+                const filteredChoices = choices.filter(
+                    (choice) =>
+                        choice.value !== firstRsn && choice.value !== secondRsn
+                );
                 await interaction.respond(filteredChoices.slice(0, 25)); // Exclude the first and second RSNs
             }
         } catch (error) {
-            logger.error(`Error in autocomplete for /remove_rsn: ${error.message}`);
+            logger.error(
+                `Error in autocomplete for /remove_rsn: ${error.message}`
+            );
             await interaction.respond([]);
         }
-    },
+    }
 };

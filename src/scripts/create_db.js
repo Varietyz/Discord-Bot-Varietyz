@@ -67,7 +67,9 @@ function createRegisteredRsnTable(db) {
     `;
     db.run(query, (err) => {
         if (err) {
-            logger.error(`Error creating 'registered_rsn' table: ${err.message}`);
+            logger.error(
+                `Error creating 'registered_rsn' table: ${err.message}`
+            );
         } else {
             logger.info('\'registered_rsn\' table created (empty).');
         }
@@ -115,7 +117,9 @@ function createRecentNameChangesTable(db) {
     `;
     db.run(query, (err) => {
         if (err) {
-            logger.error(`Error creating 'recent_name_changes' table: ${err.message}`);
+            logger.error(
+                `Error creating 'recent_name_changes' table: ${err.message}`
+            );
         } else {
             logger.info('\'recent_name_changes\' table created (empty).');
         }
@@ -165,7 +169,9 @@ function createPlayerDataTable(db) {
             if (err) {
                 logger.error(`Error closing the database: ${err.message}`);
             } else {
-                logger.info('Database schema created. No data imported. DB closed successfully.');
+                logger.info(
+                    'Database schema created. No data imported. DB closed successfully.'
+                );
             }
             process.exit(0);
         });

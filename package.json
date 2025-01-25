@@ -8,8 +8,9 @@
         "lint-jsdoc": "eslint src/**/*.js",
         "update-readme": "npm run generate-readme",
         "precommit": "npm run lint-jsdoc && npm run update-readme",
-        "lint": "eslint src/ -f checkstyle -o eslint-checkstyle-report.xml",
-        "lint:fix": "eslint src/**/*.js --fix"
+        "lint": "eslint src/**/*.js",
+        "lint:fix": "eslint src/**/*.js --fix",
+        "replace-ephemeral": "node replaceEphemeral.js"
     },
     "keywords": [],
     "author": "",
@@ -20,7 +21,7 @@
         "docdash": "^2.0.2",
         "eslint": "^8.57.1",
         "eslint-config-prettier": "^10.0.1",
-        "eslint-plugin-jsdoc": "^50.6.2",
+        "eslint-plugin-jsdoc": "^50.6.3",
         "eslint-plugin-node": "^11.1.0",
         "eslint-plugin-prettier": "^5.2.3",
         "globals": "^15.14.0",

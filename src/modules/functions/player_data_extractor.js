@@ -9,7 +9,11 @@ const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('../../utils/logger');
 const { runQuery, getAll } = require('../../utils/dbUtils');
 const { sleep } = require('../utils');
-const { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable } = require('../../utils/lastFetchedTime');
+const {
+    setLastFetchedTime,
+    getLastFetchedTime,
+    ensurePlayerFetchTimesTable
+} = require('../../utils/lastFetchedTime');
 
 /**
  * Flattens a nested object into a single-level object with concatenated keys.
@@ -79,14 +83,17 @@ function formatDataForSql(data) {
         'latestSnapshot_playerId',
         'latestSnapshot_createdAt',
         'latestSnapshot_importedAt',
-        'archive',
+        'archive'
     ];
     const excludeSubstrings = ['experience', 'rank', 'ehp', 'ehb', 'metric'];
 
     // 3. Rename & filter
     const formattedData = {};
     for (const [key, value] of Object.entries(flattenedData)) {
-        if (excludeAttributes.includes(key) || excludeSubstrings.some((sub) => key.includes(sub))) {
+        if (
+            excludeAttributes.includes(key) ||
+            excludeSubstrings.some((sub) => key.includes(sub))
+        ) {
             continue;
         }
 
@@ -196,7 +203,9 @@ async function loadRegisteredRsnData() {
 
         return rsnMapping;
     } catch (error) {
-        logger.error(`Error loading registered RSNs from the database: ${error}`);
+        logger.error(
+            `Error loading registered RSNs from the database: ${error}`
+        );
         return {};
     }
 }
@@ -242,18 +251,38 @@ async function fetchAndSaveRegisteredPlayerData() {
                 let playerData;
 
                 if (lastFetched) {
-                    const hoursSinceLastFetch = (now.getTime() - lastFetched.getTime()) / (1000 * 60 * 60);
+                    const hoursSinceLastFetch =
+                        (now.getTime() - lastFetched.getTime()) /
+                        (1000 * 60 * 60);
                     if (hoursSinceLastFetch > 24) {
-                        logger.info(`More than 24 hours since last fetch for ${rsn}. Using 'updatePlayer'.`);
-                        playerData = await WOMApiClient.request('players', 'updatePlayer', normalizedRsn);
+                        logger.info(
+                            `More than 24 hours since last fetch for ${rsn}. Using 'updatePlayer'.`
+                        );
+                        playerData = await WOMApiClient.request(
+                            'players',
+                            'updatePlayer',
+                            normalizedRsn
+                        );
                     } else {
-                        logger.info(`Within 24 hours since last fetch for ${rsn}. Using 'getPlayerDetails'.`);
-                        playerData = await WOMApiClient.request('players', 'getPlayerDetails', normalizedRsn);
+                        logger.info(
+                            `Within 24 hours since last fetch for ${rsn}. Using 'getPlayerDetails'.`
+                        );
+                        playerData = await WOMApiClient.request(
+                            'players',
+                            'getPlayerDetails',
+                            normalizedRsn
+                        );
                     }
                 } else {
                     // If never fetched before, use 'updatePlayer'
-                    logger.info(`No previous fetch found for ${rsn}. Using 'updatePlayer'.`);
-                    playerData = await WOMApiClient.request('players', 'updatePlayer', normalizedRsn);
+                    logger.info(
+                        `No previous fetch found for ${rsn}. Using 'updatePlayer'.`
+                    );
+                    playerData = await WOMApiClient.request(
+                        'players',
+                        'updatePlayer',
+                        normalizedRsn
+                    );
                 }
 
                 // Save data to the database
@@ -267,23 +296,33 @@ async function fetchAndSaveRegisteredPlayerData() {
                 validMembersWithData.push({
                     username: normalizedRsn,
                     displayName: playerData.displayName,
-                    lastProgressedAt: playerData.lastChangedAt || null,
+                    lastProgressedAt: playerData.lastChangedAt || null
                 });
 
                 // Rate-limit delay
                 await sleep(1500);
             } catch (err) {
                 // Handle specific non-critical error
-                if (err.message.includes('Cannot convert undefined or null to object')) {
-                    logger.warn(`Non-critical issue processing player ${rsn}: ${err.message}`);
+                if (
+                    err.message.includes(
+                        'Cannot convert undefined or null to object'
+                    )
+                ) {
+                    logger.warn(
+                        `Non-critical issue processing player ${rsn}: ${err.message}`
+                    );
                 } else {
-                    logger.error(`Error processing player ${rsn}: ${err.message}`);
+                    logger.error(
+                        `Error processing player ${rsn}: ${err.message}`
+                    );
                     fetchFailed = true;
                 }
             }
         }
 
-        logger.info(`Successfully processed ${validMembersWithData.length} players.`);
+        logger.info(
+            `Successfully processed ${validMembersWithData.length} players.`
+        );
         return { data: validMembersWithData, fetchFailed };
     } catch (error) {
         logger.error(`Error during fetch and save operation: ${error.message}`);
@@ -305,11 +344,15 @@ async function fetchAndSaveRegisteredPlayerData() {
  */
 async function removeNonMatchingPlayers(currentClanUsers) {
     // Gather all distinct player_ids in 'player_data'
-    const allPlayers = await getAll('SELECT DISTINCT player_id FROM player_data');
+    const allPlayers = await getAll(
+        'SELECT DISTINCT player_id FROM player_data'
+    );
 
     for (const { player_id } of allPlayers) {
         if (!currentClanUsers.has(player_id)) {
-            await runQuery('DELETE FROM player_data WHERE player_id = ?', [player_id]);
+            await runQuery('DELETE FROM player_data WHERE player_id = ?', [
+                player_id
+            ]);
             logger.info(`Removed data from DB for player: ${player_id}`);
         }
     }
@@ -333,15 +376,20 @@ async function fetchAndUpdatePlayerData() {
     await ensurePlayerDataTable();
     await ensurePlayerFetchTimesTable();
 
-    const { data: clanData, fetchFailed } = await fetchAndSaveRegisteredPlayerData();
+    const { data: clanData, fetchFailed } =
+        await fetchAndSaveRegisteredPlayerData();
 
     if (fetchFailed) {
-        logger.warn('Errors occurred during player data fetch. Cleanup skipped.');
+        logger.warn(
+            'Errors occurred during player data fetch. Cleanup skipped.'
+        );
         return;
     }
 
     if (clanData) {
-        const currentClanUsers = new Set(clanData.map((member) => member.username.toLowerCase()));
+        const currentClanUsers = new Set(
+            clanData.map((member) => member.username.toLowerCase())
+        );
         logger.info('Retrieved current RSN list.');
 
         // Optional: remove DB data for non-registered RSNs
@@ -356,5 +404,5 @@ async function fetchAndUpdatePlayerData() {
 module.exports = {
     fetchAndUpdatePlayerData,
     fetchAndSaveRegisteredPlayerData,
-    savePlayerDataToDb, // Exported if needed by other modules
+    savePlayerDataToDb // Exported if needed by other modules
 };

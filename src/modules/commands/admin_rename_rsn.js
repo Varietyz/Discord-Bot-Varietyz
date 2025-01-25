@@ -9,7 +9,12 @@
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
+const {
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    PermissionsBitField
+} = require('discord.js');
 const logger = require('../../utils/logger');
 const { runQuery, getAll, getOne } = require('../../utils/dbUtils');
 const { normalizeRsn } = require('../../utils/normalizeRsn');
@@ -21,9 +26,28 @@ module.exports = {
         .setName('admin_rename_rsn')
         .setDescription('Rename a registered RSN of a guild member.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
-        .addStringOption((option) => option.setName('target').setDescription('The guild member whose RSN you want to rename.').setRequired(true).setAutocomplete(true))
-        .addStringOption((option) => option.setName('current_rsn').setDescription('The current RSN to rename.').setRequired(true).setAutocomplete(true))
-        .addStringOption((option) => option.setName('new_rsn').setDescription('The new RSN to associate with the user.').setRequired(true)),
+        .addStringOption((option) =>
+            option
+                .setName('target')
+                .setDescription(
+                    'The guild member whose RSN you want to rename.'
+                )
+                .setRequired(true)
+                .setAutocomplete(true)
+        )
+        .addStringOption((option) =>
+            option
+                .setName('current_rsn')
+                .setDescription('The current RSN to rename.')
+                .setRequired(true)
+                .setAutocomplete(true)
+        )
+        .addStringOption((option) =>
+            option
+                .setName('new_rsn')
+                .setDescription('The new RSN to associate with the user.')
+                .setRequired(true)
+        ),
 
     async execute(interaction) {
         try {
@@ -35,28 +59,33 @@ module.exports = {
             if (!guild) {
                 return await interaction.reply({
                     content: '❌ This command can only be used within a guild.',
-                    flags: 64,
+                    flags: 64
                 });
             }
 
-            const targetUser = await guild.members.fetch(targetInput).catch(() => null);
+            const targetUser = await guild.members
+                .fetch(targetInput)
+                .catch(() => null);
             if (!targetUser) {
                 return await interaction.reply({
-                    content: '❌ The specified target user could not be found. Please ensure you have entered the correct user.',
-                    flags: 64,
+                    content:
+                        '❌ The specified target user could not be found. Please ensure you have entered the correct user.',
+                    flags: 64
                 });
             }
 
             const targetUserID = targetUser.id;
 
-            logger.info(`Administrator ${interaction.user.id} attempting to rename RSN '${currentRsn}' to '${newRsn}' for user ${targetUserID}`);
+            logger.info(
+                `Administrator ${interaction.user.id} attempting to rename RSN '${currentRsn}' to '${newRsn}' for user ${targetUserID}`
+            );
 
             // Validate new RSN format
             const validation = validateRsn(newRsn);
             if (!validation.valid) {
                 return await interaction.reply({
                     content: `❌ ${validation.message} Please check your input and try again.`,
-                    flags: 64,
+                    flags: 64
                 });
             }
 
@@ -71,57 +100,72 @@ module.exports = {
                     content: `❌ The RSN \`${newRsn}\` could not be verified on Wise Old Man. Ensure the name exists and try again.
 
 🔗 [View Profile](${profileLink})`,
-                    flags: 64,
+                    flags: 64
                 });
             }
 
             // Check for duplicate RSN
-            const existingUser = await getOne('SELECT user_id FROM registered_rsn WHERE LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ? LIMIT 1', [normalizedNewRsn]);
+            const existingUser = await getOne(
+                'SELECT user_id FROM registered_rsn WHERE LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ? LIMIT 1',
+                [normalizedNewRsn]
+            );
 
             if (existingUser && existingUser.user_id !== targetUserID) {
                 return await interaction.reply({
                     content: `🚫 The RSN \`${newRsn}\` is already registered by another user: <@${existingUser.user_id}>.`,
-                    flags: 64,
+                    flags: 64
                 });
             }
 
             // Fetch all RSNs registered to the target user
-            const userRSNs = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [targetUserID]);
+            const userRSNs = await getAll(
+                'SELECT rsn FROM registered_rsn WHERE user_id = ?',
+                [targetUserID]
+            );
 
             if (!userRSNs.length) {
                 return await interaction.reply({
                     content: `⚠️ <@${targetUserID}> has no registered RSNs. Nothing to rename.`,
-                    flags: 64,
+                    flags: 64
                 });
             }
 
-            const normalizedUserRSNs = userRSNs.map((row) => normalizeRsn(row.rsn));
+            const normalizedUserRSNs = userRSNs.map((row) =>
+                normalizeRsn(row.rsn)
+            );
 
             if (!normalizedUserRSNs.includes(normalizedCurrentRsn)) {
                 return await interaction.reply({
                     content: `⚠️ The RSN \`${currentRsn}\` was not found in <@${targetUserID}>'s registered RSNs.`,
-                    flags: 64,
+                    flags: 64
                 });
             }
 
             // Create a confirmation prompt with Yes and No buttons
             const confirmationRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('confirm_rename_rsn').setLabel('Confirm').setStyle(ButtonStyle.Danger),
-                new ButtonBuilder().setCustomId('cancel_rename_rsn').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('confirm_rename_rsn')
+                    .setLabel('Confirm')
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setCustomId('cancel_rename_rsn')
+                    .setLabel('Cancel')
+                    .setStyle(ButtonStyle.Secondary)
             );
 
             await interaction.reply({
                 content: `⚠️ **Confirmation Required**\nAre you sure you want to rename the RSN \`${currentRsn}\` to \`${newRsn}\` for <@${targetUserID}>?`,
                 components: [confirmationRow],
-                flags: 64,
+                flags: 64
             });
 
             const filter = (i) => i.user.id === interaction.user.id;
-            const collector = interaction.channel.createMessageComponentCollector({
-                filter,
-                time: 15000,
-                max: 1,
-            });
+            const collector =
+                interaction.channel.createMessageComponentCollector({
+                    filter,
+                    time: 15000,
+                    max: 1
+                });
 
             collector.on('collect', async (i) => {
                 if (i.customId === 'confirm_rename_rsn') {
@@ -131,21 +175,23 @@ module.exports = {
                         SET rsn = ?
                         WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
                         `,
-                        [newRsn, targetUserID, normalizedCurrentRsn],
+                        [newRsn, targetUserID, normalizedCurrentRsn]
                     );
 
-                    logger.info(`RSN '${currentRsn}' renamed to '${newRsn}' for user ${targetUserID} by admin ${interaction.user.id}`);
+                    logger.info(
+                        `RSN '${currentRsn}' renamed to '${newRsn}' for user ${targetUserID} by admin ${interaction.user.id}`
+                    );
 
                     await i.update({
                         content: `✅ The RSN \`${currentRsn}\` has been successfully renamed to \`${newRsn}\` for <@${targetUserID}>.`,
                         components: [],
-                        flags: 64,
+                        flags: 64
                     });
                 } else if (i.customId === 'cancel_rename_rsn') {
                     await i.update({
                         content: '❌ RSN renaming has been canceled.',
                         components: [],
-                        flags: 64,
+                        flags: 64
                     });
                 }
             });
@@ -153,23 +199,28 @@ module.exports = {
             collector.on('end', async (collected, reason) => {
                 if (reason === 'time' && collected.size === 0) {
                     await interaction.editReply({
-                        content: '⌛ Confirmation timed out. RSN renaming has been canceled.',
+                        content:
+                            '⌛ Confirmation timed out. RSN renaming has been canceled.',
                         components: [],
-                        flags: 64,
+                        flags: 64
                     });
                 }
             });
         } catch (error) {
-            logger.error(`Error executing /admin_rename_rsn command: ${error.message}`);
+            logger.error(
+                `Error executing /admin_rename_rsn command: ${error.message}`
+            );
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp({
-                    content: '❌ An error occurred while processing the request. Please try again later.',
-                    flags: 64,
+                    content:
+                        '❌ An error occurred while processing the request. Please try again later.',
+                    flags: 64
                 });
             } else {
                 await interaction.reply({
-                    content: '❌ An error occurred while processing the request. Please try again later.',
-                    flags: 64,
+                    content:
+                        '❌ An error occurred while processing the request. Please try again later.',
+                    flags: 64
                 });
             }
         }
@@ -182,7 +233,10 @@ module.exports = {
             if (focusedOption.name === 'target') {
                 const input = focusedOption.value.toLowerCase();
 
-                const rsnUsers = await getAll('SELECT DISTINCT user_id FROM registered_rsn', []);
+                const rsnUsers = await getAll(
+                    'SELECT DISTINCT user_id FROM registered_rsn',
+                    []
+                );
 
                 const userIds = rsnUsers.map((row) => row.user_id);
                 const guild = interaction.guild;
@@ -190,39 +244,59 @@ module.exports = {
                     return await interaction.respond([]);
                 }
 
-                const members = await guild.members.fetch({ user: userIds }).catch(() => new Map());
+                const members = await guild.members
+                    .fetch({ user: userIds })
+                    .catch(() => new Map());
 
                 const choices = await Promise.all(
                     Array.from(members.values()).map(async (member) => {
                         const userId = member.user.id;
                         const username = member.user.username.toLowerCase();
-                        const discriminator = member.user.discriminator.toLowerCase();
-                        const tag = `${member.user.username}#${member.user.discriminator}`.toLowerCase();
+                        const discriminator =
+                            member.user.discriminator.toLowerCase();
+                        const tag =
+                            `${member.user.username}#${member.user.discriminator}`.toLowerCase();
 
                         // Fetch RSNs linked to this user ID
-                        const rsns = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userId]);
+                        const rsns = await getAll(
+                            'SELECT rsn FROM registered_rsn WHERE user_id = ?',
+                            [userId]
+                        );
 
                         // Normalize RSNs for comparison
                         const normalizedRsns = rsns.map((row) => ({
                             original: row.rsn,
-                            normalized: normalizeRsn(row.rsn),
+                            normalized: normalizeRsn(row.rsn)
                         }));
 
                         // Filter RSNs that match the input
-                        const matchingRsns = normalizedRsns.filter((rsn) => rsn.normalized.includes(input));
+                        const matchingRsns = normalizedRsns.filter((rsn) =>
+                            rsn.normalized.includes(input)
+                        );
 
                         // Determine the RSN to display:
-                        const rsnDisplay = matchingRsns.length > 0 ? matchingRsns.map((rsn) => rsn.original).join(', ') : 'No RSN matches';
+                        const rsnDisplay =
+                            matchingRsns.length > 0
+                                ? matchingRsns
+                                    .map((rsn) => rsn.original)
+                                    .join(', ')
+                                : 'No RSN matches';
 
-                        if (username.includes(input) || discriminator.includes(input) || tag.includes(input) || userId.includes(input) || matchingRsns.length > 0) {
+                        if (
+                            username.includes(input) ||
+                            discriminator.includes(input) ||
+                            tag.includes(input) ||
+                            userId.includes(input) ||
+                            matchingRsns.length > 0
+                        ) {
                             return {
                                 name: `${rsnDisplay} (${userId}) - ${member.user.username}`,
-                                value: userId,
+                                value: userId
                             };
                         }
 
                         return null;
-                    }),
+                    })
                 );
 
                 await interaction.respond(choices.filter(Boolean).slice(0, 25));
@@ -244,19 +318,21 @@ module.exports = {
     WHERE user_id = ? 
     AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) LIKE LOWER(?)
     `,
-                    [targetUserID, `%${normalizedInput}%`],
+                    [targetUserID, `%${normalizedInput}%`]
                 );
 
                 const choices = rsnsResult.map((row) => ({
                     name: row.rsn,
-                    value: row.rsn,
+                    value: row.rsn
                 }));
 
                 await interaction.respond(choices.slice(0, 25));
             }
         } catch (error) {
-            logger.error(`Error in autocomplete for /admin_rename_rsn: ${error.message}`);
+            logger.error(
+                `Error in autocomplete for /admin_rename_rsn: ${error.message}`
+            );
             await interaction.respond([]);
         }
-    },
+    }
 };

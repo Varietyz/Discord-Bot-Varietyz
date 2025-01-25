@@ -17,7 +17,11 @@ const tasks = require('./modules/tasks'); // Import the task list
  * @type {Client}
  */
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
 });
 
 /** @type {Array<Object>} */
@@ -43,8 +47,14 @@ const loadModules = (type) => {
 
             if (type === 'commands') {
                 // Only load commands if the file exports data and execute
-                if (!module.data || !module.data.description || !module.execute) {
-                    logger.error(`Invalid command structure in ${file}: Missing description or execute function.`);
+                if (
+                    !module.data ||
+                    !module.data.description ||
+                    !module.execute
+                ) {
+                    logger.error(
+                        `Invalid command structure in ${file}: Missing description or execute function.`
+                    );
                     return;
                 }
                 commands.push(module); // Push only commands to commands array
@@ -77,13 +87,18 @@ const initializeBot = async () => {
         const { Routes } = require('discord-api-types/v10');
 
         // @ts-ignore
-        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+        const rest = new REST({ version: '10' }).setToken(
+            process.env.DISCORD_TOKEN
+        );
 
         // Register the commands with Discord for a specific guild
         await rest.put(
             // @ts-ignore
-            Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-            { body: commands.map((cmd) => cmd.data.toJSON()) }, // Ensure this always includes the newest changes to your commands
+            Routes.applicationGuildCommands(
+                process.env.CLIENT_ID,
+                process.env.GUILD_ID
+            ),
+            { body: commands.map((cmd) => cmd.data.toJSON()) } // Ensure this always includes the newest changes to your commands
         );
 
         logger.info('Slash commands registered successfully.');
@@ -111,7 +126,9 @@ client.once('ready', async () => {
             try {
                 await task.func(client); // Run the task immediately
             } catch (err) {
-                logger.error(`Error running task: ${task.name} on startup: ${err}`);
+                logger.error(
+                    `Error running task: ${task.name} on startup: ${err}`
+                );
             }
         }
     }
@@ -126,7 +143,9 @@ client.once('ready', async () => {
             // Format hours and minutes into a string (hh:mm)
             const intervalFormatted = `${hours > 0 ? `${hours}h ` : ''}${minutes}m`;
 
-            logger.info(`Scheduling task: ${task.name} to run at ${intervalFormatted} intervals.`);
+            logger.info(
+                `Scheduling task: ${task.name} to run at ${intervalFormatted} intervals.`
+            );
             try {
                 setInterval(async () => {
                     logger.info(`Running scheduled task: ${task.name}...`);
@@ -165,7 +184,9 @@ client.on('interactionCreate', async (interaction) => {
 async function handleSlashCommand(interaction) {
     try {
         // Find the appropriate command based on the interaction's name
-        const command = commands.find((cmd) => cmd.data.name === interaction.commandName);
+        const command = commands.find(
+            (cmd) => cmd.data.name === interaction.commandName
+        );
 
         // Check if the command exists
         if (!command) {
@@ -175,12 +196,16 @@ async function handleSlashCommand(interaction) {
 
         // Execute the command
         await command.execute(interaction);
-        logger.info(`${interaction.commandName} command executed successfully.`);
+        logger.info(
+            `${interaction.commandName} command executed successfully.`
+        );
     } catch (err) {
-        logger.error(`Error executing ${interaction.commandName}: ${err.message}`);
+        logger.error(
+            `Error executing ${interaction.commandName}: ${err.message}`
+        );
         await interaction.reply({
             content: 'Something went wrong while processing your command.',
-            flags: 64, // EPHEMERAL flag
+            flags: 64 // EPHEMERAL flag
         });
     }
 }
@@ -195,24 +220,34 @@ async function handleSlashCommand(interaction) {
 async function handleAutocomplete(interaction) {
     try {
         // Find the appropriate command based on the interaction's name
-        const command = commands.find((cmd) => cmd.data.name === interaction.commandName);
+        const command = commands.find(
+            (cmd) => cmd.data.name === interaction.commandName
+        );
 
         // Check if the command exists and supports autocomplete
         if (!command) {
-            logger.warn(`Autocomplete trigger failed: Unknown command ${interaction.commandName}`);
+            logger.warn(
+                `Autocomplete trigger failed: Unknown command ${interaction.commandName}`
+            );
             return;
         }
 
         if (!command.autocomplete) {
-            logger.warn(`Autocomplete handler not implemented for command: ${interaction.commandName}`);
+            logger.warn(
+                `Autocomplete handler not implemented for command: ${interaction.commandName}`
+            );
             return;
         }
 
         // Handle the autocomplete response
         await command.autocomplete(interaction);
-        logger.info(`Autocomplete triggered for command ${interaction.commandName}`);
+        logger.info(
+            `Autocomplete triggered for command ${interaction.commandName}`
+        );
     } catch (err) {
-        logger.error(`Error processing autocomplete for ${interaction.commandName}: ${err.message}`);
+        logger.error(
+            `Error processing autocomplete for ${interaction.commandName}: ${err.message}`
+        );
         await interaction.respond([]); // Send empty array to indicate no suggestions if there's an error
     }
 }

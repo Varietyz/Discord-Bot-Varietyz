@@ -23,13 +23,19 @@ async function fetchPlayerData(rsn) {
         return response.data;
     } catch (error) {
         if (error.response && error.response.status === 404) {
-            logger.warn(`[fetchPlayerData] RSN '${rsn}' not found on Wise Old Man.`);
+            logger.warn(
+                `[fetchPlayerData] RSN '${rsn}' not found on Wise Old Man.`
+            );
             return null; // Handle 404 errors gracefully
         } else if (error.response && error.response.status === 429) {
-            logger.warn('[fetchPlayerData] Rate limited by WOM API. Please try again later.');
+            logger.warn(
+                '[fetchPlayerData] Rate limited by WOM API. Please try again later.'
+            );
             throw new Error('Rate limited by WOM API.');
         } else {
-            logger.error(`[fetchPlayerData] Unexpected error fetching RSN '${rsn}': ${error.message}`);
+            logger.error(
+                `[fetchPlayerData] Unexpected error fetching RSN '${rsn}': ${error.message}`
+            );
             throw error; // Rethrow unexpected errors
         }
     }

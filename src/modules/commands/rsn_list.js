@@ -1,5 +1,10 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const {
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
+} = require('discord.js');
 const logger = require('../../utils/logger');
 const { getAll } = require('../../utils/dbUtils');
 const { normalizeRsn } = require('../../utils/normalizeRsn');
@@ -7,18 +12,34 @@ const { getRankEmoji } = require('../utils');
 const { rankHierarchy } = require('../../config/constants');
 
 module.exports = {
-    data: new SlashCommandBuilder().setName('rsn_list').setDescription('View all registered RSNs and their associated ranks for clan members.').setDefaultMemberPermissions(0),
+    data: new SlashCommandBuilder()
+        .setName('rsn_list')
+        .setDescription(
+            'View all registered RSNs and their associated ranks for clan members.'
+        )
+        .setDefaultMemberPermissions(0),
 
     async execute(interaction) {
         try {
-            logger.info(`Command 'rsnlist' triggered by user: ${interaction.user.username}`);
+            logger.info(
+                `Command 'rsnlist' triggered by user: ${interaction.user.username}`
+            );
             await interaction.deferReply({ flags: 64 });
 
-            const rsnData = await getAll('SELECT user_id, rsn FROM registered_rsn');
-            const clanMembers = await getAll('SELECT name, rank FROM clan_members');
+            const rsnData = await getAll(
+                'SELECT user_id, rsn FROM registered_rsn'
+            );
+            const clanMembers = await getAll(
+                'SELECT name, rank FROM clan_members'
+            );
 
             if (!rsnData.length) {
-                const embed = new EmbedBuilder().setTitle('No RSNs Registered').setDescription('⚠️ No RSNs are currently registered. Use `/rsn` to register your first one! 📝').setColor('Red');
+                const embed = new EmbedBuilder()
+                    .setTitle('No RSNs Registered')
+                    .setDescription(
+                        '⚠️ No RSNs are currently registered. Use `/rsn` to register your first one! 📝'
+                    )
+                    .setColor('Red');
 
                 return await interaction.editReply({ embeds: [embed] });
             }
@@ -31,24 +52,31 @@ module.exports = {
 
             // Create navigation buttons
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('previous').setLabel('Previous').setStyle(ButtonStyle.Primary).setDisabled(true),
+                new ButtonBuilder()
+                    .setCustomId('previous')
+                    .setLabel('Previous')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(true),
                 new ButtonBuilder()
                     .setCustomId('next')
                     .setLabel('Next')
                     .setStyle(ButtonStyle.Primary)
                     .setDisabled(pages.length === 1),
-                new ButtonBuilder().setCustomId('close').setLabel('Close').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setCustomId('close')
+                    .setLabel('Close')
+                    .setStyle(ButtonStyle.Danger)
             );
 
             // Send the first page
             const message = await interaction.editReply({
                 embeds: [pages[currentPage]],
-                components: [row],
+                components: [row]
             });
 
             const collector = message.createMessageComponentCollector({
                 filter: (i) => i.user.id === interaction.user.id,
-                time: 60000,
+                time: 60000
             });
 
             collector.on('collect', async (i) => {
@@ -58,7 +86,11 @@ module.exports = {
                     currentPage++;
                 } else if (i.customId === 'close') {
                     collector.stop('closed');
-                    return await i.update({ content: '⛔ list navigation closed.', components: [], embeds: [] });
+                    return await i.update({
+                        content: '⛔ list navigation closed.',
+                        components: [],
+                        embeds: []
+                    });
                 }
 
                 // @ts-ignore
@@ -68,7 +100,7 @@ module.exports = {
 
                 await i.update({
                     embeds: [pages[currentPage]],
-                    components: [row],
+                    components: [row]
                 });
             });
 
@@ -77,17 +109,18 @@ module.exports = {
                 if (reason === 'time') {
                     await interaction.editReply({
                         content: '⏳ RSN list navigation timed out.',
-                        components: [],
+                        components: []
                     });
                 }
             });
         } catch (err) {
             logger.error(`Error executing rsnlist command: ${err.message}`);
             await interaction.editReply({
-                content: '❌ An error occurred while executing the command. Please try again later. 🛠️',
+                content:
+                    '❌ An error occurred while executing the command. Please try again later. 🛠️'
             });
         }
-    },
+    }
 };
 
 /**
@@ -100,13 +133,19 @@ module.exports = {
 function getHighestRank(rsns, clanMembers) {
     const rankedRsns = rsns.map((rsn) => {
         const normalizedRSN = normalizeRsn(rsn);
-        const member = clanMembers.find((member) => normalizeRsn(member.name) === normalizedRSN);
+        const member = clanMembers.find(
+            (member) => normalizeRsn(member.name) === normalizedRSN
+        );
         const rank = member ? member.rank : 'guest'; // Default to 'guest' if no rank found
         return { rsn, rank };
     });
 
     // Sort by rank hierarchy, with highest rank first
-    rankedRsns.sort((a, b) => rankHierarchy[b.rank.toLowerCase()] - rankHierarchy[a.rank.toLowerCase()]);
+    rankedRsns.sort(
+        (a, b) =>
+            rankHierarchy[b.rank.toLowerCase()] -
+            rankHierarchy[a.rank.toLowerCase()]
+    );
 
     return rankedRsns[0]; // Return the highest rank and associated RSN
 }
@@ -132,7 +171,10 @@ function paginateRSNData(rsnData, clanMembers, itemsPerPage) {
         if (rankB.rank === 'guest' && rankA.rank !== 'guest') return -1;
 
         // Sort by rank hierarchy
-        return rankHierarchy[rankB.rank.toLowerCase()] - rankHierarchy[rankA.rank.toLowerCase()];
+        return (
+            rankHierarchy[rankB.rank.toLowerCase()] -
+            rankHierarchy[rankA.rank.toLowerCase()]
+        );
     });
 
     const pages = [];
@@ -149,7 +191,9 @@ function paginateRSNData(rsnData, clanMembers, itemsPerPage) {
             .setTitle('Registered RSNs')
             .setDescription(description)
             .setColor('Green')
-            .setFooter({ text: `Page ${Math.ceil(i / itemsPerPage) + 1}/${Math.ceil(sortedUserIds.length / itemsPerPage)}` });
+            .setFooter({
+                text: `Page ${Math.ceil(i / itemsPerPage) + 1}/${Math.ceil(sortedUserIds.length / itemsPerPage)}`
+            });
 
         pages.push(embed);
     }
@@ -170,13 +214,24 @@ function prepareUserContent(userId, rsns, clanMembers) {
     const rankedRsns = rsns
         .map((rsn) => {
             const normalizedRSN = normalizeRsn(rsn);
-            const member = clanMembers.find((member) => normalizeRsn(member.name) === normalizedRSN);
+            const member = clanMembers.find(
+                (member) => normalizeRsn(member.name) === normalizedRSN
+            );
             const rank = member ? member.rank : 'guest';
             const emoji = member ? getRankEmoji(rank) : '';
             const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(rsn.replace(/ /g, '%20').toLowerCase())}`;
-            return { rank, content: rank ? `- ${emoji}[${rsn}](${profileLink})` : `- [${rsn}](${profileLink})` };
+            return {
+                rank,
+                content: rank
+                    ? `- ${emoji}[${rsn}](${profileLink})`
+                    : `- [${rsn}](${profileLink})`
+            };
         })
-        .sort((a, b) => rankHierarchy[b.rank.toLowerCase()] - rankHierarchy[a.rank.toLowerCase()]); // Sort by rank
+        .sort(
+            (a, b) =>
+                rankHierarchy[b.rank.toLowerCase()] -
+                rankHierarchy[a.rank.toLowerCase()]
+        ); // Sort by rank
 
     return `${userMention}\n${rankedRsns.map((entry) => entry.content).join('\n')}`;
 }

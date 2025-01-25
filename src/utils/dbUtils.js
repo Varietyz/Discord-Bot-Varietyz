@@ -109,7 +109,9 @@ const getOne = (query, params = []) =>
 process.on('SIGINT', () => {
     db.close((err) => {
         if (err) {
-            logger.error(`Error closing the database connection: ${err.message}`);
+            logger.error(
+                `Error closing the database connection: ${err.message}`
+            );
         } else {
             logger.info('Database connection closed successfully.');
         }

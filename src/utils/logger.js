@@ -72,7 +72,7 @@ const logger = winston.createLogger({
     level: 'info', // Default log level
     format: winston.format.combine(
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        logFormat, // Custom log format
+        logFormat // Custom log format
     ),
     transports: [
         /**
@@ -82,8 +82,8 @@ const logger = winston.createLogger({
         new winston.transports.Console({
             format: winston.format.combine(
                 winston.format.colorize(),
-                logFormat, // Custom format for console output
-            ),
+                logFormat // Custom format for console output
+            )
         }),
 
         /**
@@ -97,11 +97,14 @@ const logger = winston.createLogger({
             maxSize: '20m',
             maxFiles: '7d',
             level: 'info',
-            format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
+            format: winston.format.combine(
+                winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+                logFormat
+            ),
             dirname: getYearMonthPath(), // Ensure directory path for logs
-            auditFile: path.join('logs', 'handler', 'audit.json'), // Place the audit file in logs/handler
-        }),
-    ],
+            auditFile: path.join('logs', 'handler', 'audit.json') // Place the audit file in logs/handler
+        })
+    ]
 });
 
 /**
