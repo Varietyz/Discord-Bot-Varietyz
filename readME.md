@@ -908,47 +908,39 @@ A big thank you to all the tools and communities that made **Varietyz Bot** poss
 
 To help you better understand the terminology used in this README, here's a quick glossary of terms:
 
-- **RSN (RuneScape Name):** The unique username a player uses in Old School RuneScape.
-- **WOM (Wise Old Man) API:** An external service that provides detailed statistics and data about OSRS players.
-- **Discord.js:** A JavaScript library that allows developers to interact with the Discord API easily.
-- **Slash Commands:** Special commands in Discord that start with a `/`, enabling interactive and intuitive user interactions.
-- **SQLite:** A lightweight, file-based database system used for storing and managing data.
-- **API (Application Programming Interface):** A set of rules that allows different software entities to communicate with each other.
-- **Discord Server:** A virtual space on Discord where communities gather to communicate via text, voice, or video.
-- **Bot Token:** A unique identifier that allows a bot to connect and interact with Discord's API.
-- **Client ID:** The unique identifier for a Discord application, used to authenticate the bot.
-- **Guild ID:** The unique identifier for a Discord server.
-- **Role Hierarchy:** The ordering of roles in Discord, which determines which roles can manage or assign other roles.
-- **Emojis:** Small images or icons used in Discord to represent emotions, objects, or actions.
-- **Permissions:** The rights granted to users or bots to perform certain actions within a Discord server, such as managing roles or channels.
-- **Rate Limiting:** Restrictions placed on how frequently certain actions can be performed, such as API requests, to prevent abuse.
-- **Exponential Backoff:** A strategy for retrying failed operations by waiting increasingly longer intervals between retries.
-- **Embeds:** Richly formatted messages in Discord that can include images, links, and other media.
-- **Command Interaction:** An event in Discord that occurs when a user invokes a slash command.
-- **Autocomplete Interaction:** An event in Discord that provides suggestions as a user types a command.
-- **CLI (Command Line Interface):** A text-based interface used to interact with software or scripts by typing commands.
-- **npm (Node Package Manager):** A package manager for JavaScript that allows developers to install and manage software packages.
-- **Git:** A version control system that allows developers to track changes in their codebase.
-- **Repository:** A storage location for a project, typically hosted on platforms like GitHub, where code and related files are kept.
-- **Fork:** A personal copy of another user's repository that allows you to freely experiment with changes without affecting the original project.
-- **Pull Request:** A method of submitting contributions to a project by proposing changes that the project maintainers can review and merge.
-- **Clone:** A copy of a repository that is stored on your local machine.
-- **Environment Variables:** Variables that are set outside of a program, often used to configure software without changing code.
-- **JSON (JavaScript Object Notation):** A lightweight data-interchange format that's easy for humans to read and write and easy for machines to parse and generate.
-- **Configuration Files:** Files used to configure the settings and behavior of software applications.
-- **Scheduled Tasks:** Automated operations that run at predetermined times or intervals.
-- **Logging:** The process of recording information about a program's operation, used for debugging and monitoring.
-- **Winston:** A popular logging library for Node.js applications.
-- **Module:** A reusable piece of code that encapsulates related functions, classes, or variables.
-- **Script:** A file containing code that performs a specific task or set of tasks.
-- **Function:** A block of code designed to perform a particular task, which can be called with arguments to execute.
-- **Utility Functions:** Helper functions that perform common, often repeated tasks to simplify code.
-- **Class:** A blueprint for creating objects in object-oriented programming, defining their properties and behaviors.
-- **Object-Oriented Programming (OOP):** A programming paradigm based on the concept of objects, which can contain data and methods.
-- **Database:** An organized collection of structured information, typically stored electronically.
-- **API Key:** A unique identifier used to authenticate requests to an API, ensuring secure and controlled access.
-- **Error Handling:** The process of responding to and managing errors that occur during the execution of a program.
-- **Channel ID:** The unique identifier for a specific channel within a Discord server.
+    ### **Discord-Related Terms**
+
+        - **RSN (RuneScape Name):** The unique username a player uses in Old School RuneScape.
+        - **Bot Token:** A unique identifier that allows a bot to connect and interact with Discord's API.
+        - **Client ID:** The unique identifier for a Discord application, used to authenticate the bot.
+        - **Guild ID:** The unique identifier for a Discord server.
+        - **Channel ID:** The unique identifier for a specific channel within a Discord server.
+        - **Permissions:** The rights granted to users or bots to perform certain actions within a Discord server, such as managing roles or channels.
+        - **Embeds:** Richly formatted messages in Discord that can include images, links, and other media.
+        - **Command Interaction:** An event in Discord that occurs when a user invokes a slash command.
+        - **Autocomplete Interaction:** An event in Discord that provides suggestions as a user types a command.
+
+    ---
+
+    ### **Programming and Development Terms**
+
+        - **API (Application Programming Interface):** A set of rules that allows different software entities to communicate with each other.
+        - **API Key:** A unique identifier used to authenticate requests to an API, ensuring secure and controlled access.
+        - **JSON (JavaScript Object Notation):** A lightweight data-interchange format that's easy for humans to read and write and easy for machines to parse and generate.
+        - **Module:** A reusable piece of code that encapsulates related functions, classes, or variables.
+        - **Script:** A file containing code that performs a specific task or set of tasks.
+        - **Function:** A block of code designed to perform a particular task, which can be called with arguments to execute.
+        - **Utility Functions:** Helper functions that perform common, often repeated tasks to simplify code.
+        - **Class:** A blueprint for creating objects in object-oriented programming, defining their properties and behaviors.
+        - **Object-Oriented Programming (OOP):** A programming paradigm based on the concept of objects, which can contain data and methods.
+        - **Error Handling:** The process of responding to and managing errors that occur during the execution of a program.
+        - **Logging:** The process of recording information about a program's operation, used for debugging and monitoring.
+        - **Rate Limiting:** Restrictions placed on how frequently certain actions can be performed, such as API requests, to prevent abuse.
+        - **Exponential Backoff:** A strategy for retrying failed operations by waiting increasingly longer intervals between retries.
+        - **Fork:** A personal copy of another user's repository that allows you to freely experiment with changes without affecting the original project.
+        - **Pull Request:** A method of submitting contributions to a project by proposing changes that the project maintainers can review and merge.
+        - **CLI (Command Line Interface):** A text-based interface used to interact with software or scripts by typing commands.
+        - **npm (Node Package Manager):** A package manager for JavaScript that allows developers to install and manage software packages.
 
 ---
 
