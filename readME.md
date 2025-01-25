@@ -629,8 +629,6 @@ Defines and exports all constant values used throughout the Varietyz Bot. This i
 
 ### modules/commands/remove_rsn
 
-**Renamed from:** `removersn`
-
 Defines the `/remove_rsn` slash command for the Varietyz Bot. This command allows users to remove up to three registered RuneScape Names (RSNs) from their account. It includes validation, rate limiting, database interactions, a confirmation prompt, and an autocomplete feature for RSN suggestions.
 
 ### modules/commands/rsn
@@ -638,8 +636,6 @@ Defines the `/remove_rsn` slash command for the Varietyz Bot. This command allow
 Defines the `/rsn` slash command for the Varietyz Bot. This command allows users to register their Old School RuneScape Name (RSN). It includes validation, rate limiting, and handles special Easter egg RSNs with custom responses.
 
 ### modules/commands/rsn_list
-
-**Renamed from:** `rsnlist`
 
 Defines the `/rsn_list` slash command for administrators. This command retrieves and displays all registered RuneScape Names (RSNs) along with their associated ranks for clan members.
 
@@ -855,28 +851,6 @@ Utility functions for managing RuneScape clan ranks in the Varietyz Bot. Provide
 
 ---
 
-## WOMApiClient
-
-### `new WOMApiClient()`
-
-Initializes the WOM API client with an API key and user agent. Sets rate limits based on the presence of an API key and validates the WOM group ID.
-
-**Methods:**
-
-- **handleWOMRateLimit() ⇒ `Promise<void>`**
-
-    Ensures that the WOM API rate limit is not exceeded. Throws an error if the request limit is reached within the current 60-second window.
-
-- **retryRequest(endpoint, methodName, params, [retries]) ⇒ `Promise<any>`**
-
-    Retries a failed API request with exponential backoff.
-
-- **request(endpoint, methodName, [params]) ⇒ `Promise<any>`**
-
-    Makes a request to the WOM API with rate limiting and retries.
-
----
-
 ## License
 
 This project is licensed under the [BSD 2-Clause](LICENSE). You are free to use, modify, and distribute it as per the license terms.
@@ -908,39 +882,39 @@ A big thank you to all the tools and communities that made **Varietyz Bot** poss
 
 To help you better understand the terminology used in this README, here's a quick glossary of terms:
 
-    ### **Discord-Related Terms**
+### **Discord-Related Terms**
 
-        - **RSN (RuneScape Name):** The unique username a player uses in Old School RuneScape.
-        - **Bot Token:** A unique identifier that allows a bot to connect and interact with Discord's API.
-        - **Client ID:** The unique identifier for a Discord application, used to authenticate the bot.
-        - **Guild ID:** The unique identifier for a Discord server.
-        - **Channel ID:** The unique identifier for a specific channel within a Discord server.
-        - **Permissions:** The rights granted to users or bots to perform certain actions within a Discord server, such as managing roles or channels.
-        - **Embeds:** Richly formatted messages in Discord that can include images, links, and other media.
-        - **Command Interaction:** An event in Discord that occurs when a user invokes a slash command.
-        - **Autocomplete Interaction:** An event in Discord that provides suggestions as a user types a command.
+    - **RSN (RuneScape Name):** The unique username a player uses in Old School RuneScape.
+    - **Bot Token:** A unique identifier that allows a bot to connect and interact with Discord's API.
+    - **Client ID:** The unique identifier for a Discord application, used to authenticate the bot.
+    - **Guild ID:** The unique identifier for a Discord server.
+    - **Channel ID:** The unique identifier for a specific channel within a Discord server.
+    - **Permissions:** The rights granted to users or bots to perform certain actions within a Discord server, such as managing roles or channels.
+    - **Embeds:** Richly formatted messages in Discord that can include images, links, and other media.
+    - **Command Interaction:** An event in Discord that occurs when a user invokes a slash command.
+    - **Autocomplete Interaction:** An event in Discord that provides suggestions as a user types a command.
 
-    ---
+---
 
-    ### **Programming and Development Terms**
+### **Programming and Development Terms**
 
-        - **API (Application Programming Interface):** A set of rules that allows different software entities to communicate with each other.
-        - **API Key:** A unique identifier used to authenticate requests to an API, ensuring secure and controlled access.
-        - **JSON (JavaScript Object Notation):** A lightweight data-interchange format that's easy for humans to read and write and easy for machines to parse and generate.
-        - **Module:** A reusable piece of code that encapsulates related functions, classes, or variables.
-        - **Script:** A file containing code that performs a specific task or set of tasks.
-        - **Function:** A block of code designed to perform a particular task, which can be called with arguments to execute.
-        - **Utility Functions:** Helper functions that perform common, often repeated tasks to simplify code.
-        - **Class:** A blueprint for creating objects in object-oriented programming, defining their properties and behaviors.
-        - **Object-Oriented Programming (OOP):** A programming paradigm based on the concept of objects, which can contain data and methods.
-        - **Error Handling:** The process of responding to and managing errors that occur during the execution of a program.
-        - **Logging:** The process of recording information about a program's operation, used for debugging and monitoring.
-        - **Rate Limiting:** Restrictions placed on how frequently certain actions can be performed, such as API requests, to prevent abuse.
-        - **Exponential Backoff:** A strategy for retrying failed operations by waiting increasingly longer intervals between retries.
-        - **Fork:** A personal copy of another user's repository that allows you to freely experiment with changes without affecting the original project.
-        - **Pull Request:** A method of submitting contributions to a project by proposing changes that the project maintainers can review and merge.
-        - **CLI (Command Line Interface):** A text-based interface used to interact with software or scripts by typing commands.
-        - **npm (Node Package Manager):** A package manager for JavaScript that allows developers to install and manage software packages.
+    - **API (Application Programming Interface):** A set of rules that allows different software entities to communicate with each other.
+    - **API Key:** A unique identifier used to authenticate requests to an API, ensuring secure and controlled access.
+    - **JSON (JavaScript Object Notation):** A lightweight data-interchange format that's easy for humans to read and write and easy for machines to parse and generate.
+    - **Module:** A reusable piece of code that encapsulates related functions, classes, or variables.
+    - **Script:** A file containing code that performs a specific task or set of tasks.
+    - **Function:** A block of code designed to perform a particular task, which can be called with arguments to execute.
+    - **Utility Functions:** Helper functions that perform common, often repeated tasks to simplify code.
+    - **Class:** A blueprint for creating objects in object-oriented programming, defining their properties and behaviors.
+    - **Object-Oriented Programming (OOP):** A programming paradigm based on the concept of objects, which can contain data and methods.
+    - **Error Handling:** The process of responding to and managing errors that occur during the execution of a program.
+    - **Logging:** The process of recording information about a program's operation, used for debugging and monitoring.
+    - **Rate Limiting:** Restrictions placed on how frequently certain actions can be performed, such as API requests, to prevent abuse.
+    - **Exponential Backoff:** A strategy for retrying failed operations by waiting increasingly longer intervals between retries.
+    - **Fork:** A personal copy of another user's repository that allows you to freely experiment with changes without affecting the original project.
+    - **Pull Request:** A method of submitting contributions to a project by proposing changes that the project maintainers can review and merge.
+    - **CLI (Command Line Interface):** A text-based interface used to interact with software or scripts by typing commands.
+    - **npm (Node Package Manager):** A package manager for JavaScript that allows developers to install and manage software packages.
 
 ---
 
