@@ -8,10 +8,10 @@
 
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { DateTime } = require('luxon');
-const logger = require('../../utils/logger');
-const { calculateProgressCount, calculateInactivity } = require('../../utils/calculateActivity');
-const { getAll } = require('../../utils/dbUtils');
-const { updateVoiceData } = require('../functions/active_members');
+const logger = require('../utils/logger');
+const { calculateProgressCount, calculateInactivity } = require('../utils/calculateActivity');
+const { getAll } = require('../utils/dbUtils');
+const { updateVoiceData } = require('../processing/active_members');
 
 module.exports = {
     data: new SlashCommandBuilder()

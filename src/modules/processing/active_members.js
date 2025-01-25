@@ -5,15 +5,15 @@
  * This module interacts with the WOM API to fetch player data, calculate member activity,
  * and update Discord voice channel names based on member activity.
  *
- * @module modules/functions/active_members
+ * @module modules/processing/active_members
  */
 
 const { DateTime } = require('luxon');
-const logger = require('../../utils/logger');
+const logger = require('../utils/logger');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const { VOICE_CHANNEL_ID } = require('../../config/constants');
-const { getAll, runQuery } = require('../../utils/dbUtils');
-const { calculateInactivity, calculateProgressCount, ensureActiveInactiveTable } = require('../../utils/calculateActivity');
+const { getAll, runQuery } = require('../utils/dbUtils');
+const { calculateInactivity, calculateProgressCount, ensureActiveInactiveTable } = require('../utils/calculateActivity');
 /**
  * Object to store player progress data.
  * Keys are player names (RSNs), and values are Luxon DateTime objects representing the last progression date.

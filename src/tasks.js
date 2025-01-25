@@ -3,19 +3,17 @@
  * Each task includes a name, the function to execute, the interval at which to run,
  * and flags indicating whether to run on startup and as a scheduled task.
  *
- * @module modules/tasks
+ * @module tasks
  */
 
-const { updateData } = require('./functions/member_channel');
-const { processNameChanges } = require('./functions/name_changes');
-const {
-    fetchAndUpdatePlayerData
-} = require('./functions/player_data_extractor');
-const { fetchAndProcessMember } = require('./functions/auto_roles');
-const { updateVoiceChannel } = require('./functions/active_members');
+const { updateData } = require('./modules/processing/member_channel');
+const { processNameChanges } = require('./modules/processing/name_changes');
+const { fetchAndUpdatePlayerData } = require('./modules/processing/player_data_extractor');
+const { fetchAndProcessMember } = require('./modules/processing/auto_roles');
+const { updateVoiceChannel } = require('./modules/processing/active_members');
 require('dotenv').config();
-const { getAll } = require('../utils/dbUtils');
-const logger = require('../utils/logger');
+const { getAll } = require('./modules/utils/dbUtils');
+const logger = require('./modules/utils/logger');
 
 /**
  * Represents a scheduled task.
@@ -40,21 +38,21 @@ module.exports = [
         func: async (client) => await updateData(client),
         interval: 600 * 3, // Runs every 1800 seconds (30 minutes)
         runOnStart: true,
-        runAsTask: true
+        runAsTask: true,
     },
     {
         name: 'processNameChanges',
         func: async (client) => await processNameChanges(client),
         interval: 3600 * 3, // Runs every 10800 seconds (3 hours)
         runOnStart: true,
-        runAsTask: true
+        runAsTask: true,
     },
     {
         name: 'fetchAndUpdatePlayerData',
         func: async () => await fetchAndUpdatePlayerData(),
         interval: 600 * 1, // Runs every 3600 seconds (1 hour)
         runOnStart: true,
-        runAsTask: true
+        runAsTask: true,
     },
     {
         name: 'handleHiscoresData',
@@ -66,9 +64,7 @@ module.exports = [
             }
 
             // Fetch all user IDs with RSNs
-            const userIds = await getAll(
-                'SELECT DISTINCT user_id FROM registered_rsn'
-            );
+            const userIds = await getAll('SELECT DISTINCT user_id FROM registered_rsn');
 
             for (const { user_id: userId } of userIds) {
                 await fetchAndProcessMember(guild, userId); // Dynamically process members
@@ -76,13 +72,13 @@ module.exports = [
         },
         interval: 3600 * 1, // Runs every 3600 seconds (1 hour)
         runOnStart: true,
-        runAsTask: true
+        runAsTask: true,
     },
     {
         name: 'updateVoiceChannel',
         func: async (client) => await updateVoiceChannel(client),
         interval: 3600 * 3, // Runs every 10800 seconds (3 hours)
         runOnStart: true,
-        runAsTask: true
-    }
+        runAsTask: true,
+    },
 ];

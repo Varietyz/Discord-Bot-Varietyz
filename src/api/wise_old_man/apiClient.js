@@ -1,6 +1,6 @@
 /* eslint-disable node/no-unpublished-require */
 const { WOMClient } = require('@wise-old-man/utils');
-const logger = require('../../utils/logger');
+const logger = require('../../modules/utils/logger');
 
 // Rate limit settings for WOM API
 const RATE_LIMIT_ACTIVE = 100; // 100 requests per 60 seconds for active API keys
@@ -22,18 +22,14 @@ class WOMApiClient {
     constructor() {
         this.client = new WOMClient({
             apiKey: process.env.WOM_API_KEY || '',
-            userAgent: process.env.WOM_USER || 'Varietyz Bot'
+            userAgent: process.env.WOM_USER || 'Varietyz Bot',
         });
-        this.rateLimit = process.env.WOM_API_KEY
-            ? RATE_LIMIT_ACTIVE
-            : RATE_LIMIT_INACTIVE;
+        this.rateLimit = process.env.WOM_API_KEY ? RATE_LIMIT_ACTIVE : RATE_LIMIT_INACTIVE;
 
         // Validate WOM_GROUP_ID
         this.groupId = Number(process.env.WOM_GROUP_ID);
         if (isNaN(this.groupId) || this.groupId <= 0) {
-            throw new Error(
-                `Invalid WOM_GROUP_ID: ${process.env.WOM_GROUP_ID}. It must be a positive integer.`
-            );
+            throw new Error(`Invalid WOM_GROUP_ID: ${process.env.WOM_GROUP_ID}. It must be a positive integer.`);
         }
 
         // Reset request counters every 60 seconds
@@ -58,9 +54,7 @@ class WOMApiClient {
             if (requestCount >= this.rateLimit) {
                 const limit = process.env.WOM_API_KEY ? '100/60s' : '20/60s';
                 logger.warn(`WOM rate limit exceeded. Current limit: ${limit}`);
-                throw new Error(
-                    'WOM rate limit exceeded. Waiting before retrying...'
-                );
+                throw new Error('WOM rate limit exceeded. Waiting before retrying...');
             }
         } else {
             // Reset count after 60 seconds
@@ -82,11 +76,7 @@ class WOMApiClient {
      * @throws {Error} Throws an error if all retries fail and the error is critical.
      */
     async retryRequest(endpoint, methodName, params, retries = 15) {
-        const nonCriticalErrors = [
-            'has been updated recently',
-            'Invalid username',
-            'Failed to load hiscores'
-        ];
+        const nonCriticalErrors = ['has been updated recently', 'Invalid username', 'Failed to load hiscores'];
 
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
@@ -94,41 +84,24 @@ class WOMApiClient {
                 const result = await this.client[endpoint][methodName](params);
                 return result; // Successfully fetched data
             } catch (error) {
-                const isNonCritical = nonCriticalErrors.some((pattern) =>
-                    error.message.includes(pattern)
-                );
+                const isNonCritical = nonCriticalErrors.some((pattern) => error.message.includes(pattern));
 
                 if (isNonCritical) {
-                    if (
-                        error.message.includes(
-                            'Invalid username',
-                            'Failed to load hiscores'
-                        )
-                    ) {
-                        logger.warn(
-                            `[WOMApiClient] Non-existing, Unranked or Banned player found: ${params}`
-                        );
+                    if (error.message.includes('Invalid username', 'Failed to load hiscores')) {
+                        logger.warn(`[WOMApiClient] Non-existing, Unranked or Banned player found: ${params}`);
                     } else {
-                        logger.warn(
-                            `[WOMApiClient] ${params} has been updated recently. Skipping.`
-                        );
+                        logger.warn(`[WOMApiClient] ${params} has been updated recently. Skipping.`);
                     }
                     return null;
                 }
 
                 if (attempt === retries) {
-                    logger.error(
-                        `Failed to call ${endpoint}.${methodName} after ${retries} retries: ${error.message}`
-                    );
+                    logger.error(`Failed to call ${endpoint}.${methodName} after ${retries} retries: ${error.message}`);
                     throw error;
                 }
 
-                logger.warn(
-                    `Retrying ${endpoint}.${methodName} in ${Math.pow(2, attempt)}ms`
-                );
-                await new Promise((resolve) =>
-                    setTimeout(resolve, Math.pow(2, attempt) * 100)
-                ); // Exponential backoff
+                logger.warn(`Retrying ${endpoint}.${methodName} in ${Math.pow(2, attempt)}ms`);
+                await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * 100)); // Exponential backoff
             }
         }
     }
@@ -146,16 +119,10 @@ class WOMApiClient {
         await this.handleWOMRateLimit();
 
         try {
-            const result = await this.retryRequest(
-                endpoint,
-                methodName,
-                params
-            );
+            const result = await this.retryRequest(endpoint, methodName, params);
             return result;
         } catch (error) {
-            logger.error(
-                `[WOMApiClient] Error calling ${endpoint}.${methodName}: ${error.message}`
-            );
+            logger.error(`[WOMApiClient] Error calling ${endpoint}.${methodName}: ${error.message}`);
             throw error;
         }
     }

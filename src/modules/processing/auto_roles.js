@@ -4,14 +4,14 @@
  * This module handles fetching and processing player data, merging data from multiple RSNs,
  * and assigning or removing Discord roles based on players' hiscores and achievements.
  *
- * @module modules/functions/auto_roles
+ * @module modules/processing/auto_roles
  */
 
 const { EmbedBuilder } = require('discord.js');
-const logger = require('../../utils/logger.js');
-const { ROLE_CHANNEL_ID } = require('../../config/constants');
-const { getAll } = require('../../utils/dbUtils');
-const { normalizeRsn } = require('../../utils/normalizeRsn.js');
+const logger = require('../utils/logger.js');
+const { ROLE_CHANNEL_ID } = require('../../config/constants.js');
+const { getAll } = require('../utils/dbUtils.js');
+const { normalizeRsn } = require('../utils/normalizeRsn.js');
 
 /**
  * Maps a boss name to its corresponding Discord role name.

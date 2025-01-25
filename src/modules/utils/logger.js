@@ -4,7 +4,7 @@
  * The logger handles logging to both the console and log files organized by year and month.
  * It also manages uncaught exceptions and unhandled promise rejections.
  *
- * @module modules/functions/logger
+ * @module utils/logger
  */
 
 const winston = require('winston');
@@ -72,7 +72,7 @@ const logger = winston.createLogger({
     level: 'info', // Default log level
     format: winston.format.combine(
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        logFormat // Custom log format
+        logFormat, // Custom log format
     ),
     transports: [
         /**
@@ -82,8 +82,8 @@ const logger = winston.createLogger({
         new winston.transports.Console({
             format: winston.format.combine(
                 winston.format.colorize(),
-                logFormat // Custom format for console output
-            )
+                logFormat, // Custom format for console output
+            ),
         }),
 
         /**
@@ -97,14 +97,11 @@ const logger = winston.createLogger({
             maxSize: '20m',
             maxFiles: '7d',
             level: 'info',
-            format: winston.format.combine(
-                winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-                logFormat
-            ),
+            format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
             dirname: getYearMonthPath(), // Ensure directory path for logs
-            auditFile: path.join('logs', 'handler', 'audit.json') // Place the audit file in logs/handler
-        })
-    ]
+            auditFile: path.join('logs', 'handler', 'audit.json'), // Place the audit file in logs/handler
+        }),
+    ],
 });
 
 /**
@@ -126,7 +123,7 @@ initializeLogger();
 /**
  * Handles uncaught exceptions by logging the error and exiting the process.
  *
- * @event module:modules/functions/logger~logger
+ * @event module:modules/processing/logger~logger
  * @param {Error} error - The uncaught exception.
  * @returns {void}
  * @example
@@ -140,7 +137,7 @@ process.on('uncaughtException', (error) => {
 /**
  * Handles unhandled promise rejections by logging the reason and the promise.
  *
- * @event module:modules/functions/logger~logger
+ * @event module:modules/processing/logger~logger
  * @param {any} reason - The reason for the rejection.
  * @param {Promise} promise - The promise that was rejected.
  * @returns {void}

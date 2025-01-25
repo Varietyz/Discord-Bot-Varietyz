@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Folder to search for .js files
-const baseFolder = path.resolve(__dirname, './src');
+const baseFolder = path.resolve(__dirname, '../../src');
 
 /**
  * Recursively search through a folder and replace content in .js files.

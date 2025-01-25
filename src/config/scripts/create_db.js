@@ -11,13 +11,13 @@
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
-const logger = require('../utils/logger'); // Import the logger
+const logger = require('../../modules/utils/logger'); // Import the logger
 
 /**
  * Path to the SQLite database file.
  * @constant {string}
  */
-const dbPath = path.join(__dirname, '..', 'data', 'database.sqlite');
+const dbPath = path.join(__dirname, '..', '..', 'data', 'database.sqlite');
 
 // eslint-disable-next-line jsdoc/require-returns
 /**
@@ -67,9 +67,7 @@ function createRegisteredRsnTable(db) {
     `;
     db.run(query, (err) => {
         if (err) {
-            logger.error(
-                `Error creating 'registered_rsn' table: ${err.message}`
-            );
+            logger.error(`Error creating 'registered_rsn' table: ${err.message}`);
         } else {
             logger.info('\'registered_rsn\' table created (empty).');
         }
@@ -117,9 +115,7 @@ function createRecentNameChangesTable(db) {
     `;
     db.run(query, (err) => {
         if (err) {
-            logger.error(
-                `Error creating 'recent_name_changes' table: ${err.message}`
-            );
+            logger.error(`Error creating 'recent_name_changes' table: ${err.message}`);
         } else {
             logger.info('\'recent_name_changes\' table created (empty).');
         }
@@ -169,9 +165,7 @@ function createPlayerDataTable(db) {
             if (err) {
                 logger.error(`Error closing the database: ${err.message}`);
             } else {
-                logger.info(
-                    'Database schema created. No data imported. DB closed successfully.'
-                );
+                logger.info('Database schema created. No data imported. DB closed successfully.');
             }
             process.exit(0);
         });

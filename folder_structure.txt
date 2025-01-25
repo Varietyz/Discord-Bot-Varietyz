@@ -13,7 +13,9 @@
 │   │       └─ 📄 apiClient.js
 │   ├─ 📂 config
 │   │   ├─ 📄 constants.js
-│   │   └─ 📄 easterEggs.js
+│   │   ├─ 📄 easterEggs.js
+│   │   └─ 📂 scripts
+│   │       └─ 📄 create_db.js
 │   ├─ 📂 data
 │   │   └─ 📄 database.sqlite
 │   ├─ 📄 main.js
@@ -25,22 +27,22 @@
 │   │   │   ├─ 📄 remove_rsn.js
 │   │   │   ├─ 📄 rsn.js
 │   │   │   └─ 📄 rsn_list.js
-│   │   ├─ 📂 functions
+│   │   ├─ 📂 processing
 │   │   │   ├─ 📄 active_members.js
 │   │   │   ├─ 📄 auto_roles.js
 │   │   │   ├─ 📄 member_channel.js
 │   │   │   ├─ 📄 name_changes.js
 │   │   │   └─ 📄 player_data_extractor.js
-│   │   ├─ 📄 tasks.js
-│   │   └─ 📄 utils.js
-│   ├─ 📂 scripts
-│   │   └─ 📄 create_db.js
-│   └─ 📂 utils
-│       ├─ 📄 calculateActivity.js
-│       ├─ 📄 dbUtils.js
-│       ├─ 📄 fetchPlayerData.js
-│       ├─ 📄 lastFetchedTime.js
-│       ├─ 📄 logger.js
-│       ├─ 📄 normalizeRsn.js
-│       └─ 📄 validateRsn.js
+│   │   └─ 📂 utils
+│   │       ├─ 📄 calculateActivity.js
+│   │       ├─ 📄 dbUtils.js
+│   │       ├─ 📄 fetchPlayerData.js
+│   │       ├─ 📄 lastFetchedTime.js
+│   │       ├─ 📄 logger.js
+│   │       ├─ 📄 normalizeRsn.js
+│   │       ├─ 📄 purgeChannel.js
+│   │       ├─ 📄 rankUtils.js
+│   │       ├─ 📄 sleepUtil.js
+│   │       └─ 📄 validateRsn.js
+│   └─ 📄 tasks.js
 └─ 📄 template.hbs

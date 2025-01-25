@@ -527,31 +527,31 @@ Defines the `/rsn` slash command for the Varietyz Bot. This command allows users
 
 Defines the `/rsnlist` slash command for the Varietyz Bot. This command retrieves and displays all registered RuneScape Names (RSNs) along with their associated ranks for clan members.
 
-### modules/functions/active_members
+### modules/processing/active_members
 
 Utility functions for managing active and inactive clan members within the Varietyz Bot. This module interacts with the WOM API to fetch player data, calculate member activity, and update Discord voice channel names based on member activity.
 
-### modules/functions/auto_roles
+### modules/processing/auto_roles
 
 Utility functions for managing automatic role assignments in the Varietyz Bot. This module handles fetching and processing player data, merging data from multiple RSNs, and assigning or removing Discord roles based on players' hiscores and achievements.
 
-### modules/functions/logger
+### modules/processing/logger
 
 Configures and exports a Winston logger instance with daily log rotation. The logger handles logging to both the console and log files organized by year and month. It also manages uncaught exceptions and unhandled promise rejections.
 
-### modules/functions/member_channel
+### modules/processing/member_channel
 
 Utility functions for managing clan members within the Varietyz Bot. Handles role assignments, updates clan member data, interacts with the WOM API, and updates Discord channels with the latest member details.
 
-### modules/functions/name_changes
+### modules/processing/name_changes
 
 Utility functions for handling player name changes within the Varietyz Bot. This module interacts with the WOM API to fetch name changes, updates the database accordingly, and manages associated Discord notifications.
 
-### modules/functions/player_data_extractor
+### modules/processing/player_data_extractor
 
 Utility functions for extracting and managing player data. Handles fetching data from external APIs, formatting data for database storage, and ensuring data integrity within the SQLite database.
 
-### modules/tasks
+### tasks
 
 Defines scheduled tasks for the Varietyz Bot. Each task includes a name, the function to execute, the interval at which to run, and flags indicating whether to run on startup and as a scheduled task.
 

@@ -8,12 +8,12 @@
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const logger = require('../../utils/logger');
-const { runQuery, getOne } = require('../../utils/dbUtils');
+const logger = require('../utils/logger');
+const { runQuery, getOne } = require('../utils/dbUtils');
 const { easterEggs } = require('../../config/easterEggs');
-const { normalizeRsn } = require('../../utils/normalizeRsn');
-const { validateRsn } = require('../../utils/validateRsn');
-const { fetchPlayerData } = require('../../utils/fetchPlayerData');
+const { normalizeRsn } = require('../utils/normalizeRsn');
+const { validateRsn } = require('../utils/validateRsn');
+const { fetchPlayerData } = require('../utils/fetchPlayerData');
 
 // Rate Limiting Configuration
 const RATE_LIMIT = 5; // Maximum number of allowed attempts
@@ -31,14 +31,7 @@ const rateLimitMap = new Map(); // Map to track user requests
 module.exports.data = new SlashCommandBuilder()
     .setName('rsn')
     .setDescription('Register your Old School RuneScape Name (RSN)')
-    .addStringOption((option) =>
-        option
-            .setName('name')
-            .setDescription('Your Old School RuneScape Name to register')
-            .setRequired(true)
-            .setMinLength(1)
-            .setMaxLength(12)
-    );
+    .addStringOption((option) => option.setName('name').setDescription('Your Old School RuneScape Name to register').setRequired(true).setMinLength(1).setMaxLength(12));
 
 /**
  * Executes the `/rsn` command, allowing users to register their RSN.
@@ -68,10 +61,10 @@ module.exports.execute = async (interaction) => {
                     {
                         title,
                         description,
-                        color
-                    }
+                        color,
+                    },
                 ],
-                flags: 64 // EPHEMERAL
+                flags: 64, // EPHEMERAL
             });
         }
 
@@ -80,7 +73,7 @@ module.exports.execute = async (interaction) => {
         if (!validation.valid) {
             return await interaction.reply({
                 content: `❌ ${validation.message} Please check your input and try again. 🛠️`,
-                flags: 64 // EPHEMERAL
+                flags: 64, // EPHEMERAL
             });
         }
 
@@ -88,19 +81,15 @@ module.exports.execute = async (interaction) => {
         const currentTime = Date.now();
         const userData = rateLimitMap.get(userId) || {
             count: 0,
-            firstRequest: currentTime
+            firstRequest: currentTime,
         };
 
         if (currentTime - userData.firstRequest < RATE_LIMIT_DURATION) {
             if (userData.count >= RATE_LIMIT) {
-                const retryAfter = Math.ceil(
-                    (RATE_LIMIT_DURATION -
-                        (currentTime - userData.firstRequest)) /
-                        1000
-                );
+                const retryAfter = Math.ceil((RATE_LIMIT_DURATION - (currentTime - userData.firstRequest)) / 1000);
                 return await interaction.reply({
                     content: `🚫 You're using this command too frequently. Please wait \`${retryAfter}\` second(s) before trying again. ⏳`,
-                    flags: 64 // EPHEMERAL
+                    flags: 64, // EPHEMERAL
                 });
             }
             userData.count += 1;
@@ -125,7 +114,7 @@ module.exports.execute = async (interaction) => {
             return await interaction.reply({
                 // eslint-disable-next-line max-len
                 content: `❌ The RSN \`${rsn}\` could not be verified on Wise Old Man. This might be because the name is not linked to an account or the WOM database needs an update. Please ensure the name exists and try again.\n\n🔗 [View Profile](${profileLink})`,
-                flags: 64 // EPHEMERAL
+                flags: 64, // EPHEMERAL
             });
         }
 
@@ -136,13 +125,13 @@ module.exports.execute = async (interaction) => {
       WHERE LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
       LIMIT 1
       `,
-            [normalizedRsn]
+            [normalizedRsn],
         );
 
         if (existingUser && existingUser.user_id !== userId) {
             return await interaction.reply({
                 content: `🚫 The RSN \`${rsn}\` is already registered by another user: <@${existingUser.user_id}>. 🛡️`,
-                flags: 64 // EPHEMERAL
+                flags: 64, // EPHEMERAL
             });
         }
 
@@ -153,13 +142,13 @@ module.exports.execute = async (interaction) => {
       WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
       LIMIT 1
       `,
-            [userId, normalizedRsn]
+            [userId, normalizedRsn],
         );
 
         if (isRegistered) {
             return await interaction.reply({
                 content: `⚠️ The RSN \`${rsn}\` is already registered to your account. No action was taken. ✅`,
-                flags: 64 // EPHEMERAL
+                flags: 64, // EPHEMERAL
             });
         }
 
@@ -170,23 +159,21 @@ module.exports.execute = async (interaction) => {
         INSERT INTO registered_rsn (user_id, rsn, registered_at)
         VALUES (?, ?, ?)
         `,
-                [userId, rsn, new Date().toISOString()]
+                [userId, rsn, new Date().toISOString()],
             );
 
             await interaction.reply({
                 content: `🎉 **Success!** The RSN \`${rsn}\` has been registered to your account. 🏆`,
-                flags: 64
+                flags: 64,
             });
 
-            logger.info(
-                `RSN '${rsn}' successfully registered for user ${userId}`
-            );
+            logger.info(`RSN '${rsn}' successfully registered for user ${userId}`);
         } catch (insertErr) {
             if (insertErr.message.includes('UNIQUE constraint failed')) {
                 // RSN already exists due to race condition
                 return await interaction.reply({
                     content: `🚫 Oops! The RSN \`${rsn}\` was just registered by someone else. Please choose another one. 🔄`,
-                    flags: 64
+                    flags: 64,
                 });
             } else {
                 throw insertErr; // Let the outer catch handle other errors
@@ -199,13 +186,12 @@ module.exports.execute = async (interaction) => {
         if (interaction.replied || interaction.deferred) {
             await interaction.followUp({
                 content: `❌ An error occurred while registering \`${rsn}\`. Please try again later. 🛠️`,
-                flags: 64 // EPHEMERAL
+                flags: 64, // EPHEMERAL
             });
         } else {
             await interaction.reply({
-                content:
-                    '❌ Something went wrong while processing your request. Please try again later. 🛠️',
-                flags: 64 // EPHEMERAL
+                content: '❌ Something went wrong while processing your request. Please try again later. 🛠️',
+                flags: 64, // EPHEMERAL
             });
         }
     }
