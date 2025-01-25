@@ -1,8 +1,23 @@
 // @ts-nocheck
 /**
  * @fileoverview Main entry point for the Varietyz Bot Discord application.
- * Initializes the Discord client, loads commands and functions, registers slash commands,
- * handles interactions, and schedules tasks.
+ * Initializes the Discord client, dynamically loads commands and functions, registers slash commands,
+ * handles interactions, and schedules periodic tasks. Provides a scalable framework for adding
+ * additional bot functionality through commands, scheduled tasks, and interaction handling.
+ *
+ * Key Features:
+ * - **Dynamic Module Loading**: Loads all commands and utility functions from designated directories.
+ * - **Slash Command Registration**: Registers all slash commands with Discord's API.
+ * - **Task Scheduling**: Executes and schedules tasks with configurable intervals, supporting both immediate execution on startup and periodic execution.
+ * - **Interaction Handling**: Supports slash commands and autocomplete interaction types.
+ * - **Error Logging**: Comprehensive error handling and logging for all bot processes.
+ *
+ * External Dependencies:
+ * - **discord.js**: For interacting with the Discord API and managing events.
+ * - **dotenv**: Loads environment variables from `.env` file.
+ * - Custom modules for utilities (`dbUtils`, `logger`) and task processing.
+ *
+ * @module main
  */
 
 const { Client, GatewayIntentBits } = require('discord.js');

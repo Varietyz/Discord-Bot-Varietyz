@@ -1,7 +1,20 @@
 /**
- * @fileoverview Defines scheduled tasks for the Varietyz Bot.
- * Each task includes a name, the function to execute, the interval at which to run,
- * and flags indicating whether to run on startup and as a scheduled task.
+ * @fileoverview Defines and manages scheduled tasks for the Varietyz Bot.
+ * Each task is represented as an object that includes its name, function to execute,
+ * interval for execution, and flags for startup and scheduling behavior. Tasks are
+ * used to handle automated processes such as data updates, member processing, and
+ * player data synchronization.
+ *
+ * Key Features:
+ * - Registers and schedules tasks with customizable intervals and execution behavior.
+ * - Includes tasks for updating data, processing name changes, fetching player data, handling hiscores, and updating voice channels.
+ * - Integrates with external modules for processing and database operations.
+ * - Supports asynchronous execution and error logging for each task.
+ *
+ * External Dependencies:
+ * - dotenv: Loads environment variables for configuration.
+ * - Various processing modules (e.g., member_channel, name_changes, player_data_extractor).
+ * - Database utilities (`dbUtils`) and logging utilities (`logger`).
  *
  * @module tasks
  */

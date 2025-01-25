@@ -1,7 +1,20 @@
 // @ts-nocheck
 /**
  * @fileoverview Implements the `/check_activity` command to display active and inactive players.
- * Refactored to utilize updated database-backed player activity management.
+ * This command provides insights into player activity by fetching data from the database
+ * and presenting it with pagination support.
+ *
+ * Core Features: (Administrator-only command)
+ * - Displays active or inactive players based on recent progression.
+ * - Paginated display of player data with navigation controls.
+ * - Includes the last progress timestamp for each player.
+ * - Displays total count of active or inactive players.
+ * - Supports interactive buttons for page navigation and closing.
+ *
+ * External Dependencies:
+ * - **Discord.js**: For handling slash commands, creating embeds, and managing interactive buttons.
+ * - **Luxon**: For date and time manipulation (calculating progression and inactivity).
+ * - **SQLite**: For retrieving player activity data from the database.
  *
  * @module modules/commands/check_activity
  */
@@ -11,7 +24,7 @@ const { DateTime } = require('luxon');
 const logger = require('../utils/logger');
 const { calculateProgressCount, calculateInactivity } = require('../utils/calculateActivity');
 const { getAll } = require('../utils/dbUtils');
-const { updateVoiceData } = require('../processing/active_members');
+const { updateActivityData } = require('../processing/active_members');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -20,31 +33,23 @@ module.exports = {
         .addStringOption((option) => option.setName('status').setDescription('Choose to view active or inactive players.').setRequired(true).addChoices({ name: 'Active', value: 'active' }, { name: 'Inactive', value: 'inactive' })),
 
     /**
-     * Executes the `/check_activity` command, displaying active or inactive players.
+     * Executes the `/check_activity` command, displaying active or inactive players with pagination.
      *
      * @async
      * @function execute
      * @param {Discord.CommandInteraction} interaction - The interaction object representing the command.
-     * @returns {Promise<void>} - Resolves when the command has executed successfully.
+     * @returns {Promise<void>} Resolves when the command is executed successfully.
      */
     async execute(interaction) {
         try {
             logger.info(`Command 'check_activity' triggered by user: ${interaction.user.username}`);
             await interaction.deferReply({ flags: 64 });
 
-            /**
-             * @type {string}
-             * The selected status, either 'active' or 'inactive'.
-             */
             const status = interaction.options.getString('status');
 
             // Update the database with the latest data before calculating
-            await updateVoiceData();
+            await updateActivityData();
 
-            /**
-             * @type {number}
-             * The count of players based on the selected status.
-             */
             const count = status === 'active' ? await calculateProgressCount() : await calculateInactivity();
 
             if (count === 0) {
@@ -52,27 +57,15 @@ module.exports = {
                 return await interaction.editReply({ content: message });
             }
 
-            /**
-             * @type {Array<Object>}
-             * List of players with their usernames and last progression dates.
-             */
             const players =
                 status === 'active'
                     ? await getAll('SELECT username, last_progressed FROM active_inactive WHERE last_progressed >= ? ORDER BY last_progressed ASC', [DateTime.now().minus({ days: 7 }).toISO()])
                     : await getAll('SELECT username, last_progressed FROM active_inactive WHERE last_progressed < ? ORDER BY last_progressed ASC', [DateTime.now().minus({ days: 21 }).toISO()]);
 
-            /**
-             * @type {string}
-             * Emoji representing the current status.
-             */
             const statusEmoji = status === 'active' ? '🟢' : '🔴';
 
-            // Pagination setup
             const ITEMS_PER_PAGE = 10;
-            /**
-             * @type {Array<EmbedBuilder>}
-             * Array of embed messages for pagination.
-             */
+
             const pages = [];
             for (let i = 0; i < players.length; i += ITEMS_PER_PAGE) {
                 const pagePlayers = players.slice(i, i + ITEMS_PER_PAGE);
@@ -118,7 +111,6 @@ module.exports = {
                     return await i.update({ content: '⛔ Navigation closed.', components: [], embeds: [] });
                 }
 
-                // Update button states
                 row.components[0].setDisabled(currentPage === 0);
                 row.components[1].setDisabled(currentPage === pages.length - 1);
 

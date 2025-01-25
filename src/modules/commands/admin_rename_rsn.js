@@ -5,6 +5,20 @@
  * of a guild member. It includes validation, database interactions,
  * and an autocomplete feature for RSN suggestions.
  *
+ * Core Features: (Administrator-only command)
+ * - Allows administrators to rename a registered RSN for a guild member.
+ * - Validates RSN format and checks for conflicts with existing RSNs.
+ * - Verifies the RSN on Wise Old Man API before renaming.
+ * - Provides confirmation and cancellation options for the renaming action.
+ * - Autocomplete support for `target` and `current_rsn` fields based on registered RSNs.
+ * - Handles rate limiting to prevent abuse of the command.
+ * - Updates the database with the new RSN upon confirmation.
+ *
+ * External Dependencies:
+ * - **Discord.js**: For handling slash commands, creating embeds, and managing interactive buttons.
+ * - **Wise Old Man API**: For verifying RSNs and fetching player data.
+ * - **SQLite**: For interacting with the registered RSN database.
+ *
  * @module modules/commands/admin_rename_rsn
  */
 
@@ -25,6 +39,15 @@ module.exports = {
         .addStringOption((option) => option.setName('current_rsn').setDescription('The current RSN to rename.').setRequired(true).setAutocomplete(true))
         .addStringOption((option) => option.setName('new_rsn').setDescription('The new RSN to associate with the user.').setRequired(true)),
 
+    /**
+     * Executes the `/admin_rename_rsn` command.
+     * Validates inputs, checks for conflicts, verifies RSN existence on Wise Old Man, and provides a confirmation prompt before renaming.
+     *
+     * @async
+     * @function execute
+     * @param {Discord.CommandInteraction} interaction - The interaction object representing the command execution.
+     * @returns {Promise<void>} Resolves when the command is fully executed.
+     */
     async execute(interaction) {
         try {
             const targetInput = interaction.options.getString('target');
@@ -51,7 +74,6 @@ module.exports = {
 
             logger.info(`Administrator ${interaction.user.id} attempting to rename RSN '${currentRsn}' to '${newRsn}' for user ${targetUserID}`);
 
-            // Validate new RSN format
             const validation = validateRsn(newRsn);
             if (!validation.valid) {
                 return await interaction.reply({
@@ -63,7 +85,6 @@ module.exports = {
             const normalizedCurrentRsn = normalizeRsn(currentRsn);
             const normalizedNewRsn = normalizeRsn(newRsn);
 
-            // Verify RSN with Wise Old Man API
             const playerData = await fetchPlayerData(normalizedNewRsn);
             if (!playerData) {
                 const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(normalizedNewRsn)}`;
@@ -75,7 +96,6 @@ module.exports = {
                 });
             }
 
-            // Check for duplicate RSN
             const existingUser = await getOne('SELECT user_id FROM registered_rsn WHERE LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ? LIMIT 1', [normalizedNewRsn]);
 
             if (existingUser && existingUser.user_id !== targetUserID) {
@@ -85,7 +105,6 @@ module.exports = {
                 });
             }
 
-            // Fetch all RSNs registered to the target user
             const userRSNs = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [targetUserID]);
 
             if (!userRSNs.length) {
@@ -104,7 +123,6 @@ module.exports = {
                 });
             }
 
-            // Create a confirmation prompt with Yes and No buttons
             const confirmationRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('confirm_rename_rsn').setLabel('Confirm').setStyle(ButtonStyle.Danger),
                 new ButtonBuilder().setCustomId('cancel_rename_rsn').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
@@ -175,6 +193,14 @@ module.exports = {
         }
     },
 
+    /**
+     * Provides autocomplete suggestions for the `target` and `current_rsn` options.
+     *
+     * @async
+     * @function autocomplete
+     * @param {Discord.AutocompleteInteraction} interaction - The interaction object for the autocomplete event.
+     * @returns {Promise<void>} Resolves when suggestions are sent.
+     */
     async autocomplete(interaction) {
         const focusedOption = interaction.options.getFocused(true);
 
@@ -199,19 +225,15 @@ module.exports = {
                         const discriminator = member.user.discriminator.toLowerCase();
                         const tag = `${member.user.username}#${member.user.discriminator}`.toLowerCase();
 
-                        // Fetch RSNs linked to this user ID
                         const rsns = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userId]);
 
-                        // Normalize RSNs for comparison
                         const normalizedRsns = rsns.map((row) => ({
                             original: row.rsn,
                             normalized: normalizeRsn(row.rsn),
                         }));
 
-                        // Filter RSNs that match the input
                         const matchingRsns = normalizedRsns.filter((rsn) => rsn.normalized.includes(input));
 
-                        // Determine the RSN to display:
                         const rsnDisplay = matchingRsns.length > 0 ? matchingRsns.map((rsn) => rsn.original).join(', ') : 'No RSN matches';
 
                         if (username.includes(input) || discriminator.includes(input) || tag.includes(input) || userId.includes(input) || matchingRsns.length > 0) {
@@ -236,7 +258,6 @@ module.exports = {
                 const rsnInput = focusedOption.value;
                 const normalizedInput = normalizeRsn(rsnInput);
 
-                // Fetch RSNs linked to the target user and match against the normalized input
                 const rsnsResult = await getAll(
                     `
     SELECT rsn 

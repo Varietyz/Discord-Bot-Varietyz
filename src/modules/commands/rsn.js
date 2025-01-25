@@ -2,7 +2,17 @@
 /**
  * @fileoverview Defines the `/rsn` slash command for the Varietyz Bot.
  * This command allows users to register their Old School RuneScape Name (RSN).
- * It includes validation, rate limiting, and handles special Easter egg RSNs with custom responses.
+ * It includes the following features:
+ * - **Validation**: Ensures RSNs follow specified format rules.
+ * - **Rate Limiting**: Prevents abuse by restricting repeated usage within a time window.
+ * - **Easter Eggs**: Custom responses for predefined special RSNs.
+ * - **Database Handling**: Manages RSN registrations with conflict resolution, ensuring that RSNs are unique per user.
+ * - **External API Verification**: Validates RSNs against the Wise Old Man API to ensure the RSN exists and is linked to a player.
+ *
+ * External Dependencies:
+ * - **Wise Old Man API**: Used to validate RSNs against player profiles.
+ * - **SQLite**: For managing RSN registrations in the database.
+ * - **Discord.js**: For handling slash command interactions and sending feedback messages to users.
  *
  * @module modules/commands/rsn
  */

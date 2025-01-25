@@ -1,3 +1,24 @@
+/**
+ * @fileoverview Defines the `/rsn_list` slash command for the Varietyz Bot.
+ * This command allows users with appropriate permissions to view a comprehensive list of
+ * all registered RuneScape Names (RSNs) and their associated ranks for clan members.
+ * It provides a paginated view, sorted by rank hierarchy, and allows for navigation
+ * through interactive buttons.
+ *
+ * Core Features: (Administrator-only command)
+ * - Displays RSNs grouped by Discord user.
+ * - Includes rank emojis and links to Wise Old Man profiles.
+ * - Paginated display with navigation controls.
+ * - Data is sorted by rank hierarchy, with guests listed last.
+ *
+ * External Dependencies:
+ * - **Discord.js**: For handling slash commands, creating embeds, and managing interactive components like buttons.
+ * - **Wise Old Man API**: For fetching player profiles and rank details.
+ * - **SQLite**: For managing registered RSN data in the database.
+ *
+ * @module modules/commands/rsn_list
+ */
+
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const logger = require('../utils/logger');

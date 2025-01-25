@@ -10,7 +10,8 @@
         "precommit": "npm run lint-jsdoc && npm run update-readme",
         "lint": "eslint src/**/*.js",
         "lint:fix": "eslint src/**/*.js --fix",
-        "replace-ephemeral": "node .vscode/scripts/replaceEphemeral.js"
+        "replace-ephemeral": "node .vscode/scripts/replaceEphemeral.js",
+        "path-lint": "eslint . --ignore-path .eslint/.eslintignore --config .eslint/.eslintrc.js"
     },
     "keywords": [],
     "author": "",

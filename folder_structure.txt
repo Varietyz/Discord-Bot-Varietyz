@@ -1,12 +1,17 @@
+├─ 📄 .env
 ├─ 📄 .eslintignore
 ├─ 📄 .eslintrc.js
-├─ 📄 beautify_readme.py
+├─ 📂 .vscode
+│   ├─ 📂 scripts
+│   │   └─ 📄 replaceEphemeral.js
+│   ├─ 📄 settings.json
+│   └─ 📄 Varietyz Bot.code-workspace
+├─ 📄 CODE_OF_CONDUCT.md
 ├─ 📄 Gen_README.md
 ├─ 📄 jsdoc.json
 ├─ 📄 LICENSE
 ├─ 📄 package.json
-├─ 📄 readME.md
-├─ 📄 replaceEphemeral.js
+├─ 📄 README.md
 ├─ 📂 src
 │   ├─ 📂 api
 │   │   └─ 📂 wise_old_man

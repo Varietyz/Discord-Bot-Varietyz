@@ -3,7 +3,20 @@
 /**
  * @fileoverview Utility functions for managing active and inactive clan members within the Varietyz Bot.
  * This module interacts with the WOM API to fetch player data, calculate member activity,
- * and update Discord voice channel names based on member activity.
+ * and update Discord voice channel names based on member activity, reflecting the count of active members.
+ *
+ * Key Features:
+ * - **Activity Data Update**: Fetches player data from the WOM API and updates the 'active_inactive' table in the database.
+ * - **Activity Calculation**: Calculates the number of active players based on their progress in the last 7 days and inactive players in the last 21 days.
+ * - **Voice Channel Update**: Dynamically updates the name of a Discord voice channel to reflect the number of active members in the clan.
+ * - **Retry Mechanism**: Implements a retry mechanism for fetching player data from the WOM API, with exponential backoff for error handling.
+ * - **Data Integrity**: Ensures accurate and up-to-date tracking of player progress using the Luxon DateTime library and the WOM API.
+ *
+ * External Dependencies:
+ * - **Wise Old Man (WOM) API**: Used to fetch player data and group details for active and inactive member calculations.
+ * - **Luxon**: Used for date and time manipulation to calculate activity intervals.
+ * - **Discord.js**: For interacting with the Discord guild and voice channels, updating channel names based on activity.
+ * - **dbUtils**: Handles interactions with the SQLite database for storing and querying player activity data.
  *
  * @module modules/processing/active_members
  */
@@ -26,15 +39,15 @@ const playerProgress = {};
  * Fetches player data from the WOM API and updates the 'active_inactive' database table.
  *
  * @async
- * @function updateVoiceData
+ * @function updateActivityData
  * @param {number} [maxRetries=3] - The maximum number of retry attempts in case of failure.
  * @param {number} [baseDelay=5000] - The base delay in milliseconds before retrying after a failure.
  * @returns {Promise<void>} Resolves when data is successfully fetched and processed.
  * @throws {Error} - Throws an error if all retry attempts fail.
  * @example
- * await updateVoiceData(5, 10000);
+ * await updateActivityData(5, 10000);
  */
-async function updateVoiceData(maxRetries = 3, baseDelay = 5000) {
+async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
     let retryCount = 0;
     logger.info(`Using WOM_GROUP_ID: ${WOMApiClient.groupId}`);
 
@@ -103,7 +116,7 @@ async function updateVoiceChannel(client) {
         if (guild) {
             const voiceChannel = guild.channels.cache.get(VOICE_CHANNEL_ID);
             if (voiceChannel) {
-                await updateVoiceData(3, 5000);
+                await updateActivityData(3, 5000);
                 const emoji = '🟢';
                 const count = await calculateProgressCount();
                 const newChannelName = `${emoji}Active Clannies: ${count}`;
@@ -122,7 +135,7 @@ async function updateVoiceChannel(client) {
 }
 
 module.exports = {
-    updateVoiceData,
+    updateActivityData,
     calculateProgressCount,
     calculateInactivity,
     updateVoiceChannel,

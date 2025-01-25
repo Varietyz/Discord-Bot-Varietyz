@@ -2,8 +2,24 @@
 // @ts-nocheck
 /**
  * @fileoverview Script to initialize and set up the SQLite database for the Varietyz Bot.
- * Creates necessary tables for storing registered RSNs, clan members, recent name changes, and player data.
- * Deletes any existing database file before creating a new one to ensure a clean setup.
+ * This script creates necessary tables for storing registered RSNs, clan members, recent name changes,
+ * player data, as well as tracking player fetch times and active/inactive status.
+ * The script deletes any existing database file before creating a new one to ensure a clean setup.
+ *
+ * Core Features:
+ * - Deletes any existing database file to ensure a fresh setup.
+ * - Creates the 'registered_rsn' table to store registered RuneScape names.
+ * - Creates the 'active_inactive' table to track player progression activity.
+ * - Creates the 'player_fetch_times' table to store last fetched data timestamps.
+ * - Creates the 'clan_members' table to store information about clan members.
+ * - Creates the 'recent_name_changes' table to track name changes for players.
+ * - Creates the 'player_data' table to store various player-specific data points.
+ * - Logs the success or failure of each table creation process.
+ *
+ * External Dependencies:
+ * - **SQLite3**: For interacting with the SQLite database.
+ * - **fs**: For file system operations such as deleting existing databases and creating directories.
+ * - **path**: For constructing the path to the database file.
  *
  * @module scripts/create_db
  */
@@ -70,6 +86,50 @@ function createRegisteredRsnTable(db) {
             logger.error(`Error creating 'registered_rsn' table: ${err.message}`);
         } else {
             logger.info('\'registered_rsn\' table created (empty).');
+        }
+    });
+}
+
+/**
+ * Creates the 'active_inactive' table in the SQLite database.
+ * This table stores information about members last active progression state.
+ *
+ * @param {sqlite3.Database} db - The SQLite database instance.
+ */
+function createActiveInactiveTable(db) {
+    const query = `
+        CREATE TABLE IF NOT EXISTS active_inactive (
+            username TEXT PRIMARY KEY,
+            last_progressed DATETIME
+        );
+    `;
+    db.run(query, (err) => {
+        if (err) {
+            logger.error(`Error creating 'active_inactive' table: ${err.message}`);
+        } else {
+            logger.info('\'active_inactive\' table created (empty).');
+        }
+    });
+}
+
+/**
+ * Creates the 'player_fetch_times' table in the SQLite database.
+ * This table stores information about members last update state.
+ *
+ * @param {sqlite3.Database} db - The SQLite database instance.
+ */
+function createFetchTimeTable(db) {
+    const query = `
+        CREATE TABLE IF NOT EXISTS player_fetch_times (
+            rsn TEXT PRIMARY KEY,
+            last_fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `;
+    db.run(query, (err) => {
+        if (err) {
+            logger.error(`Error creating 'player_fetch_times' table: ${err.message}`);
+        } else {
+            logger.info('\'player_fetch_times\' table created (empty).');
         }
     });
 }
@@ -158,6 +218,8 @@ function createPlayerDataTable(db) {
             createClanMembersTable(db);
             createRecentNameChangesTable(db);
             createPlayerDataTable(db);
+            createFetchTimeTable(db);
+            createActiveInactiveTable(db);
         });
 
         // Close the database connection after all tables are created

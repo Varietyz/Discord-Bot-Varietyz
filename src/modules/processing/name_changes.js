@@ -1,8 +1,21 @@
 // @ts-nocheck
 /**
- * @fileoverview Utility functions for handling player name changes within the Varietyz Bot.
- * This module interacts with the WOM API to fetch name changes, updates the database accordingly,
- * and manages associated Discord notifications.
+ * @fileoverview Utility functions for processing player name changes in the Varietyz Bot.
+ * This module interacts with the Wise Old Man (WOM) API to fetch recent name changes,
+ * updates the database with the new RSNs, and handles conflict resolution between users.
+ * It also manages sending notifications to Discord channels for both successful updates and conflict resolutions.
+ *
+ * Key Features:
+ * - **Name Change Fetching**: Retrieves recent name changes from the WOM API.
+ * - **Database Management**: Saves name change records to the `recent_name_changes` table and updates the `registered_rsn` table.
+ * - **Conflict Resolution**: Handles cases where a new RSN already exists for another user and resolves conflicts.
+ * - **Discord Notifications**: Sends messages to a specified channel notifying users of successful name updates or conflict resolutions.
+ * - **Rate-Limiting and Dependencies**: Ensures rate-limited API requests and processes name changes in the correct order.
+ *
+ * External Dependencies:
+ * - **Wise Old Man (WOM) API**: Fetches player name changes.
+ * - **Discord.js**: Sends notifications and updates to Discord channels.
+ * - **dbUtils**: Manages database operations for name change records.
  *
  * @module modules/processing/name_changes
  */

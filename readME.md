@@ -2,13 +2,14 @@
 
 ![Varietyz Bot Banner](https://i.ibb.co/sFRG1QW/Main-Banner.gif)
 
-Welcome to **Varietyz Bot**, the ultimate Discord companion designed specifically for Old School RuneScape (OSRS) clans! Varietyz Bot offers a comprehensive suite of tools to enhance your clan's management, foster community engagement, and streamline your clan experience.
+Welcome to **Varietyz Bot**, the ultimate Discord companion designed specifically for Old School RuneScape (OSRS) clans! Varietyz Bot offers a comprehensive suite of tools to enhance your clan's management, foster community engagement, and streamline your clan experience. Whether you're a clan leader looking to streamline clan management or a member eager to showcase your in-game accomplishments, Varietyz Bot has you covered.
 
 ---
 
 ## Table of Contents
 
 - [Introduction](#introduction)
+    - [Why Varietyz Bot?](#why-varietyz-bot)
 - [Features](#features)
     - [📋 Manage RuneScape Names (RSNs)](#-manage-runescape-names-rsns-)
     - [🛡️ Automatic Role Assignments](#-automatic-role-assignments)
@@ -32,8 +33,12 @@ Welcome to **Varietyz Bot**, the ultimate Discord companion designed specificall
 - [How to Use](#how-to-use)
     - [🔧 Slash Commands](#-slash-commands)
         - [Register Your RSN (`/rsn`)](#register-your-rsn-rsn)
-        - [Remove RSNs (`/removersn`)](#remove-rsns-removersn)
-        - [View Registered RSNs (`/rsnlist`)](#view-registered-rsns-rsnlist)
+        - [Remove RSNs (`/remove_rsn`)](#remove-rsns-remove_rsn)
+    - [Admin Commands](#admin-commands)
+        - [View Registered RSNs (`/rsn_list`)](#view-registered-rsns-rsn_list)
+        - [Remove RSN (`/admin_remove_rsn`)](#admin_remove_rsn)
+        - [Rename RSN (`/admin_rename_rsn`)](#admin_rename_rsn)
+        - [Check Activity (`/check_activity`)](#check_activity)
 - [Customization](#customization)
     - [Setting Up Roles](#setting-up-roles)
     - [Configuring Channels](#configuring-channels)
@@ -48,6 +53,7 @@ Welcome to **Varietyz Bot**, the ultimate Discord companion designed specificall
 - [Acknowledgments](#acknowledgments)
 - [Glossary](#glossary)
 - [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
+- [Contributing](#contributing)
 
 ---
 
@@ -79,25 +85,25 @@ Managing a Discord clan for Old School RuneScape can be challenging, especially 
     /rsn DragonSlayer99
     ```
 
-- **Remove RSNs (`/removersn`):** If you need to update or remove your RSNs, use this command to manage up to three RSNs securely.
+- **Remove RSNs (`/remove_rsn`):** If you need to remove your RSNs, use this command to manage up to three RSNs securely. Includes a confirmation prompt to prevent accidental removals.
 
     _Example:_
 
     ```
-    /removersn DragonSlayer99 OldHero123
+    /remove_rsn DragonSlayer99 OldHero123
     ```
 
-- **View Registered RSNs (`/rsnlist`):** View all RSNs registered within the clan along with their associated ranks. This provides transparency and allows members to see each other's achievements.
+- **View Registered RSNs (`/rsn_list`):** Administrators can view all RSNs registered within the clan along with their associated ranks. This provides transparency and allows admins to monitor member registrations.
 
     _Example:_
 
     ```
-    /rsnlist
+    /rsn_list
     ```
 
 ### 🛡️ Automatic Role Assignments
 
-**Varietyz Bot** automatically assigns and manages roles based on your in-game achievements and activity levels. This not only saves time but also adds a layer of gamification to your Discord server.
+**Varietyz Bot** automatically assigns and manages roles based on your in-game achievements, activity levels, and participation in group events. This not only saves time but also adds a layer of gamification to your Discord server.
 
 - **Boss Kill Roles:** Earn roles by defeating specific bosses in OSRS. The more bosses you defeat, the higher your rank!
 
@@ -110,6 +116,10 @@ Managing a Discord clan for Old School RuneScape can be challenging, especially 
 - **Skill-Based Roles:** Achieve milestones like 99 Attack or 2277 Total Experience to receive prestigious roles that showcase your dedication and skill.
 
     _Example:_ Achieving 99 Attack grants you the "Master of Attack" role.
+
+- **Event Participation Roles:** New roles are assigned to players who actively participate in clan-wide events.
+
+    _Example:_ Completing the "Winter Clan Challenge" grants the "Winter Challenger" role.
 
 ### 📈 Track Member Activity
 
@@ -208,6 +218,7 @@ Understanding the flow of data within **Varietyz Bot** helps in grasping how dif
     - It also handles any new name changes or updates to member activity, maintaining the clan's organizational integrity.
 
 6. **Logging:**
+
     - All operations, including successful actions and errors, are logged using Winston Logger.
     - Logs are organized systematically (by year and month) for easy access and review, aiding in maintenance and troubleshooting.
 
@@ -227,7 +238,7 @@ Maintaining accurate and up-to-date RuneScape Names (RSNs) is crucial for effect
 
 3. **Updating RSNs:**
 
-    - If a member changes their RSN or wishes to remove an existing one, they can use the `/removersn` command.
+    - If a member changes their RSN or wishes to remove an existing one, they can use the `/remove_rsn` command.
     - The bot updates the `registered_rsn` table by removing the specified RSNs and revoking any roles associated with them.
     - This ensures that outdated or incorrect RSNs do not clutter the database or affect role assignments.
 
@@ -246,6 +257,7 @@ Maintaining accurate and up-to-date RuneScape Names (RSNs) is crucial for effect
     - In cases where multiple members attempt to register the same RSN or when RSNs are already associated with different users, the bot handles conflicts gracefully by notifying the involved members and preventing duplicate entries.
 
 7. **Data Integrity:**
+
     - The SQLite database enforces data integrity through constraints and validations, ensuring that each RSN is unique and correctly linked to the appropriate Discord user.
     - Regular database maintenance tasks, such as cleaning up inactive RSNs and archiving old data, are performed to keep the database optimized and efficient.
 
@@ -274,6 +286,7 @@ To ensure the database remains efficient and up-to-date, **Varietyz Bot** incorp
     - Backups are stored securely and can be restored easily to maintain the continuity of clan management operations.
 
 5. **Performance Optimization:**
+
     - Indexes and optimized queries are employed to enhance the speed and efficiency of database operations.
     - The bot monitors query performance and adjusts indexing strategies as needed to accommodate the growing size of the clan's data.
 
@@ -295,7 +308,7 @@ By implementing these automatic maintenance strategies, **Varietyz Bot** ensures
 
 ### Contribution and Feedback
 
-Your contributions and feedback are invaluable to the growth and improvement of **Varietyz Bot**. Whether you're reporting a bug, suggesting a new feature, or contributing code, your involvement helps shape the future of the project.
+Your contributions and feedback are invaluable to the growth and improvement of **Varietyz Bot**. Whether you're reporting a bug, suggesting a feature, or contributing code, your involvement helps shape the future of the project.
 
 ---
 
@@ -356,13 +369,17 @@ Before installing **Varietyz Bot**, ensure you have the following:
 
     ```env
     DISCORD_TOKEN=your_discord_bot_token
-    WOM_API_KEY=your_wom_api_key
-    WOM_GROUP_ID=your_wom_group_id
+    CLIENT_ID=your_discord_client_id
+    GUILD_ID=your_discord_guild_id
+    WOM_API_KEY=your_wise_old_man_api_key
+    WOM_GROUP_ID=your_wise_old_man_group_id
     ```
 
     - `DISCORD_TOKEN`: The token you copied from the Discord Developer Portal.
-    - `WOM_API_KEY`: Your API key from the Wise Old Man.
-    - `WOM_GROUP_ID`: The specific group ID you want the bot to manage within WOM.
+    - `CLIENT_ID`: Your Discord application's client ID.
+    - `GUILD_ID`: The ID of your Discord server where the bot will operate.
+    - `WOM_API_KEY`: API key for the Wise Old Man API (if required).
+    - `WOM_GROUP_ID`: The group ID from Wise Old Man to track.
 
 3. **Invite the Bot to Your Server**
 
@@ -418,46 +435,143 @@ Interacting with **Varietyz Bot** is simple and intuitive through Discord's slas
 - The bot fetches your player data from the WOM API.
 - Appropriate roles based on your achievements are assigned automatically.
 
-#### Remove RSNs (`/removersn`)
+#### Remove RSNs (`/remove_rsn`)
 
-**Purpose:** Remove up to three of your registered RSNs from your account, useful if you've changed your RSN or no longer wish to track certain accounts.
+**Purpose:** Remove up to three of your registered RSNs from your account, useful if you've changed your RSN or no longer wish to track certain accounts. Includes a confirmation prompt to prevent accidental removals.
 
 **How to Use:**
 
-1. Type `/removersn` followed by the RSNs you wish to remove.
-2. The bot will process the removal and update your roles accordingly.
+1. Type `/remove_rsn` followed by the RSNs you wish to remove.
+2. Confirm the removal when prompted.
+3. The bot will process the removal and update your roles accordingly.
 
 **Example:**
 
 ```
-/removersn DragonSlayer99 OldHero123
+/remove_rsn DragonSlayer99 OldHero123
 ```
 
 **What Happens:**
 
-- The specified RSNs are removed from your account.
+- The specified RSNs are removed from your account after confirmation.
 - Associated roles are revoked if no longer applicable.
 - Confirmation is sent to you in Discord.
 
-#### View Registered RSNs (`/rsnlist`)
+### Admin Commands
 
-**Purpose:** View a comprehensive list of all RSNs registered within the clan along with their associated ranks.
+**Note:** These commands are restricted to administrators.
+
+#### `/rsn_list`
+
+**Description:** View a comprehensive list of all RSNs registered within the clan along with their associated ranks.
 
 **How to Use:**
 
-1. Simply type `/rsnlist` in your Discord server.
+1. As an administrator, type `/rsn_list` in your Discord server.
 2. The bot will display a formatted list of RSNs and ranks.
 
 **Example:**
 
 ```
-/rsnlist
+/rsn_list
 ```
 
 **What Happens:**
 
 - A neatly formatted embed message appears, listing all clan members' RSNs and their current ranks.
-- This allows for easy tracking and recognition of member achievements.
+- This allows admins to monitor and recognize member achievements.
+
+#### `/admin_remove_rsn`
+
+**Description:** Remove a registered RSN from a specified guild member.
+
+**Usage:**
+
+```
+/admin_remove_rsn <Member> <RSN>
+```
+
+**Features:**
+
+- **Targeted Removal:** Specify which member's RSN to remove.
+- **Validation:** Ensures the RSN exists before removal.
+- **Confirmation Prompt:** Adds an extra layer of security against accidental deletions.
+- **Autocomplete:** Helps in selecting valid members and RSNs.
+
+**Example:**
+
+```
+/admin_remove_rsn @User DragonSlayer99
+```
+
+**What Happens:**
+
+- The specified RSN is removed from the targeted member's account after confirmation.
+- Associated roles are revoked if no longer applicable.
+- Confirmation is sent to the admin in Discord.
+
+#### `/admin_rename_rsn`
+
+**Description:** Rename a registered RSN of a guild member.
+
+**Usage:**
+
+```
+/admin_rename_rsn <Member> <Current_RSN> <New_RSN>
+```
+
+**Features:**
+
+- **Validation:** Ensures the new RSN follows the required format and doesn't conflict with existing RSNs.
+- **API Verification:** Confirms the new RSN exists via the Wise Old Man API.
+- **Confirmation Prompt:** Prevents unintended renaming actions.
+- **Autocomplete:** Assists in selecting valid members and RSNs.
+
+**Example:**
+
+```
+/admin_rename_rsn @User DragonSlayer99 DragonMaster100
+```
+
+**What Happens:**
+
+- The member's RSN is updated from `DragonSlayer99` to `DragonMaster100` after confirmation.
+- Associated roles are updated based on the new RSN's achievements.
+- Confirmation is sent to the admin in Discord.
+
+#### `/check_activity`
+
+**Description:** Check the current activity status of clan members.
+
+**Usage:**
+
+```
+/check_activity <Status>
+```
+
+**Parameters:**
+
+- `<Status>`: The activity status to filter by. Options include `Active` or `Inactive`.
+
+**Features:**
+
+- **View Active Members:** Displays a list of currently active members based on recent in-game activity.
+- **View Inactive Members:** Shows members who have been inactive for a specified period.
+- **Filters:** Allows filtering by specific criteria such as roles or activity levels.
+- **Reports:** Generates a report summarizing the activity statistics for the clan.
+- **Autocomplete:** Provides autocomplete options for the `Status` parameter.
+
+**Example:**
+
+```
+/check_activity Active
+```
+
+**What Happens:**
+
+- The bot retrieves and displays the current active or inactive member counts based on the provided status.
+- Optionally, it can provide a detailed report if configured.
+- Helps administrators monitor clan engagement and identify members who may need encouragement to participate.
 
 ---
 
@@ -506,8 +620,6 @@ Channels in Discord can be used to display information and facilitate communicat
 
 ## Modules
 
-**Varietyz Bot** is structured into various modules to ensure maintainability, scalability, and clarity. Below is an overview of each module and its responsibilities.
-
 <details>
   <summary>Click to expand modules</summary>
 
@@ -515,17 +627,25 @@ Channels in Discord can be used to display information and facilitate communicat
 
 Defines and exports all constant values used throughout the Varietyz Bot. This includes general bot configurations, channel IDs, WOM API settings, rate limiting configurations, and role definitions with associated emojis and colors.
 
-### modules/commands/removersn
+### modules/commands/remove_rsn
 
-Defines the `/removersn` slash command for the Varietyz Bot. This command allows users to remove up to three registered RuneScape Names (RSNs) from their account. It includes validation, rate limiting, database interactions, and an autocomplete feature for RSN suggestions.
+**Renamed from:** `removersn`
+
+Defines the `/remove_rsn` slash command for the Varietyz Bot. This command allows users to remove up to three registered RuneScape Names (RSNs) from their account. It includes validation, rate limiting, database interactions, a confirmation prompt, and an autocomplete feature for RSN suggestions.
 
 ### modules/commands/rsn
 
 Defines the `/rsn` slash command for the Varietyz Bot. This command allows users to register their Old School RuneScape Name (RSN). It includes validation, rate limiting, and handles special Easter egg RSNs with custom responses.
 
-### modules/commands/rsnlist
+### modules/commands/rsn_list
 
-Defines the `/rsnlist` slash command for the Varietyz Bot. This command retrieves and displays all registered RuneScape Names (RSNs) along with their associated ranks for clan members.
+**Renamed from:** `rsnlist`
+
+Defines the `/rsn_list` slash command for administrators. This command retrieves and displays all registered RuneScape Names (RSNs) along with their associated ranks for clan members.
+
+### modules/commands/admin_check_activity
+
+Defines the `/check_activity` slash command for administrators. This command allows admins to check the current activity status of clan members, view active and inactive members, apply filters, and generate activity reports.
 
 ### modules/processing/active_members
 
@@ -571,6 +691,42 @@ Utility functions for interacting with the SQLite database. Provides functions t
 
 Utility functions for normalizing RuneScape names. Provides functions to standardize RSNs for consistent database storage and lookup.
 
+### utils/calculateActivity
+
+Utility functions for managing player activity data in the Varietyz Bot's SQLite database. This module provides functions for ensuring the existence of the `active_inactive` table, retrieving the last fetch time, and calculating active and inactive player counts based on their last progress.
+
+### utils/fetchPlayerData
+
+Utility function for fetching player data from the Wise Old Man (WOM) API. Handles potential errors such as non-existent players, rate limiting, and unexpected issues.
+
+### utils/lastFetchedTime
+
+Utility functions for managing player fetch times in a SQLite database. Provides functions for ensuring the existence of the `player_fetch_times` table, retrieving the last fetch time, and updating the fetch timestamp for a specific player's RuneScape Name (RSN).
+
+### utils/logger
+
+Winston logger utility for the Varietyz Bot. Configures and exports a Winston logger instance with daily log rotation and enhanced error handling. Handles logging to both the console and log files, manages log directories, rotates logs daily, and handles uncaught exceptions and unhandled promise rejections.
+
+### utils/normalizeRsn
+
+Utility function for normalizing RuneScape names (RSNs). Ensures RSNs are stored in a consistent format for database operations and efficient lookups.
+
+### utils/purgeChannel
+
+Utility function for managing Discord channels in the Varietyz Bot. Provides a function to purge messages from a specified Discord channel while respecting rate limits. Optimized to handle large volumes of messages by processing them in batches.
+
+### utils/sleepUtil
+
+Utility function for creating delays in execution. Provides a simple mechanism to pause asynchronous operations for a specified duration.
+
+### utils/validateRsn
+
+Utility functions for validating RuneScape names (RSNs). Ensures RSNs meet specific format criteria for consistent database storage and lookup.
+
+### utils/rankUtils
+
+Utility functions for managing RuneScape clan ranks in the Varietyz Bot. Provides tools for retrieving rank-specific details, formatting experience points, and normalizing rank strings.
+
 </details>
 
 ---
@@ -583,6 +739,20 @@ Utility functions for normalizing RuneScape names. Provides functions to standar
 ### WOMApiClient
 
 A client for interacting with the Wise Old Man (WOM) API. Manages rate-limited requests, handles retries, and provides access to the WOM API endpoints.
+
+**Methods:**
+
+- **handleWOMRateLimit() ⇒ `Promise<void>`**
+
+    Ensures that the WOM API rate limit is not exceeded. Throws an error if the request limit is reached within the current 60-second window.
+
+- **retryRequest(endpoint, methodName, params, [retries]) ⇒ `Promise<any>`**
+
+    Retries a failed API request with exponential backoff.
+
+- **request(endpoint, methodName, [params]) ⇒ `Promise<any>`**
+
+    Makes a request to the WOM API with rate limiting and retries.
 
 </details>
 
@@ -645,6 +815,42 @@ Utility functions for interacting with the SQLite database. Provides functions t
 
 Utility functions for normalizing RuneScape names. Provides functions to standardize RSNs for consistent database storage and lookup.
 
+### utils/calculateActivity
+
+Utility functions for managing player activity data in the Varietyz Bot's SQLite database. This module provides functions for ensuring the existence of the `active_inactive` table, retrieving the last fetch time, and calculating active and inactive player counts based on their last progress.
+
+### utils/fetchPlayerData
+
+Utility function for fetching player data from the Wise Old Man (WOM) API. Handles potential errors such as non-existent players, rate limiting, and unexpected issues.
+
+### utils/lastFetchedTime
+
+Utility functions for managing player fetch times in a SQLite database. Provides functions for ensuring the existence of the `player_fetch_times` table, retrieving the last fetch time, and updating the fetch timestamp for a specific player's RuneScape Name (RSN).
+
+### utils/logger
+
+Winston logger utility for the Varietyz Bot. Configures and exports a Winston logger instance with daily log rotation and enhanced error handling. Handles logging to both the console and log files, manages log directories, rotates logs daily, and handles uncaught exceptions and unhandled promise rejections.
+
+### utils/normalizeRsn
+
+Utility function for normalizing RuneScape names (RSNs). Ensures RSNs are stored in a consistent format for database operations and efficient lookups.
+
+### utils/purgeChannel
+
+Utility function for managing Discord channels in the Varietyz Bot. Provides a function to purge messages from a specified Discord channel while respecting rate limits. Optimized to handle large volumes of messages by processing them in batches.
+
+### utils/sleepUtil
+
+Utility function for creating delays in execution. Provides a simple mechanism to pause asynchronous operations for a specified duration.
+
+### utils/validateRsn
+
+Utility functions for validating RuneScape names (RSNs). Ensures RSNs meet specific format criteria for consistent database storage and lookup.
+
+### utils/rankUtils
+
+Utility functions for managing RuneScape clan ranks in the Varietyz Bot. Provides tools for retrieving rank-specific details, formatting experience points, and normalizing rank strings.
+
 </details>
 
 ---
@@ -658,13 +864,16 @@ Initializes the WOM API client with an API key and user agent. Sets rate limits 
 **Methods:**
 
 - **handleWOMRateLimit() ⇒ `Promise<void>`**
-  Ensures that the WOM API rate limit is not exceeded. Throws an error if the request limit is reached within the current 60-second window.
+
+    Ensures that the WOM API rate limit is not exceeded. Throws an error if the request limit is reached within the current 60-second window.
 
 - **retryRequest(endpoint, methodName, params, [retries]) ⇒ `Promise<any>`**
-  Retries a failed API request with exponential backoff.
+
+    Retries a failed API request with exponential backoff.
 
 - **request(endpoint, methodName, [params]) ⇒ `Promise<any>`**
-  Makes a request to the WOM API with rate limiting and retries.
+
+    Makes a request to the WOM API with rate limiting and retries.
 
 ---
 
@@ -705,6 +914,41 @@ To help you better understand the terminology used in this README, here's a quic
 - **Slash Commands:** Special commands in Discord that start with a `/`, enabling interactive and intuitive user interactions.
 - **SQLite:** A lightweight, file-based database system used for storing and managing data.
 - **API (Application Programming Interface):** A set of rules that allows different software entities to communicate with each other.
+- **Discord Server:** A virtual space on Discord where communities gather to communicate via text, voice, or video.
+- **Bot Token:** A unique identifier that allows a bot to connect and interact with Discord's API.
+- **Client ID:** The unique identifier for a Discord application, used to authenticate the bot.
+- **Guild ID:** The unique identifier for a Discord server.
+- **Role Hierarchy:** The ordering of roles in Discord, which determines which roles can manage or assign other roles.
+- **Emojis:** Small images or icons used in Discord to represent emotions, objects, or actions.
+- **Permissions:** The rights granted to users or bots to perform certain actions within a Discord server, such as managing roles or channels.
+- **Rate Limiting:** Restrictions placed on how frequently certain actions can be performed, such as API requests, to prevent abuse.
+- **Exponential Backoff:** A strategy for retrying failed operations by waiting increasingly longer intervals between retries.
+- **Embeds:** Richly formatted messages in Discord that can include images, links, and other media.
+- **Command Interaction:** An event in Discord that occurs when a user invokes a slash command.
+- **Autocomplete Interaction:** An event in Discord that provides suggestions as a user types a command.
+- **CLI (Command Line Interface):** A text-based interface used to interact with software or scripts by typing commands.
+- **npm (Node Package Manager):** A package manager for JavaScript that allows developers to install and manage software packages.
+- **Git:** A version control system that allows developers to track changes in their codebase.
+- **Repository:** A storage location for a project, typically hosted on platforms like GitHub, where code and related files are kept.
+- **Fork:** A personal copy of another user's repository that allows you to freely experiment with changes without affecting the original project.
+- **Pull Request:** A method of submitting contributions to a project by proposing changes that the project maintainers can review and merge.
+- **Clone:** A copy of a repository that is stored on your local machine.
+- **Environment Variables:** Variables that are set outside of a program, often used to configure software without changing code.
+- **JSON (JavaScript Object Notation):** A lightweight data-interchange format that's easy for humans to read and write and easy for machines to parse and generate.
+- **Configuration Files:** Files used to configure the settings and behavior of software applications.
+- **Scheduled Tasks:** Automated operations that run at predetermined times or intervals.
+- **Logging:** The process of recording information about a program's operation, used for debugging and monitoring.
+- **Winston:** A popular logging library for Node.js applications.
+- **Module:** A reusable piece of code that encapsulates related functions, classes, or variables.
+- **Script:** A file containing code that performs a specific task or set of tasks.
+- **Function:** A block of code designed to perform a particular task, which can be called with arguments to execute.
+- **Utility Functions:** Helper functions that perform common, often repeated tasks to simplify code.
+- **Class:** A blueprint for creating objects in object-oriented programming, defining their properties and behaviors.
+- **Object-Oriented Programming (OOP):** A programming paradigm based on the concept of objects, which can contain data and methods.
+- **Database:** An organized collection of structured information, typically stored electronically.
+- **API Key:** A unique identifier used to authenticate requests to an API, ensuring secure and controlled access.
+- **Error Handling:** The process of responding to and managing errors that occur during the execution of a program.
+- **Channel ID:** The unique identifier for a specific channel within a Discord server.
 
 ---
 
@@ -749,3 +993,134 @@ To help you better understand the terminology used in this README, here's a quic
 **Q10: How can I contribute to Varietyz Bot?**
 
 - **A10:** Your contributions and feedback are invaluable! Please refer to the [Contributing](#contributing) section above for detailed instructions on how to get involved.
+
+**Q11: What should I do if Varietyz Bot is not responding to commands?**
+
+- **A11:** First, ensure that the bot is online by checking its status in your Discord server. If it's online but not responding, verify that it has the necessary permissions to execute commands and manage roles. Additionally, check the logs by accessing the bot's logging system to identify any potential errors. Restarting the bot might also resolve temporary issues.
+
+**Q12: How do I update Varietyz Bot to the latest version?**
+
+- **A12:** To update Varietyz Bot, navigate to your bot's directory and run the following commands:
+
+    ```bash
+    git pull origin main
+    npm install
+    npm start
+    ```
+
+    This will pull the latest changes from the repository, install any new dependencies, and restart the bot with the updated code.
+
+**Q13: Can Varietyz Bot integrate with other APIs or services besides the WOM API?**
+
+- **A13:** Currently, Varietyz Bot is primarily integrated with the WOM API to fetch OSRS player data. However, future updates may include integrations with additional APIs or services based on community demand and project development goals.
+
+**Q14: How do I reset my RSN registrations?**
+
+- **A14:** To reset your RSN registrations, use the `/remove_rsn` command followed by all the RSNs you wish to remove. Confirm the removal when prompted. This will clear your current RSN registrations and associated roles, allowing you to register new RSNs as needed.
+
+    _Example:_
+
+    ```
+    /remove_rsn DragonSlayer99 OldHero123
+    ```
+
+**Q15: What permissions does Varietyz Bot require to function properly?**
+
+- **A15:** Varietyz Bot requires the following permissions to operate effectively:
+
+    - **Manage Roles:** To assign and remove roles based on player achievements.
+    - **Manage Channels:** To update channel names based on member activity.
+    - **Send Messages:** To communicate with users and provide updates.
+    - **Embed Links:** To create rich embed messages for better visualization.
+    - **Read Message History:** To access past messages if needed.
+    - **View Channels:** To see and interact within specified channels.
+
+    Ensure that these permissions are granted when inviting the bot to your server.
+
+**Q16: Does Varietyz Bot support games other than Old School RuneScape?**
+
+- **A16:** Currently, Varietyz Bot is specifically designed for managing OSRS clans using data from the WOM API. Support for other games may be considered in future updates based on user interest and project scope.
+
+**Q17: How can I troubleshoot role assignment issues with Varietyz Bot?**
+
+- **A17:** If you're experiencing issues with role assignments:
+
+    1. **Check Bot Permissions:** Ensure that Varietyz Bot has the necessary permissions to manage roles in your Discord server.
+    2. **Verify Role Hierarchy:** The bot's highest role must be above the roles it is trying to assign.
+    3. **Review Logs:** Access the bot's logs to identify any errors or warnings related to role assignments.
+    4. **Restart the Bot:** Sometimes, simply restarting the bot can resolve temporary glitches.
+    5. **Contact Support:** If the issue persists, reach out through the provided contact channels for further assistance.
+
+**Q18: How does Varietyz Bot handle API rate limits?**
+
+- **A18:** Varietyz Bot is designed to respect the rate limits imposed by the WOM API. It manages request queues and implements retry mechanisms with exponential backoff to handle situations where the rate limit is reached. This ensures that the bot operates smoothly without exceeding API usage limits.
+
+**Q19: Can I request a new feature for Varietyz Bot?**
+
+- **A19:** Absolutely! Your feedback and feature requests are welcome. Please visit the [Contributing](#contributing) section and submit your suggestions through issues or pull requests in the repository. Your input helps shape the future development of Varietyz Bot.
+
+**Q20: What should I do if I forget my Discord server's GUILD_ID or other configuration details?**
+
+- **A20:** If you forget your Discord server's `GUILD_ID` or other configuration details:
+
+    1. **Enable Developer Mode:**
+        - Go to Discord **User Settings** > **Advanced** > **Developer Mode** and toggle it on.
+    2. **Find GUILD_ID:**
+        - Right-click on your server's icon in the Discord sidebar and select **Copy ID**.
+    3. **Retrieve Other IDs:**
+        - Similarly, you can right-click on channels, roles, or users to copy their respective IDs.
+
+    Ensure that you have Developer Mode enabled to access these IDs.
+
+---
+
+## Contributing
+
+We welcome contributions from the community! Whether you're reporting a bug, suggesting a feature, or submitting a pull request, your input helps us improve Varietyz Bot.
+
+### How to Contribute
+
+1. **Fork the Repository**
+
+    Click the [Fork](https://github.com/varietyz/varietyz-bot/fork) button at the top-right corner of this page.
+
+2. **Clone Your Fork**
+
+    ```bash
+    git clone https://github.com/yourusername/varietyz-bot.git
+    cd varietyz-bot
+    ```
+
+3. **Create a New Branch**
+
+    ```bash
+    git checkout -b feature/YourFeatureName
+    ```
+
+4. **Make Your Changes**
+
+    Implement your feature or fix the bug.
+
+5. **Commit Your Changes**
+
+    ```bash
+    git commit -m "Add feature: YourFeatureName"
+    ```
+
+6. **Push to Your Fork**
+
+    ```bash
+    git push origin feature/YourFeatureName
+    ```
+
+7. **Submit a Pull Request**
+
+    Go to the original repository and click on the "New Pull Request" button. Provide a clear description of your changes.
+
+### Code of Conduct
+
+Please ensure all contributions adhere to our [Code of Conduct](CODE_OF_CONDUCT.md). Be respectful, constructive, and collaborative.
+
+---
+
+_Thank you for using Varietyz Bot! We hope it enhances your RuneScape clan experience._

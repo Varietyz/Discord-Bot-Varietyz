@@ -1,8 +1,17 @@
 // @ts-nocheck
 /**
- * @fileoverview Utility functions for the Varietyz Bot.
- * Provides helper functions for normalizing RSNs, handling ranks, managing rate limits,
- * interacting with Discord channels, and making HTTP requests with retry logic.
+ * @fileoverview Utility function for managing Discord channels in the Varietyz Bot.
+ * Provides a function to purge messages from a specified Discord channel while respecting rate limits.
+ * This function is optimized to handle large volumes of messages by processing them in batches.
+ *
+ * Key Features:
+ * - **Efficient Message Deletion**: Deletes messages in batches of up to 100 to handle large volumes.
+ * - **Rate Limit Management**: Introduces delays between deletions to avoid hitting Discord's rate limits.
+ * - **Error Handling**: Logs and handles any errors that occur during the message deletion process.
+ *
+ * External Dependencies:
+ * - `sleep` function from `./sleepUtil` to introduce delays between deletions.
+ * - `logger` module for logging operations and errors.
  *
  * @module utils/purgeChannel
  */
@@ -11,14 +20,22 @@ const logger = require('./logger');
 const { sleep } = require('./sleepUtil');
 
 /**
- * Deletes all messages in a specified Discord channel.
- * Fetches and deletes messages in batches to handle large volumes.
+ * Deletes all messages in a specified Discord text channel.
  *
+ * This function fetches and deletes messages in batches of up to 100 to efficiently
+ * handle large volumes of messages. It also introduces delays between deletions to
+ * prevent hitting Discord's rate limits.
+ *
+ * @function purgeChannel
  * @param {Discord.TextChannel} channel - The Discord channel to purge.
- * @returns {Promise<void>}
+ * @returns {Promise<void>} A promise that resolves when all messages in the channel are deleted.
+ * @throws {Error} Logs and handles any errors that occur during the purge process.
  * @example
- * // Purge messages in the specified channel
- * purgeChannel(channel);
+ * // Purge all messages in a specified channel
+ * const channel = client.channels.cache.get('CHANNEL_ID');
+ * if (channel) {
+ *     await purgeChannel(channel);
+ * }
  */
 async function purgeChannel(channel) {
     let messagesToDelete = [];

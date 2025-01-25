@@ -1,8 +1,21 @@
 /* eslint-disable no-process-exit */
 /**
- * @fileoverview Configures and exports a Winston logger instance with daily log rotation.
- * The logger handles logging to both the console and log files organized by year and month.
- * It also manages uncaught exceptions and unhandled promise rejections.
+ * @fileoverview Winston logger utility for the Varietyz Bot.
+ * Configures and exports a Winston logger instance with daily log rotation and enhanced error handling.
+ * This module provides logging functionality to output messages to the console and log files,
+ * as well as manage log directories, rotate logs daily, and handle uncaught exceptions and unhandled promise rejections.
+ *
+ * Key Features:
+ * - **Console Logging**: Colorized console output for easy readability of logs.
+ * - **Daily Log Rotation**: Logs are written to files with daily rotation and retention, organized by year and month.
+ * - **Error Handling**: Captures uncaught exceptions and unhandled promise rejections, logging the error and gracefully exiting.
+ * - **Log Directory Management**: Ensures log directories exist and creates necessary folder structures.
+ *
+ * External Dependencies:
+ * - **winston**: A powerful logging library for logging to both the console and file systems.
+ * - **winston-daily-rotate-file**: A winston transport for logging to daily rotating files.
+ * - **path**: Utility for handling file paths.
+ * - **fs**: Node's file system module for checking and creating directories.
  *
  * @module utils/logger
  */
@@ -13,7 +26,7 @@ const path = require('path');
 const fs = require('fs');
 
 /**
- * Custom log format combining timestamp and log level with the message.
+ * Custom log format combining a timestamp, log level, and message.
  *
  * @constant {winston.Format}
  */
@@ -25,10 +38,10 @@ const logFormat = winston.format.printf(({ timestamp, level, message }) => {
  * Generates the directory path for logs based on the current year and month.
  *
  * @function getYearMonthPath
- * @returns {string} - The path to the log directory for the current year and month.
+ * @returns {string} The path to the log directory for the current year and month.
  * @example
  * const logPath = getYearMonthPath();
- * // logPath might be 'logs/2025/january'
+ * // Example: 'logs/2025/january'
  */
 const getYearMonthPath = () => {
     const now = new Date();
@@ -61,7 +74,7 @@ const createLogDirectories = () => {
 
 /**
  * Creates and configures the Winston logger instance.
- * The logger writes logs to the console and to daily rotated log files.
+ * The logger writes logs to the console and daily rotated log files.
  *
  * @constant {winston.Logger}
  * @example
@@ -69,21 +82,15 @@ const createLogDirectories = () => {
  * logger.error('This is an error message');
  */
 const logger = winston.createLogger({
-    level: 'info', // Default log level
-    format: winston.format.combine(
-        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        logFormat, // Custom log format
-    ),
+    level: 'info',
+    format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
     transports: [
         /**
          * Console transport for logging to the terminal.
          * Uses colorized output for better readability.
          */
         new winston.transports.Console({
-            format: winston.format.combine(
-                winston.format.colorize(),
-                logFormat, // Custom format for console output
-            ),
+            format: winston.format.combine(winston.format.colorize(), logFormat),
         }),
 
         /**
@@ -98,8 +105,7 @@ const logger = winston.createLogger({
             maxFiles: '7d',
             level: 'info',
             format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
-            dirname: getYearMonthPath(), // Ensure directory path for logs
-            auditFile: path.join('logs', 'handler', 'audit.json'), // Place the audit file in logs/handler
+            auditFile: path.join('logs', 'handler', 'audit.json'),
         }),
     ],
 });
@@ -123,11 +129,9 @@ initializeLogger();
 /**
  * Handles uncaught exceptions by logging the error and exiting the process.
  *
- * @event module:modules/processing/logger~logger
+ * @event uncaughtException
  * @param {Error} error - The uncaught exception.
  * @returns {void}
- * @example
- * // This is handled automatically by the logger configuration.
  */
 process.on('uncaughtException', (error) => {
     logger.error(`Uncaught Exception: ${error.message}`);
@@ -137,12 +141,10 @@ process.on('uncaughtException', (error) => {
 /**
  * Handles unhandled promise rejections by logging the reason and the promise.
  *
- * @event module:modules/processing/logger~logger
+ * @event unhandledRejection
  * @param {any} reason - The reason for the rejection.
  * @param {Promise} promise - The promise that was rejected.
  * @returns {void}
- * @example
- * // This is handled automatically by the logger configuration.
  */
 process.on('unhandledRejection', (reason, promise) => {
     logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);

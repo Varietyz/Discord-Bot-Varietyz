@@ -1,10 +1,24 @@
 /**
- * @fileoverview Utility functions for extracting and managing player data.
- * Handles fetching data from external APIs, formatting data for database storage,
- * and ensuring data integrity within the SQLite database.
+ * @fileoverview Utility functions for extracting and managing player data in the Varietyz Bot.
+ * This module facilitates fetching, formatting, saving, and maintaining player data using the Wise Old Man API
+ * and SQLite database. It handles the extraction, transformation, and storage of player data,
+ * ensuring the database is up-to-date and accurate.
+ *
+ * Key Features:
+ * - **Data Formatting**: Flattens and renames nested player data into a format suitable for database storage.
+ * - **Database Management**: Manages the `player_data` table and ensures player data is saved and updated correctly.
+ * - **API Integration**: Fetches player data from the Wise Old Man API and integrates it into the database.
+ * - **Player Synchronization**: Synchronizes player data with registered RSNs and removes stale or outdated records.
+ * - **Rate-Limiting**: Implements rate-limiting to handle frequent API requests efficiently.
+ *
+ * External Dependencies:
+ * - **Wise Old Man (WOM) API**: Fetches player data for RSNs.
+ * - **luxon**: For date manipulation and calculating time intervals.
+ * - **dbUtils**: To interact with the SQLite database for storing player data.
  *
  * @module modules/processing/player_data_extractor
  */
+
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('../utils/logger');
 const { runQuery, getAll } = require('../utils/dbUtils');

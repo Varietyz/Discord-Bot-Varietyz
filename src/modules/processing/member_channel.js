@@ -1,8 +1,21 @@
 // @ts-nocheck
 /**
- * @fileoverview Utility functions for managing clan members within the Varietyz Bot.
- * Handles role assignments, updates clan member data, interacts with the WOM API,
- * and updates Discord channels with the latest member details.
+ * @fileoverview Utility functions for managing clan members and updating their data in the Varietyz Bot.
+ * This module interacts with the WOM API to fetch member information, manages role assignments in Discord based on ranks,
+ * and updates the associated Discord channels with the latest clan member data.
+ *
+ * Key Features:
+ * - **Role Assignment**: Handles dynamic assignment and removal of roles based on player rank.
+ * - **Clan Member Updates**: Fetches and processes player data, updating roles and information in the Discord guild.
+ * - **Database Management**: Updates the `clan_members` table in the SQLite database and ensures it reflects the latest member data.
+ * - **Discord Notifications**: Sends notifications to a designated Discord channel about rank updates and member changes.
+ * - **Data Purging**: Removes outdated information from the `clan_members` table and purges previous channel messages before sending new data.
+ *
+ * External Dependencies:
+ * - **Wise Old Man (WOM) API**: Fetches player information and updates from the Wise Old Man API.
+ * - **Discord.js**: Used for interacting with Discord, including sending messages and managing roles.
+ * - **dbUtils**: Handles database interactions to update clan member data.
+ * - **rankUtils**: Provides utilities for formatting and retrieving rank information.
  *
  * @module modules/processing/member_channel
  */

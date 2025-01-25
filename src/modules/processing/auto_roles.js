@@ -1,8 +1,21 @@
 // @ts-nocheck
 /**
- * @fileoverview Utility functions for managing automatic role assignments in the Varietyz Bot.
- * This module handles fetching and processing player data, merging data from multiple RSNs,
- * and assigning or removing Discord roles based on players' hiscores and achievements.
+ * @fileoverview Utility functions for managing automatic role assignments based on player data in the Varietyz Bot.
+ * This module fetches and processes data from multiple RuneScape Names (RSNs), merges the data for role assignments,
+ * and assigns or removes Discord roles based on hiscores and achievements such as boss kills, activities, and skills.
+ *
+ * Key Features:
+ * - **Role Assignment**: Automatically assigns roles based on boss kills, activity scores, and skill levels from RSN data.
+ * - **Data Merging**: Combines data from multiple RSNs into a single profile for each player, ensuring the highest achievements are retained.
+ * - **Dynamic Role Updates**: Removes outdated roles and assigns new ones based on the player's latest achievements.
+ * - **Discord Notifications**: Sends embed messages in a designated channel to notify players of role assignments and removals.
+ * - **Custom Mappings**: Maps boss and activity names to corresponding Discord role names for easier management.
+ *
+ * External Dependencies:
+ * - **Wise Old Man (WOM) API**: Retrieves player data and achievements for role assignment.
+ * - **Discord.js**: Used for interacting with Discord to assign roles, send notifications, and manage guild data.
+ * - **dbUtils**: Handles database interactions to fetch and store player data linked to Discord users.
+ * - **normalizeRsn**: Provides utilities for normalizing RSNs to ensure consistency across data processing.
  *
  * @module modules/processing/auto_roles
  */

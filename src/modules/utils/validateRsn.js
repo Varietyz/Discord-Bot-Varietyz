@@ -1,6 +1,14 @@
 /**
- * @fileoverview Utility functions for validating RuneScape names.
- * Provides functions to validate RSNs for consistent database storage and lookup.
+ * @fileoverview Utility functions for validating RuneScape names (RSNs).
+ * Ensures RSNs meet specific format criteria for consistent database storage and lookup.
+ *
+ * Key Features:
+ * - **Format Validation**: Checks if RSNs are between 1 and 12 characters long, contain only letters, numbers, and single spaces, and exclude forbidden characters like hyphens or underscores.
+ * - **Forbidden Phrase Detection**: Prevents RSNs containing phrases such as "Java", "Mod", or "Jagex".
+ * - **Feedback Messages**: Provides clear validation messages for invalid RSNs.
+ *
+ * External Dependencies:
+ * - None.
  *
  * @module utils/validateRsn
  */
@@ -21,7 +29,7 @@ const validateRsn = (rsn) => {
     if (typeof rsn !== 'string') {
         return {
             valid: false,
-            message: 'RSN must be a string.'
+            message: 'RSN must be a string.',
         };
     }
 
@@ -30,7 +38,7 @@ const validateRsn = (rsn) => {
     if (trimmedRsn.length < 1 || trimmedRsn.length > 12) {
         return {
             valid: false,
-            message: 'RSN must be between 1 and 12 characters long.'
+            message: 'RSN must be between 1 and 12 characters long.',
         };
     }
 
@@ -39,21 +47,15 @@ const validateRsn = (rsn) => {
     if (!/^[a-zA-Z0-9]+(?: [a-zA-Z0-9]+)*$/.test(trimmedRsn)) {
         return {
             valid: false,
-            message:
-                'RSN can only contain letters, numbers, and single spaces between words. (If your RSN includes a hyphen or underscore, replace it with a space)'
+            message: 'RSN can only contain letters, numbers, and single spaces between words. (If your RSN includes a hyphen or underscore, replace it with a space)',
         };
     }
 
     const forbiddenPhrases = ['Java', 'Mod', 'Jagex'];
-    if (
-        forbiddenPhrases.some((phrase) =>
-            trimmedRsn.toLowerCase().includes(phrase.toLowerCase())
-        )
-    ) {
+    if (forbiddenPhrases.some((phrase) => trimmedRsn.toLowerCase().includes(phrase.toLowerCase()))) {
         return {
             valid: false,
-            message:
-                'RSN cannot contain forbidden phrases like "Java", "Mod", or "Jagex".'
+            message: 'RSN cannot contain forbidden phrases like "Java", "Mod", or "Jagex".',
         };
     }
 
