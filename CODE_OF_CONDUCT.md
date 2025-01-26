@@ -152,7 +152,7 @@ To maintain a safe and productive environment, the following actions may be take
 2. **Suspension:** Temporarily restricting your ability to contribute to the repository.
 3. **Permanent Ban:** Removing your access to contribute to the repository indefinitely due to severe or repeated violations.
 
-_Note:_ The severity of the consequence will depend on the nature and frequency of the violation. Serious offenses, such as harassment or sharing NSFW content in inappropriate channels, may result in immediate suspension or permanent bans without prior warnings.
+_Note:_ The severity of the consequence will depend on the nature and frequency of the violation. Serious offenses, such as harassment or sharing NSFW content, may result in immediate suspension or permanent bans without prior warnings.
 
 ---
 
@@ -200,65 +200,3 @@ By contributing to the Varietyz Bot project, you acknowledge that you have read,
 ---
 
 _Thank you for being a valued contributor to the Varietyz Bot community! Let's work together to maintain a respectful, inclusive, and engaging environment._
-
----
-
-## Additional Considerations
-
-To further enhance the Code of Conduct and ensure comprehensive coverage of all relevant aspects, consider the following points:
-
-1. **API Key Management:**
-
-    - **Responsibility:** Clearly state that contributors are responsible for managing their own API keys and ensuring they are not exposed.
-    - **Prohibition:** Prohibit the sharing of API keys within the repository to prevent unauthorized access.
-
-2. **Bot Deployment Guidelines:**
-
-    - **Proper Configuration:** Encourage contributors to follow best practices when deploying the bot, including secure configuration of environment variables.
-    - **Regular Updates:** Advise contributors to keep the bot updated to the latest version to benefit from security patches and new features.
-
-3. **Data Usage Transparency:**
-
-    - **Clear Purpose:** Specify how data fetched from Discord and WoM APIs will be used, ensuring contributors understand the benefits and privacy implications.
-    - **Opt-Out Options:** Provide contributors with options to opt-out of certain data tracking if they prefer not to have their data monitored.
-
-4. **Compliance with Local Laws:**
-
-    - **Legal Obligations:** Remind contributors to comply with local data protection laws (e.g., GDPR) when deploying and using the bot in their servers.
-
-5. **Community Support:**
-    - **Resources:** Offer resources or links where contributors can learn more about responsible API usage and data privacy.
-    - **Help Channels:** Create dedicated channels for support and guidance on using Varietyz Bot responsibly.
-
----
-
-## License
-
-This project is licensed under the [BSD 2-Clause](LICENSE). You are free to use, modify, and distribute it as per the license terms.
-
----
-
-## Contact
-
-Have questions, suggestions, or need support? Reach out to us!
-
-- **Discord:** [@jaybane](https://discordapp.com/users/406828985696387081)
-- **Email:** [jay.bane@outlook.com](mailto:jay.bane@outlook.com)
-
-We're here to help and eager to hear your feedback!
-
----
-
-## Acknowledgments
-
-A big thank you to all the tools and communities that made **Varietyz Bot** possible:
-
-- **Wise Old Man (WoM) API:** For providing comprehensive player data that powers the bot’s tracking features.
-- **Discord.js:** The powerful library that enables seamless interactions between Varietyz Bot and Discord.
-- **Community Contributors:** Special thanks to all the contributors who have helped improve Varietyz Bot through their valuable feedback and code contributions.
-
----
-
-**Adherence to Code Standards**
-
-By adhering to this Code of Conduct, contributors help maintain the integrity and quality of the Varietyz Bot project. Following established standards ensures that our codebase remains clean, efficient, and maintainable, facilitating smooth collaboration and successful project outcomes.
