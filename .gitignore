@@ -36,3 +36,4 @@ eslint-checkstyle-report
 BEAUTIFY_README.py
 BEAUTIFIED.md
 export_structure.py
+server_builder/clanRankData.json

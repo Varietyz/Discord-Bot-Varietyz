@@ -25,7 +25,7 @@ const logger = require('./logger'); // Import the logger
  * Path to the SQLite database file.
  * @constant {string}
  */
-const dbPath = path.join(__dirname, '../data/database.sqlite');
+const dbPath = path.join(__dirname, '../../data/database.sqlite');
 
 /**
  * Initializes and maintains the SQLite database connection.

@@ -19,7 +19,7 @@
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const logger = require('../utils/logger');
 const { runQuery, getAll } = require('../utils/dbUtils');
 const { normalizeRsn } = require('../utils/normalizeRsn');
@@ -118,6 +118,21 @@ module.exports = {
 
                     logger.info(`RSN "${rsnInput}" removed from user ${targetUserID} by admin ${interaction.user.id}.`);
 
+                    const removalEmbed = new EmbedBuilder()
+                        .setColor(0xff0000) // Red for removal
+                        .setTitle('❌RSN Removed')
+                        .setDescription(
+                            `Your RuneScape Name \`${rsnInput}\` has been removed from our records. ⚠️
+
+This action was performed by: <@${interaction.user.id}>`,
+                        )
+                        .setFooter({ text: 'Varietyz Bot' })
+                        .setTimestamp();
+
+                    await targetUser.send({ embeds: [removalEmbed] }).catch(() => {
+                        logger.warn(`Failed to send RSN removal DM to user ${targetUserID}`);
+                    });
+
                     await i.update({
                         content: `✅ The RSN \`${rsnInput}\` has been successfully removed from <@${targetUserID}>.`,
                         components: [],
@@ -168,27 +183,62 @@ module.exports = {
         try {
             if (focusedOption.name === 'target') {
                 const input = focusedOption.value.toLowerCase();
+
+                // Fetch all users who have registered RSNs
                 const rsnUsers = await getAll('SELECT DISTINCT user_id FROM registered_rsn', []);
                 const userIds = rsnUsers.map((row) => row.user_id);
 
                 const guild = interaction.guild;
                 if (!guild) return await interaction.respond([]);
 
+                // Fetch guild members with matching RSNs
                 const members = await guild.members.fetch({ user: userIds }).catch(() => new Map());
-                const choices = Array.from(members.values())
-                    .filter((member) => member.user.username.toLowerCase().includes(input) || member.user.id.includes(input))
-                    .map((member) => ({
-                        name: `${member.user.username} (${member.user.id})`,
-                        value: member.user.id,
-                    }));
 
-                await interaction.respond(choices.slice(0, 25));
+                const choices = await Promise.all(
+                    Array.from(members.values()).map(async (member) => {
+                        const userId = member.user.id;
+                        const username = member.user.username.toLowerCase();
+                        const discriminator = member.user.discriminator.toLowerCase();
+                        const tag = `${member.user.username}#${member.user.discriminator}`.toLowerCase();
+
+                        const rsns = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userId]);
+
+                        const normalizedRsns = rsns.map((row) => ({
+                            original: row.rsn,
+                            normalized: normalizeRsn(row.rsn),
+                        }));
+
+                        // Match against input
+                        const matchingRsns = normalizedRsns.filter((rsn) => rsn.normalized.includes(input));
+
+                        const rsnDisplay = matchingRsns.length > 0 ? matchingRsns.map((rsn) => rsn.original).join(', ') : 'No RSN matches';
+
+                        if (username.includes(input) || discriminator.includes(input) || tag.includes(input) || userId.includes(input) || matchingRsns.length > 0) {
+                            return {
+                                name: `${rsnDisplay} (${userId}) - ${member.user.username}`,
+                                value: userId,
+                            };
+                        }
+
+                        return null;
+                    }),
+                );
+
+                await interaction.respond(choices.filter(Boolean).slice(0, 25));
             } else if (focusedOption.name === 'rsn') {
                 const targetUserID = interaction.options.getString('target');
                 if (!targetUserID) return await interaction.respond([]);
 
-                const rsnInput = normalizeRsn(focusedOption.value);
-                const rsnsResult = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, "-", " "), "_", " ")) LIKE ?', [targetUserID, `%${rsnInput}%`]);
+                const rsnInput = normalizeRsn(focusedOption.value); // Normalize the input
+                const rsnsResult = await getAll(
+                    `
+                SELECT rsn 
+                FROM registered_rsn 
+                WHERE user_id = ? 
+                AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) LIKE ?
+                `,
+                    [targetUserID, `%${rsnInput}%`],
+                );
 
                 const choices = rsnsResult.map((row) => ({
                     name: row.rsn,

@@ -23,7 +23,7 @@
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const logger = require('../utils/logger');
 const { runQuery, getAll, getOne } = require('../utils/dbUtils');
 const { normalizeRsn } = require('../utils/normalizeRsn');
@@ -129,7 +129,8 @@ module.exports = {
             );
 
             await interaction.reply({
-                content: `⚠️ **Confirmation Required**\nAre you sure you want to rename the RSN \`${currentRsn}\` to \`${newRsn}\` for <@${targetUserID}>?`,
+                content: `⚠️ **Confirmation Required**
+Are you sure you want to rename the RSN \`${currentRsn}\` to \`${newRsn}\` for <@${targetUserID}>?`,
                 components: [confirmationRow],
                 flags: 64,
             });
@@ -146,13 +147,28 @@ module.exports = {
                     await runQuery(
                         `
                         UPDATE registered_rsn
-                        SET rsn = ?
+                        SET rsn = ?, registered_at = ?
                         WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
                         `,
-                        [newRsn, targetUserID, normalizedCurrentRsn],
+                        [newRsn, new Date().toISOString(), targetUserID, normalizedCurrentRsn],
                     );
 
                     logger.info(`RSN '${currentRsn}' renamed to '${newRsn}' for user ${targetUserID} by admin ${interaction.user.id}`);
+
+                    const userEmbed = new EmbedBuilder()
+                        .setColor(0x00ffff)
+                        .setTitle('⚠️RSN Renamed')
+                        .setDescription(
+                            `Your RuneScape Name \`${currentRsn}\` has been renamed in our records to \`${newRsn}\`. ⚠️
+
+This action was performed by: <@${interaction.user.id}>`,
+                        )
+                        .setFooter({ text: 'Varietyz Bot' })
+                        .setTimestamp();
+
+                    await targetUser.send({ embeds: [userEmbed] }).catch(() => {
+                        logger.warn(`Failed to send DM to user ${targetUserID}`);
+                    });
 
                     await i.update({
                         content: `✅ The RSN \`${currentRsn}\` has been successfully renamed to \`${newRsn}\` for <@${targetUserID}>.`,
@@ -232,6 +248,7 @@ module.exports = {
                             normalized: normalizeRsn(row.rsn),
                         }));
 
+                        // Match against input
                         const matchingRsns = normalizedRsns.filter((rsn) => rsn.normalized.includes(input));
 
                         const rsnDisplay = matchingRsns.length > 0 ? matchingRsns.map((rsn) => rsn.original).join(', ') : 'No RSN matches';

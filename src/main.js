@@ -64,7 +64,7 @@ const loadModules = (type) => {
                 }
                 commands.push(module); // Push only commands to commands array
                 logger.info(`Command ${module.data.name} loaded.`);
-            } else if (type === 'functions') {
+            } else if (type === 'processing') {
                 const funcName = path.basename(file, '.js');
 
                 functions.push(module); // Push functions to a separate array
@@ -85,7 +85,7 @@ const loadModules = (type) => {
 const initializeBot = async () => {
     try {
         loadModules('commands'); // Load all slash commands
-        loadModules('functions'); // Load all functions
+        loadModules('processing'); // Load all functions
 
         // eslint-disable-next-line node/no-missing-require
         const { REST } = require('@discordjs/rest');
