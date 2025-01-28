@@ -1,0 +1,25 @@
+{
+    "cacheDir": "cache",
+    "metricsSubDir": "metrics",
+    "clanRanksSubDir": "clanRanks",
+    "concurrencyLimit": 5,
+    "botwNameMap": {
+        "phosanis_nightmare": "The_Nightmare",
+        "nightmare": "The_Nightmare",
+        "kril_tsutsaroth": "K%27ril_Tsutsaroth",
+        "kreearra": "Kree%27arra",
+        "calvarion": "Calvar%27ion",
+        "vetion": "Vet%27ion",
+        "tztok_jad": "TzTok-Jad",
+        "tzkal_zuk": "TzKal-Zuk",
+        "barrows_chests": "Chest_(Barrows)",
+        "chambers_of_xeric": "Chambers_of_Xeric_logo",
+        "chambers_of_xeric_challenge_mode": "Chambers_of_Xeric_logo",
+        "theatre_of_blood": "Theatre_of_Blood_logo",
+        "theatre_of_blood_hard_mode": "Theatre_of_Blood_logo",
+        "tombs_of_amascut": "Tombs_of_Amascut",
+        "tombs_of_amascut_expert": "Tombs_of_Amascut",
+        "the_gauntlet": "Crystalline_Hunllef",
+        "the_corrupted_gauntlet": "Corrupted_Hunllef"
+    }
+}

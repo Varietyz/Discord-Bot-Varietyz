@@ -1,3 +1,5 @@
+// src\config\constants.js
+require('dotenv').config();
 /**
  * @fileoverview Defines and exports all constant values used throughout the Varietyz Bot.
  * This module includes general bot configurations, channel IDs, WOM API settings, rate limiting configurations,
@@ -70,6 +72,8 @@ module.exports = {
     // General Bot Constants
     APP_NAME: 'Varietyz Bot',
     COMMAND_PREFIX: '!',
+    WOM_GROUP_ID: process.env.WOM_GROUP_ID,
+    WOM_VERIFICATION: process.env.WOM_VERIFICATION,
 
     /**
      * @namespace ChannelIDs
@@ -80,6 +84,12 @@ module.exports = {
     ROLE_CHANNEL_ID: '1227268636180353034',
     VOICE_CHANNEL_ID: '1225068669130903603',
     NAME_CHANGE_CHANNEL_ID: '1126619522871341106',
+
+    SOTW_CHANNEL_ID: '1280229698642903255',
+    BOTW_CHANNEL_ID: '1282072131835924534',
+    HALL_OF_FAME_CHANNEL_ID: '1282300691750195366',
+    EVENTS_NOTIFICATIONS_CHANNEL_ID: '1126623272956592298',
+    TOP_TEN_CHANNEL_ID: '1282383006291591188',
 
     /**
      * @namespace rankHierarchy

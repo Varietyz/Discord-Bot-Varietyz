@@ -98,6 +98,7 @@ module.exports = {
             });
 
             // @ts-ignore
+            // @ts-ignore
             collector.on('end', async (collected, reason) => {
                 if (reason === 'time') {
                     await interaction.editReply({

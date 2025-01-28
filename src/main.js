@@ -1,3 +1,4 @@
+/* eslint-disable no-process-exit */
 // @ts-nocheck
 /**
  * @fileoverview Main entry point for the Varietyz Bot Discord application.
@@ -25,7 +26,10 @@ require('dotenv').config();
 const logger = require('./modules/utils/logger');
 const fs = require('fs');
 const path = require('path');
-const tasks = require('./tasks'); // Import the task list
+const tasks = require('./tasks');
+const initializeCompetitionsTables = require('./migrations/initializeCompetitionTables');
+const populateSkillsBosses = require('./migrations/populateSkillsBosses');
+const CompetitionService = require('./modules/services/competitionService');
 
 /**
  * Create a new Discord client instance with necessary intents.
@@ -64,7 +68,7 @@ const loadModules = (type) => {
                 }
                 commands.push(module); // Push only commands to commands array
                 logger.info(`Command ${module.data.name} loaded.`);
-            } else if (type === 'processing') {
+            } else if (type === 'services') {
                 const funcName = path.basename(file, '.js');
 
                 functions.push(module); // Push functions to a separate array
@@ -75,6 +79,7 @@ const loadModules = (type) => {
 
     return loadedModules;
 };
+const competitionService = new CompetitionService(client);
 
 /**
  * Initializes the Discord bot by loading modules, registering slash commands, and logging in.
@@ -84,8 +89,11 @@ const loadModules = (type) => {
  */
 const initializeBot = async () => {
     try {
+        await initializeCompetitionsTables(); // Initialize competitions-related tables
+        await populateSkillsBosses(); // Populate skills_bosses table
+
         loadModules('commands'); // Load all slash commands
-        loadModules('processing'); // Load all functions
+        loadModules('services'); // Load all functions
 
         // eslint-disable-next-line node/no-missing-require
         const { REST } = require('@discordjs/rest');
@@ -106,6 +114,7 @@ const initializeBot = async () => {
         // Log the bot into Discord
         await client.login(process.env.DISCORD_TOKEN);
         logger.info('Bot logged in successfully.');
+        await competitionService.startNextCompetitionCycle();
     } catch (error) {
         logger.error('Bot initialization failed: ' + error.message);
     }
@@ -160,13 +169,17 @@ client.once('ready', async () => {
  * @param {Interaction} interaction - The interaction that was created.
  */
 client.on('interactionCreate', async (interaction) => {
-    // Step 1: Validate Interaction Type (slash command or autocomplete)
     if (interaction.isCommand()) {
         // Handle regular slash command execution
         await handleSlashCommand(interaction);
     } else if (interaction.isAutocomplete()) {
         // Handle autocomplete specifically
         await handleAutocomplete(interaction);
+    } else if (interaction.isStringSelectMenu()) {
+        // Handle select menu interactions (voting)
+        if (interaction.customId === 'vote_dropdown') {
+            await competitionService.handleVote(interaction);
+        }
     }
 });
 
@@ -232,5 +245,14 @@ async function handleAutocomplete(interaction) {
     }
 }
 
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error(`Unhandled Rejection at: ${promise} | Reason: ${reason}`);
+});
+
+process.on('uncaughtException', (error) => {
+    logger.error(`Uncaught Exception: ${error.message}`);
+    logger.error(error.stack);
+    process.exit(1); // Exit the process to avoid unknown states
+});
 // Run bot initialization
 initializeBot();

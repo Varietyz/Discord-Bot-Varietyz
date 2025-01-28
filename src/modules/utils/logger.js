@@ -82,7 +82,7 @@ const createLogDirectories = () => {
  * logger.error('This is an error message');
  */
 const logger = winston.createLogger({
-    level: 'info',
+    level: 'debug',
     format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
     transports: [
         /**
@@ -103,7 +103,7 @@ const logger = winston.createLogger({
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: '7d',
-            level: 'info',
+            level: 'debug',
             format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
             auditFile: path.join('logs', 'handler', 'audit.json'),
         }),

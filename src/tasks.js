@@ -18,15 +18,17 @@
  *
  * @module tasks
  */
-
-const { updateData } = require('./modules/processing/member_channel');
-const { processNameChanges } = require('./modules/processing/name_changes');
-const { fetchAndUpdatePlayerData } = require('./modules/processing/player_data_extractor');
-const { fetchAndProcessMember } = require('./modules/processing/auto_roles');
-const { updateVoiceChannel } = require('./modules/processing/active_members');
-require('dotenv').config();
+const CompetitionService = require('./modules/services/competitionService');
+const { updateData } = require('./modules/services/member_channel');
+const { processNameChanges } = require('./modules/services/name_changes');
+const { fetchAndUpdatePlayerData } = require('./modules/services/player_data_extractor');
+const { fetchAndProcessMember } = require('./modules/services/auto_roles');
+const { updateVoiceChannel } = require('./modules/services/active_members');
+const { tallyVotesAndAnnounceWinner } = require('./modules/utils/tallyVotes');
 const { getAll } = require('./modules/utils/dbUtils');
 const logger = require('./modules/utils/logger');
+const db = require('./modules/utils/dbUtils');
+require('dotenv').config();
 
 /**
  * Represents a scheduled task.
@@ -92,6 +94,31 @@ module.exports = [
         func: async (client) => await updateVoiceChannel(client),
         interval: 3600 * 3, // Runs every 10800 seconds (3 hours)
         runOnStart: true,
+        runAsTask: true,
+    },
+    {
+        name: 'rotationTask',
+        func: async (client) => {
+            const competitionService = new CompetitionService(client);
+            await competitionService.startNextCompetitionCycle();
+        },
+        interval: 604800, // Runs every 7 days (7 * 24 * 60 * 60)
+        runOnStart: false,
+        runAsTask: true,
+    },
+    {
+        name: 'tallyVotesAndAnnounceWinners',
+        func: async (client) => {
+            // Fetch competitions that have ended but not yet processed
+            const now = new Date().toISOString();
+            const endedCompetitions = await db.getAll('SELECT * FROM competitions WHERE ends_at <= ? AND id NOT IN (SELECT competition_id FROM winners)', [now]);
+
+            for (const competition of endedCompetitions) {
+                await tallyVotesAndAnnounceWinner(client, competition);
+            }
+        },
+        interval: 86400, // Runs every day (24 * 60 * 60)
+        runOnStart: false,
         runAsTask: true,
     },
 ];

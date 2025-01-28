@@ -30,29 +30,6 @@ These RSNs are commonly recognized within the RuneScape community, and special r
 <li>Used for fun or themed responses within the Varietyz Bot.</li>
 </ul>
 </dd>
-<dt><a href="#module_scripts/create_db">scripts/create_db</a></dt>
-<dd><p>Script to initialize and set up the SQLite database for the Varietyz Bot.
-This script creates necessary tables for storing registered RSNs, clan members, recent name changes,
-player data, as well as tracking player fetch times and active/inactive status.
-The script deletes any existing database file before creating a new one to ensure a clean setup.</p>
-<p>Core Features:</p>
-<ul>
-<li>Deletes any existing database file to ensure a fresh setup.</li>
-<li>Creates the &#39;registered_rsn&#39; table to store registered RuneScape names.</li>
-<li>Creates the &#39;active_inactive&#39; table to track player progression activity.</li>
-<li>Creates the &#39;player_fetch_times&#39; table to store last fetched data timestamps.</li>
-<li>Creates the &#39;clan_members&#39; table to store information about clan members.</li>
-<li>Creates the &#39;recent_name_changes&#39; table to track name changes for players.</li>
-<li>Creates the &#39;player_data&#39; table to store various player-specific data points.</li>
-<li>Logs the success or failure of each table creation process.</li>
-</ul>
-<p>External Dependencies:</p>
-<ul>
-<li><strong>SQLite3</strong>: For interacting with the SQLite database.</li>
-<li><strong>fs</strong>: For file system operations such as deleting existing databases and creating directories.</li>
-<li><strong>path</strong>: For constructing the path to the database file.</li>
-</ul>
-</dd>
 <dt><a href="#module_main">main</a></dt>
 <dd><p>Main entry point for the Varietyz Bot Discord application.
 Initializes the Discord client, dynamically loads commands and functions, registers slash commands,
@@ -210,7 +187,7 @@ It includes the following features:</p>
 <li><strong>Discord.js</strong>: For handling slash command interactions and sending feedback messages to users.</li>
 </ul>
 </dd>
-<dt><a href="#module_modules/processing/active_members">modules/processing/active_members</a></dt>
+<dt><a href="#module_modules/services/active_members">modules/services/active_members</a></dt>
 <dd><p>Utility functions for managing active and inactive clan members within the Varietyz Bot.
 This module interacts with the WOM API to fetch player data, calculate member activity,
 and update Discord voice channel names based on member activity, reflecting the count of active members.</p>
@@ -230,7 +207,7 @@ and update Discord voice channel names based on member activity, reflecting the 
 <li><strong>dbUtils</strong>: Handles interactions with the SQLite database for storing and querying player activity data.</li>
 </ul>
 </dd>
-<dt><a href="#module_modules/processing/auto_roles">modules/processing/auto_roles</a></dt>
+<dt><a href="#module_modules/services/auto_roles">modules/services/auto_roles</a></dt>
 <dd><p>Utility functions for managing automatic role assignments based on player data in the Varietyz Bot.
 This module fetches and processes data from multiple RuneScape Names (RSNs), merges the data for role assignments,
 and assigns or removes Discord roles based on hiscores and achievements such as boss kills, activities, and skills.</p>
@@ -250,7 +227,7 @@ and assigns or removes Discord roles based on hiscores and achievements such as 
 <li><strong>normalizeRsn</strong>: Provides utilities for normalizing RSNs to ensure consistency across data processing.</li>
 </ul>
 </dd>
-<dt><a href="#module_modules/processing/member_channel">modules/processing/member_channel</a></dt>
+<dt><a href="#module_modules/services/member_channel">modules/services/member_channel</a></dt>
 <dd><p>Utility functions for managing clan members and updating their data in the Varietyz Bot.
 This module interacts with the WOM API to fetch member information, manages role assignments in Discord based on ranks,
 and updates the associated Discord channels with the latest clan member data.</p>
@@ -270,7 +247,7 @@ and updates the associated Discord channels with the latest clan member data.</p
 <li><strong>rankUtils</strong>: Provides utilities for formatting and retrieving rank information.</li>
 </ul>
 </dd>
-<dt><a href="#module_modules/processing/name_changes">modules/processing/name_changes</a></dt>
+<dt><a href="#module_modules/services/name_changes">modules/services/name_changes</a></dt>
 <dd><p>Utility functions for processing player name changes in the Varietyz Bot.
 This module interacts with the Wise Old Man (WOM) API to fetch recent name changes,
 updates the database with the new RSNs, and handles conflict resolution between users.
@@ -290,7 +267,7 @@ It also manages sending notifications to Discord channels for both successful up
 <li><strong>dbUtils</strong>: Manages database operations for name change records.</li>
 </ul>
 </dd>
-<dt><a href="#module_modules/processing/player_data_extractor">modules/processing/player_data_extractor</a></dt>
+<dt><a href="#module_modules/services/player_data_extractor">modules/services/player_data_extractor</a></dt>
 <dd><p>Utility functions for extracting and managing player data in the Varietyz Bot.
 This module facilitates fetching, formatting, saving, and maintaining player data using the Wise Old Man API
 and SQLite database. It handles the extraction, transformation, and storage of player data,
@@ -468,6 +445,29 @@ Ensures RSNs meet specific format criteria for consistent database storage and l
 <li>None.</li>
 </ul>
 </dd>
+<dt><a href="#module_scripts/create_db">scripts/create_db</a></dt>
+<dd><p>Script to initialize and set up the SQLite database for the Varietyz Bot.
+This script creates necessary tables for storing registered RSNs, clan members, recent name changes,
+player data, as well as tracking player fetch times and active/inactive status.
+The script deletes any existing database file before creating a new one to ensure a clean setup.</p>
+<p>Core Features:</p>
+<ul>
+<li>Deletes any existing database file to ensure a fresh setup.</li>
+<li>Creates the &#39;registered_rsn&#39; table to store registered RuneScape names.</li>
+<li>Creates the &#39;active_inactive&#39; table to track player progression activity.</li>
+<li>Creates the &#39;player_fetch_times&#39; table to store last fetched data timestamps.</li>
+<li>Creates the &#39;clan_members&#39; table to store information about clan members.</li>
+<li>Creates the &#39;recent_name_changes&#39; table to track name changes for players.</li>
+<li>Creates the &#39;player_data&#39; table to store various player-specific data points.</li>
+<li>Logs the success or failure of each table creation process.</li>
+</ul>
+<p>External Dependencies:</p>
+<ul>
+<li><strong>SQLite3</strong>: For interacting with the SQLite database.</li>
+<li><strong>fs</strong>: For file system operations such as deleting existing databases and creating directories.</li>
+<li><strong>path</strong>: For constructing the path to the database file.</li>
+</ul>
+</dd>
 <dt><a href="#module_tasks">tasks</a></dt>
 <dd><p>Defines and manages scheduled tasks for the Varietyz Bot.
 Each task is represented as an object that includes its name, function to execute,
@@ -497,24 +497,56 @@ player data synchronization.</p>
 <dd><p>A client for interacting with the Wise Old Man (WOM) API.
 Manages rate-limited requests, handles retries, and provides access to the WOM API endpoints.</p>
 </dd>
+<dt><a href="#CompetitionService">CompetitionService</a></dt>
+<dd><p>CompetitionService handles creation, management, and conclusion of competitions.</p>
+</dd>
+</dl>
+
+## Functions
+
+<dl>
+<dt><a href="#initializeCompetitionsTables">initializeCompetitionsTables()</a></dt>
+<dd><p>Initializes the competitions-related tables in the database.</p>
+</dd>
+<dt><a href="#determinePropType">determinePropType(prop)</a> ⇒ <code>string</code> | <code>null</code></dt>
+<dd><p>Determines the type of a MetricProp based on its properties.</p>
+</dd>
+<dt><a href="#populateSkillsBosses">populateSkillsBosses()</a></dt>
+<dd><p>Populates the skills_bosses table with data from MetricProps,
+excluding ActivityProperties and ComputedMetricProperties.</p>
+</dd>
+<dt><a href="#chunkArray">chunkArray(array, size)</a></dt>
+<dd></dd>
+<dt><a href="#getImagePath">getImagePath(metric)</a> ⇒ <code>Promise.&lt;string&gt;</code></dt>
+<dd><p>Fetches the file path for the given metric from the database.</p>
+</dd>
+<dt><a href="#createCompetitionEmbed">createCompetitionEmbed(type, metric, startsAt, endsAt)</a> ⇒ <code>Object</code></dt>
+<dd><p>Creates a competition embed with specified details.</p>
+</dd>
+<dt><a href="#buildLeaderboardDescription">buildLeaderboardDescription(participations, competitionType, guild)</a></dt>
+<dd></dd>
+<dt><a href="#createVotingDropdown">createVotingDropdown(options)</a> ⇒ <code>ActionRowBuilder</code></dt>
+<dd><p>Creates a voting dropdown menu with provided options.
+Expects &quot;options&quot; to include a &quot;voteCount&quot; property if you want to display it.</p>
+</dd>
+<dt><a href="#tallyVotesAndAnnounceWinner">tallyVotesAndAnnounceWinner(client, competition)</a></dt>
+<dd><p>Tally votes for a competition and announce the winner.</p>
+</dd>
+<dt><a href="#setupDatabase">setupDatabase()</a></dt>
+<dd><p>Initializes the database by creating necessary tables.</p>
+</dd>
+<dt><a href="#getAllFiles">getAllFiles(dir)</a> ⇒ <code>Array.&lt;string&gt;</code></dt>
+<dd><p>Recursively get all files from a directory and its subdirectories.</p>
+</dd>
+<dt><a href="#populateImageCache">populateImageCache()</a></dt>
+<dd><p>Populate the image cache table with all files in the resources directory.</p>
+</dd>
 </dl>
 
 <a name="module_config/constants"></a>
 
 ## config/constants
-Defines and exports all constant values used throughout the Varietyz Bot.
-This module includes general bot configurations, channel IDs, WOM API settings, rate limiting configurations,
-and role definitions with associated emojis and colors.
-
-Core Features:
-- Provides the bot's name and command prefix for general configuration.
-- Defines Discord channel IDs used by the bot for various functionalities.
-- Defines a rank hierarchy and maps role names to their respective hierarchy index.
-- Includes detailed role definitions with associated emojis and color codes for Discord roles.
-
-External Dependencies:
-- **Discord.js**: For handling interactions with Discord, including channel management and role definitions.
-- **Luxon**: For date and time manipulations (used in rate limiting and activity tracking).
+Defines and exports all constant values used throughout the Varietyz Bot.This module includes general bot configurations, channel IDs, WOM API settings, rate limiting configurations,and role definitions with associated emojis and colors.Core Features:- Provides the bot's name and command prefix for general configuration.- Defines Discord channel IDs used by the bot for various functionalities.- Defines a rank hierarchy and maps role names to their respective hierarchy index.- Includes detailed role definitions with associated emojis and color codes for Discord roles.External Dependencies:- **Discord.js**: For handling interactions with Discord, including channel management and role definitions.- **Luxon**: For date and time manipulations (used in rate limiting and activity tracking).
 
 
 * [config/constants](#module_config/constants)
@@ -553,8 +585,7 @@ Definitions for various roles within the Discord server, including associated em
 <a name="module_config/constants..roleRange"></a>
 
 ### config/constants~roleRange : <code>Array.&lt;string&gt;</code>
-Represents the hierarchy of roles based on their rank names.
-Lower index indicates a lower rank.
+Represents the hierarchy of roles based on their rank names.Lower index indicates a lower rank.
 
 **Kind**: inner constant of [<code>config/constants</code>](#module_config/constants)  
 <a name="module_config/constants..rankHierarchy"></a>
@@ -587,125 +618,6 @@ Core Features:
 - Provides responses for well-known RSNs such as **Zezima**, **Woox**, and **Durial321**.
 - Supports various colored responses to match the legendary status of each RSN.
 - Used for fun or themed responses within the Varietyz Bot.
-
-<a name="module_scripts/create_db"></a>
-
-## scripts/create\_db
-Script to initialize and set up the SQLite database for the Varietyz Bot.
-This script creates necessary tables for storing registered RSNs, clan members, recent name changes,
-player data, as well as tracking player fetch times and active/inactive status.
-The script deletes any existing database file before creating a new one to ensure a clean setup.
-
-Core Features:
-- Deletes any existing database file to ensure a fresh setup.
-- Creates the 'registered_rsn' table to store registered RuneScape names.
-- Creates the 'active_inactive' table to track player progression activity.
-- Creates the 'player_fetch_times' table to store last fetched data timestamps.
-- Creates the 'clan_members' table to store information about clan members.
-- Creates the 'recent_name_changes' table to track name changes for players.
-- Creates the 'player_data' table to store various player-specific data points.
-- Logs the success or failure of each table creation process.
-
-External Dependencies:
-- **SQLite3**: For interacting with the SQLite database.
-- **fs**: For file system operations such as deleting existing databases and creating directories.
-- **path**: For constructing the path to the database file.
-
-
-* [scripts/create_db](#module_scripts/create_db)
-    * [~dbPath](#module_scripts/create_db..dbPath) : <code>string</code>
-    * [~initializeDatabase()](#module_scripts/create_db..initializeDatabase)
-    * [~createRegisteredRsnTable(db)](#module_scripts/create_db..createRegisteredRsnTable)
-    * [~createActiveInactiveTable(db)](#module_scripts/create_db..createActiveInactiveTable)
-    * [~createFetchTimeTable(db)](#module_scripts/create_db..createFetchTimeTable)
-    * [~createClanMembersTable(db)](#module_scripts/create_db..createClanMembersTable)
-    * [~createRecentNameChangesTable(db)](#module_scripts/create_db..createRecentNameChangesTable)
-    * [~createPlayerDataTable(db)](#module_scripts/create_db..createPlayerDataTable)
-
-<a name="module_scripts/create_db..dbPath"></a>
-
-### scripts/create_db~dbPath : <code>string</code>
-Path to the SQLite database file.
-
-**Kind**: inner constant of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
-<a name="module_scripts/create_db..initializeDatabase"></a>
-
-### scripts/create_db~initializeDatabase()
-Initializes the SQLite database by deleting any existing database file,
-creating the necessary directories, and establishing a new database connection.
-
-**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
-<a name="module_scripts/create_db..createRegisteredRsnTable"></a>
-
-### scripts/create_db~createRegisteredRsnTable(db)
-Creates the 'registered_rsn' table in the SQLite database.
-This table stores the RuneScape names registered by users.
-
-**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| db | <code>sqlite3.Database</code> | The SQLite database instance. |
-
-<a name="module_scripts/create_db..createActiveInactiveTable"></a>
-
-### scripts/create_db~createActiveInactiveTable(db)
-Creates the 'active_inactive' table in the SQLite database.
-This table stores information about members last active progression state.
-
-**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| db | <code>sqlite3.Database</code> | The SQLite database instance. |
-
-<a name="module_scripts/create_db..createFetchTimeTable"></a>
-
-### scripts/create_db~createFetchTimeTable(db)
-Creates the 'player_fetch_times' table in the SQLite database.
-This table stores information about members last update state.
-
-**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| db | <code>sqlite3.Database</code> | The SQLite database instance. |
-
-<a name="module_scripts/create_db..createClanMembersTable"></a>
-
-### scripts/create_db~createClanMembersTable(db)
-Creates the 'clan_members' table in the SQLite database.
-This table stores information about clan members.
-
-**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| db | <code>sqlite3.Database</code> | The SQLite database instance. |
-
-<a name="module_scripts/create_db..createRecentNameChangesTable"></a>
-
-### scripts/create_db~createRecentNameChangesTable(db)
-Creates the 'recent_name_changes' table in the SQLite database.
-This table records recent name changes of players.
-
-**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| db | <code>sqlite3.Database</code> | The SQLite database instance. |
-
-<a name="module_scripts/create_db..createPlayerDataTable"></a>
-
-### scripts/create_db~createPlayerDataTable(db)
-Creates the 'player_data' table in the SQLite database.
-This table stores various data points related to players.
-
-**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| db | <code>sqlite3.Database</code> | The SQLite database instance. |
 
 <a name="module_main"></a>
 
@@ -1108,9 +1020,9 @@ if (commandName === 'rsn') {
 await commands.rsn.execute(interaction);
 }
 ```
-<a name="module_modules/processing/active_members"></a>
+<a name="module_modules/services/active_members"></a>
 
-## modules/processing/active\_members
+## modules/services/active\_members
 Utility functions for managing active and inactive clan members within the Varietyz Bot.
 This module interacts with the WOM API to fetch player data, calculate member activity,
 and update Discord voice channel names based on member activity, reflecting the count of active members.
@@ -1129,24 +1041,24 @@ External Dependencies:
 - **dbUtils**: Handles interactions with the SQLite database for storing and querying player activity data.
 
 
-* [modules/processing/active_members](#module_modules/processing/active_members)
-    * [~playerProgress](#module_modules/processing/active_members..playerProgress) : <code>Object.&lt;string, DateTime&gt;</code>
-    * [~updateActivityData([maxRetries], [baseDelay])](#module_modules/processing/active_members..updateActivityData) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~updateVoiceChannel(client)](#module_modules/processing/active_members..updateVoiceChannel) ⇒ <code>Promise.&lt;void&gt;</code>
+* [modules/services/active_members](#module_modules/services/active_members)
+    * [~playerProgress](#module_modules/services/active_members..playerProgress) : <code>Object.&lt;string, DateTime&gt;</code>
+    * [~updateActivityData([maxRetries], [baseDelay])](#module_modules/services/active_members..updateActivityData) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~updateVoiceChannel(client)](#module_modules/services/active_members..updateVoiceChannel) ⇒ <code>Promise.&lt;void&gt;</code>
 
-<a name="module_modules/processing/active_members..playerProgress"></a>
+<a name="module_modules/services/active_members..playerProgress"></a>
 
-### modules/processing/active_members~playerProgress : <code>Object.&lt;string, DateTime&gt;</code>
+### modules/services/active_members~playerProgress : <code>Object.&lt;string, DateTime&gt;</code>
 Object to store player progress data.
 Keys are player names (RSNs), and values are Luxon DateTime objects representing the last progression date.
 
-**Kind**: inner constant of [<code>modules/processing/active\_members</code>](#module_modules/processing/active_members)  
-<a name="module_modules/processing/active_members..updateActivityData"></a>
+**Kind**: inner constant of [<code>modules/services/active\_members</code>](#module_modules/services/active_members)  
+<a name="module_modules/services/active_members..updateActivityData"></a>
 
-### modules/processing/active_members~updateActivityData([maxRetries], [baseDelay]) ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/active_members~updateActivityData([maxRetries], [baseDelay]) ⇒ <code>Promise.&lt;void&gt;</code>
 Fetches player data from the WOM API and updates the 'active_inactive' database table.
 
-**Kind**: inner method of [<code>modules/processing/active\_members</code>](#module_modules/processing/active_members)  
+**Kind**: inner method of [<code>modules/services/active\_members</code>](#module_modules/services/active_members)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - Resolves when data is successfully fetched and processed.  
 **Throws**:
 
@@ -1162,13 +1074,13 @@ Fetches player data from the WOM API and updates the 'active_inactive' database 
 ```js
 await updateActivityData(5, 10000);
 ```
-<a name="module_modules/processing/active_members..updateVoiceChannel"></a>
+<a name="module_modules/services/active_members..updateVoiceChannel"></a>
 
-### modules/processing/active_members~updateVoiceChannel(client) ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/active_members~updateVoiceChannel(client) ⇒ <code>Promise.&lt;void&gt;</code>
 Updates the Discord voice channel name to reflect the current number of active clan members.
 It fetches and processes player data, calculates the active member count, and updates the channel name accordingly.
 
-**Kind**: inner method of [<code>modules/processing/active\_members</code>](#module_modules/processing/active_members)  
+**Kind**: inner method of [<code>modules/services/active\_members</code>](#module_modules/services/active_members)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the voice channel name has been updated.  
 
 | Param | Type | Description |
@@ -1179,9 +1091,9 @@ It fetches and processes player data, calculates the active member count, and up
 ```js
 await updateVoiceChannel(client);
 ```
-<a name="module_modules/processing/auto_roles"></a>
+<a name="module_modules/services/auto_roles"></a>
 
-## modules/processing/auto\_roles
+## modules/services/auto\_roles
 Utility functions for managing automatic role assignments based on player data in the Varietyz Bot.
 This module fetches and processes data from multiple RuneScape Names (RSNs), merges the data for role assignments,
 and assigns or removes Discord roles based on hiscores and achievements such as boss kills, activities, and skills.
@@ -1200,32 +1112,32 @@ External Dependencies:
 - **normalizeRsn**: Provides utilities for normalizing RSNs to ensure consistency across data processing.
 
 
-* [modules/processing/auto_roles](#module_modules/processing/auto_roles)
-    * [module.exports](#exp_module_modules/processing/auto_roles--module.exports) ⏏
-        * [~mapBossToRole(bossName)](#module_modules/processing/auto_roles--module.exports..mapBossToRole) ⇒ <code>string</code>
-        * [~mapActivityToRole(activityName)](#module_modules/processing/auto_roles--module.exports..mapActivityToRole) ⇒ <code>string</code>
-        * [~getUserRSNs(userId)](#module_modules/processing/auto_roles--module.exports..getUserRSNs) ⇒ <code>Promise.&lt;Array.&lt;string&gt;&gt;</code>
-        * [~getPlayerDataForRSN(rsn)](#module_modules/processing/auto_roles--module.exports..getPlayerDataForRSN) ⇒ <code>Promise.&lt;Object&gt;</code>
-        * [~mergeRsnData(rsns)](#module_modules/processing/auto_roles--module.exports..mergeRsnData) ⇒ <code>Promise.&lt;Object&gt;</code>
-        * [~fetchAndProcessMember(guild, userId)](#module_modules/processing/auto_roles--module.exports..fetchAndProcessMember) ⇒ <code>Promise.&lt;void&gt;</code>
-        * [~handleHiscoresData(guild, member, rsns, hiscoresData)](#module_modules/processing/auto_roles--module.exports..handleHiscoresData) ⇒ <code>Promise.&lt;void&gt;</code>
-        * [~createAchievementRoles(guild, member, hiscoresData, channelUpdate)](#module_modules/processing/auto_roles--module.exports..createAchievementRoles) ⇒ <code>Promise.&lt;void&gt;</code>
-        * [~maybeAssignBossRole(guild, member, bossName, kills, playerName, channelUpdate)](#module_modules/processing/auto_roles--module.exports..maybeAssignBossRole) ⇒ <code>Promise.&lt;void&gt;</code>
-        * [~maybeAssignActivityRole(guild, member, activityName, score, playerName, channelUpdate)](#module_modules/processing/auto_roles--module.exports..maybeAssignActivityRole) ⇒ <code>Promise.&lt;void&gt;</code>
-        * [~createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)](#module_modules/processing/auto_roles--module.exports..createUpdateOsrsRoles) ⇒ <code>Promise.&lt;void&gt;</code>
+* [modules/services/auto_roles](#module_modules/services/auto_roles)
+    * [module.exports](#exp_module_modules/services/auto_roles--module.exports) ⏏
+        * [~mapBossToRole(bossName)](#module_modules/services/auto_roles--module.exports..mapBossToRole) ⇒ <code>string</code>
+        * [~mapActivityToRole(activityName)](#module_modules/services/auto_roles--module.exports..mapActivityToRole) ⇒ <code>string</code>
+        * [~getUserRSNs(userId)](#module_modules/services/auto_roles--module.exports..getUserRSNs) ⇒ <code>Promise.&lt;Array.&lt;string&gt;&gt;</code>
+        * [~getPlayerDataForRSN(rsn)](#module_modules/services/auto_roles--module.exports..getPlayerDataForRSN) ⇒ <code>Promise.&lt;Object&gt;</code>
+        * [~mergeRsnData(rsns)](#module_modules/services/auto_roles--module.exports..mergeRsnData) ⇒ <code>Promise.&lt;Object&gt;</code>
+        * [~fetchAndProcessMember(guild, userId)](#module_modules/services/auto_roles--module.exports..fetchAndProcessMember) ⇒ <code>Promise.&lt;void&gt;</code>
+        * [~handleHiscoresData(guild, member, rsns, hiscoresData)](#module_modules/services/auto_roles--module.exports..handleHiscoresData) ⇒ <code>Promise.&lt;void&gt;</code>
+        * [~createAchievementRoles(guild, member, hiscoresData, channelUpdate)](#module_modules/services/auto_roles--module.exports..createAchievementRoles) ⇒ <code>Promise.&lt;void&gt;</code>
+        * [~maybeAssignBossRole(guild, member, bossName, kills, playerName, channelUpdate)](#module_modules/services/auto_roles--module.exports..maybeAssignBossRole) ⇒ <code>Promise.&lt;void&gt;</code>
+        * [~maybeAssignActivityRole(guild, member, activityName, score, playerName, channelUpdate)](#module_modules/services/auto_roles--module.exports..maybeAssignActivityRole) ⇒ <code>Promise.&lt;void&gt;</code>
+        * [~createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)](#module_modules/services/auto_roles--module.exports..createUpdateOsrsRoles) ⇒ <code>Promise.&lt;void&gt;</code>
 
-<a name="exp_module_modules/processing/auto_roles--module.exports"></a>
+<a name="exp_module_modules/services/auto_roles--module.exports"></a>
 
 ### module.exports ⏏
 Exports the main function responsible for fetching and processing member data.
 
 **Kind**: Exported member  
-<a name="module_modules/processing/auto_roles--module.exports..mapBossToRole"></a>
+<a name="module_modules/services/auto_roles--module.exports..mapBossToRole"></a>
 
 #### module.exports~mapBossToRole(bossName) ⇒ <code>string</code>
 Maps a boss name to its corresponding Discord role name.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>string</code> - - The corresponding Discord role name.  
 
 | Param | Type | Description |
@@ -1236,12 +1148,12 @@ Maps a boss name to its corresponding Discord role name.
 ```js
 const roleName = mapBossToRole('K\'ril Tsutsaroth'); // 'K\'ril Tsutsaroth'
 ```
-<a name="module_modules/processing/auto_roles--module.exports..mapActivityToRole"></a>
+<a name="module_modules/services/auto_roles--module.exports..mapActivityToRole"></a>
 
 #### module.exports~mapActivityToRole(activityName) ⇒ <code>string</code>
 Maps an activity name to its corresponding Discord role name.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>string</code> - - The corresponding Discord role name.  
 
 | Param | Type | Description |
@@ -1252,12 +1164,12 @@ Maps an activity name to its corresponding Discord role name.
 ```js
 const roleName = mapActivityToRole('Clue Scrolls All'); // 'Clue Solver'
 ```
-<a name="module_modules/processing/auto_roles--module.exports..getUserRSNs"></a>
+<a name="module_modules/services/auto_roles--module.exports..getUserRSNs"></a>
 
 #### module.exports~getUserRSNs(userId) ⇒ <code>Promise.&lt;Array.&lt;string&gt;&gt;</code>
 Retrieves all RuneScape Names (RSNs) associated with a given Discord user from the database.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>Promise.&lt;Array.&lt;string&gt;&gt;</code> - - A promise that resolves to an array of RSNs.  
 
 | Param | Type | Description |
@@ -1269,13 +1181,13 @@ Retrieves all RuneScape Names (RSNs) associated with a given Discord user from t
 const rsns = await getUserRSNs('123456789012345678');
 logger.info(rsns); // ['PlayerOne', 'PlayerTwo']
 ```
-<a name="module_modules/processing/auto_roles--module.exports..getPlayerDataForRSN"></a>
+<a name="module_modules/services/auto_roles--module.exports..getPlayerDataForRSN"></a>
 
 #### module.exports~getPlayerDataForRSN(rsn) ⇒ <code>Promise.&lt;Object&gt;</code>
 Fetches player data for a specific RSN from the database.
 It standardizes the RSN before performing the query to ensure accurate retrieval.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>Promise.&lt;Object&gt;</code> - - A promise that resolves to an object mapping data keys to values.  
 
 | Param | Type | Description |
@@ -1287,14 +1199,14 @@ It standardizes the RSN before performing the query to ensure accurate retrieval
 const playerData = await getPlayerDataForRSN('PlayerOne');
 logger.info(playerData);
 ```
-<a name="module_modules/processing/auto_roles--module.exports..mergeRsnData"></a>
+<a name="module_modules/services/auto_roles--module.exports..mergeRsnData"></a>
 
 #### module.exports~mergeRsnData(rsns) ⇒ <code>Promise.&lt;Object&gt;</code>
 Merges hiscores data from multiple RSNs, ensuring that the highest values are retained
 for skills, boss kills, and activities. This allows treating multiple RSNs as a single
 combined account for role assignments.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>Promise.&lt;Object&gt;</code> - - A promise that resolves to the merged hiscores data.  
 
 | Param | Type | Description |
@@ -1306,14 +1218,14 @@ combined account for role assignments.
 const mergedData = await mergeRsnData(['PlayerOne', 'PlayerTwo']);
 logger.info(mergedData);
 ```
-<a name="module_modules/processing/auto_roles--module.exports..fetchAndProcessMember"></a>
+<a name="module_modules/services/auto_roles--module.exports..fetchAndProcessMember"></a>
 
 #### module.exports~fetchAndProcessMember(guild, userId) ⇒ <code>Promise.&lt;void&gt;</code>
 Fetches and processes data for a Discord guild member based on their associated RSNs.
 It retrieves RSNs from the database, fetches and merges hiscores data, and assigns
 appropriate Discord roles based on the merged data.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the member has been processed.  
 
 | Param | Type | Description |
@@ -1325,13 +1237,13 @@ appropriate Discord roles based on the merged data.
 ```js
 await fetchAndProcessMember(guild, '123456789012345678');
 ```
-<a name="module_modules/processing/auto_roles--module.exports..handleHiscoresData"></a>
+<a name="module_modules/services/auto_roles--module.exports..handleHiscoresData"></a>
 
 #### module.exports~handleHiscoresData(guild, member, rsns, hiscoresData) ⇒ <code>Promise.&lt;void&gt;</code>
 Handles the assignment of roles based on hiscores data. It delegates to specific
 functions for OSRS roles and achievement-based roles.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when all role assignments are complete.  
 
 | Param | Type | Description |
@@ -1345,12 +1257,12 @@ functions for OSRS roles and achievement-based roles.
 ```js
 await handleHiscoresData(guild, member, ['PlayerOne'], mergedData);
 ```
-<a name="module_modules/processing/auto_roles--module.exports..createAchievementRoles"></a>
+<a name="module_modules/services/auto_roles--module.exports..createAchievementRoles"></a>
 
 #### module.exports~createAchievementRoles(guild, member, hiscoresData, channelUpdate) ⇒ <code>Promise.&lt;void&gt;</code>
 Assigns or updates boss kill and activity-based roles based on players' achievements.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when all achievement roles are processed.  
 
 | Param | Type | Description |
@@ -1364,13 +1276,13 @@ Assigns or updates boss kill and activity-based roles based on players' achievem
 ```js
 await createAchievementRoles(guild, member, mergedData, channelUpdate);
 ```
-<a name="module_modules/processing/auto_roles--module.exports..maybeAssignBossRole"></a>
+<a name="module_modules/services/auto_roles--module.exports..maybeAssignBossRole"></a>
 
 #### module.exports~maybeAssignBossRole(guild, member, bossName, kills, playerName, channelUpdate) ⇒ <code>Promise.&lt;void&gt;</code>
 Assigns a boss-related Discord role to a member if they meet the kill threshold.
 Sends an embed message to the designated channel upon successful role assignment.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the role assignment is complete.  
 
 | Param | Type | Description |
@@ -1386,13 +1298,13 @@ Sends an embed message to the designated channel upon successful role assignment
 ```js
 await maybeAssignBossRole(guild, member, 'K\'ril Tsutsaroth', 150, 'PlayerOne', channelUpdate);
 ```
-<a name="module_modules/processing/auto_roles--module.exports..maybeAssignActivityRole"></a>
+<a name="module_modules/services/auto_roles--module.exports..maybeAssignActivityRole"></a>
 
 #### module.exports~maybeAssignActivityRole(guild, member, activityName, score, playerName, channelUpdate) ⇒ <code>Promise.&lt;void&gt;</code>
 Assigns an activity-related Discord role to a member if they meet the score threshold.
 Sends an embed message to the designated channel upon successful role assignment.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the role assignment is complete.  
 
 | Param | Type | Description |
@@ -1408,13 +1320,13 @@ Sends an embed message to the designated channel upon successful role assignment
 ```js
 await maybeAssignActivityRole(guild, member, 'Clue Scrolls All', 200, 'PlayerOne', channelUpdate);
 ```
-<a name="module_modules/processing/auto_roles--module.exports..createUpdateOsrsRoles"></a>
+<a name="module_modules/services/auto_roles--module.exports..createUpdateOsrsRoles"></a>
 
 #### module.exports~createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate) ⇒ <code>Promise.&lt;void&gt;</code>
 Assigns or updates OSRS skill-based roles (e.g., 99 Attack, 2277 Total) based on hiscores data.
 It also removes any 99 skill roles that the member no longer qualifies for.
 
-**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/processing/auto_roles--module.exports)  
+**Kind**: inner method of [<code>module.exports</code>](#exp_module_modules/services/auto_roles--module.exports)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when all OSRS roles are processed.  
 
 | Param | Type | Description |
@@ -1428,9 +1340,9 @@ It also removes any 99 skill roles that the member no longer qualifies for.
 ```js
 await createUpdateOsrsRoles(guild, member, mergedData, channelUpdate);
 ```
-<a name="module_modules/processing/member_channel"></a>
+<a name="module_modules/services/member_channel"></a>
 
-## modules/processing/member\_channel
+## modules/services/member\_channel
 Utility functions for managing clan members and updating their data in the Varietyz Bot.
 This module interacts with the WOM API to fetch member information, manages role assignments in Discord based on ranks,
 and updates the associated Discord channels with the latest clan member data.
@@ -1449,19 +1361,19 @@ External Dependencies:
 - **rankUtils**: Provides utilities for formatting and retrieving rank information.
 
 
-* [modules/processing/member_channel](#module_modules/processing/member_channel)
-    * [~handleMemberRoles(member, roleName, guild, player, rank)](#module_modules/processing/member_channel..handleMemberRoles) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~updateData(client)](#module_modules/processing/member_channel..updateData) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~updateDatabase(newData)](#module_modules/processing/member_channel..updateDatabase) ⇒ <code>Promise.&lt;boolean&gt;</code>
-    * [~updateClanChannel(client, cachedData)](#module_modules/processing/member_channel..updateClanChannel) ⇒ <code>Promise.&lt;void&gt;</code>
+* [modules/services/member_channel](#module_modules/services/member_channel)
+    * [~handleMemberRoles(member, roleName, guild, player, rank)](#module_modules/services/member_channel..handleMemberRoles) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~updateData(client)](#module_modules/services/member_channel..updateData) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~updateDatabase(newData)](#module_modules/services/member_channel..updateDatabase) ⇒ <code>Promise.&lt;boolean&gt;</code>
+    * [~updateClanChannel(client, cachedData)](#module_modules/services/member_channel..updateClanChannel) ⇒ <code>Promise.&lt;void&gt;</code>
 
-<a name="module_modules/processing/member_channel..handleMemberRoles"></a>
+<a name="module_modules/services/member_channel..handleMemberRoles"></a>
 
-### modules/processing/member_channel~handleMemberRoles(member, roleName, guild, player, rank) ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/member_channel~handleMemberRoles(member, roleName, guild, player, rank) ⇒ <code>Promise.&lt;void&gt;</code>
 Handles the assignment and removal of roles for a Discord guild member based on their rank.
 It removes lower-ranked roles and assigns the appropriate role if not already present.
 
-**Kind**: inner method of [<code>modules/processing/member\_channel</code>](#module_modules/processing/member_channel)  
+**Kind**: inner method of [<code>modules/services/member\_channel</code>](#module_modules/services/member_channel)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when role updates are complete.  
 
 | Param | Type | Description |
@@ -1476,13 +1388,13 @@ It removes lower-ranked roles and assigns the appropriate role if not already pr
 ```js
 await handleMemberRoles(member, 'Iron', guild, 'PlayerOne', 'Iron');
 ```
-<a name="module_modules/processing/member_channel..updateData"></a>
+<a name="module_modules/services/member_channel..updateData"></a>
 
-### modules/processing/member_channel~updateData(client) ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/member_channel~updateData(client) ⇒ <code>Promise.&lt;void&gt;</code>
 Updates clan member data by fetching the latest information from the WOM API,
 updating roles, and refreshing the clan channel in Discord.
 
-**Kind**: inner method of [<code>modules/processing/member\_channel</code>](#module_modules/processing/member_channel)  
+**Kind**: inner method of [<code>modules/services/member\_channel</code>](#module_modules/services/member_channel)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the update process is complete.  
 
 | Param | Type | Description |
@@ -1493,13 +1405,13 @@ updating roles, and refreshing the clan channel in Discord.
 ```js
 await updateData(client);
 ```
-<a name="module_modules/processing/member_channel..updateDatabase"></a>
+<a name="module_modules/services/member_channel..updateDatabase"></a>
 
-### modules/processing/member_channel~updateDatabase(newData) ⇒ <code>Promise.&lt;boolean&gt;</code>
+### modules/services/member_channel~updateDatabase(newData) ⇒ <code>Promise.&lt;boolean&gt;</code>
 Updates the 'clan_members' table in the database with new clan member data.
 It compares the current data with the new data and updates the database if changes are detected.
 
-**Kind**: inner method of [<code>modules/processing/member\_channel</code>](#module_modules/processing/member_channel)  
+**Kind**: inner method of [<code>modules/services/member\_channel</code>](#module_modules/services/member_channel)  
 **Returns**: <code>Promise.&lt;boolean&gt;</code> - - Returns `true` if changes were detected and the database was updated, `false` otherwise.  
 
 | Param | Type | Description |
@@ -1513,13 +1425,13 @@ if (changes) {
 logger.info('Database updated.');
 }
 ```
-<a name="module_modules/processing/member_channel..updateClanChannel"></a>
+<a name="module_modules/services/member_channel..updateClanChannel"></a>
 
-### modules/processing/member_channel~updateClanChannel(client, cachedData) ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/member_channel~updateClanChannel(client, cachedData) ⇒ <code>Promise.&lt;void&gt;</code>
 Updates the Discord clan channel with the latest clan member data.
 It purges existing messages and sends updated information as embeds.
 
-**Kind**: inner method of [<code>modules/processing/member\_channel</code>](#module_modules/processing/member_channel)  
+**Kind**: inner method of [<code>modules/services/member\_channel</code>](#module_modules/services/member_channel)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the clan channel is updated.  
 
 | Param | Type | Description |
@@ -1531,9 +1443,9 @@ It purges existing messages and sends updated information as embeds.
 ```js
 await updateClanChannel(client, cachedData);
 ```
-<a name="module_modules/processing/name_changes"></a>
+<a name="module_modules/services/name_changes"></a>
 
-## modules/processing/name\_changes
+## modules/services/name\_changes
 Utility functions for processing player name changes in the Varietyz Bot.
 This module interacts with the Wise Old Man (WOM) API to fetch recent name changes,
 updates the database with the new RSNs, and handles conflict resolution between users.
@@ -1552,32 +1464,32 @@ External Dependencies:
 - **dbUtils**: Manages database operations for name change records.
 
 
-* [modules/processing/name_changes](#module_modules/processing/name_changes)
-    * [~fetchNameChanges()](#module_modules/processing/name_changes..fetchNameChanges) ⇒ <code>Promise.&lt;Array.&lt;NameChange&gt;&gt;</code>
-    * [~saveToDatabase(nameChanges)](#module_modules/processing/name_changes..saveToDatabase) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~updateRegisteredRSN(oldName, newName, channelManager)](#module_modules/processing/name_changes..updateRegisteredRSN) ⇒ <code>Promise.&lt;boolean&gt;</code>
-    * [~processNameChanges(client)](#module_modules/processing/name_changes..processNameChanges) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~NameChange](#module_modules/processing/name_changes..NameChange) : <code>Object</code>
+* [modules/services/name_changes](#module_modules/services/name_changes)
+    * [~fetchNameChanges()](#module_modules/services/name_changes..fetchNameChanges) ⇒ <code>Promise.&lt;Array.&lt;NameChange&gt;&gt;</code>
+    * [~saveToDatabase(nameChanges)](#module_modules/services/name_changes..saveToDatabase) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~updateRegisteredRSN(oldName, newName, channelManager)](#module_modules/services/name_changes..updateRegisteredRSN) ⇒ <code>Promise.&lt;boolean&gt;</code>
+    * [~processNameChanges(client)](#module_modules/services/name_changes..processNameChanges) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~NameChange](#module_modules/services/name_changes..NameChange) : <code>Object</code>
 
-<a name="module_modules/processing/name_changes..fetchNameChanges"></a>
+<a name="module_modules/services/name_changes..fetchNameChanges"></a>
 
-### modules/processing/name_changes~fetchNameChanges() ⇒ <code>Promise.&lt;Array.&lt;NameChange&gt;&gt;</code>
+### modules/services/name_changes~fetchNameChanges() ⇒ <code>Promise.&lt;Array.&lt;NameChange&gt;&gt;</code>
 Fetches recent name changes from the WOM API for a specific group.
 
-**Kind**: inner method of [<code>modules/processing/name\_changes</code>](#module_modules/processing/name_changes)  
+**Kind**: inner method of [<code>modules/services/name\_changes</code>](#module_modules/services/name_changes)  
 **Returns**: <code>Promise.&lt;Array.&lt;NameChange&gt;&gt;</code> - - A promise that resolves to an array of name change records.  
 **Example**  
 ```js
 const nameChanges = await fetchNameChanges();
 logger.info(nameChanges);
 ```
-<a name="module_modules/processing/name_changes..saveToDatabase"></a>
+<a name="module_modules/services/name_changes..saveToDatabase"></a>
 
-### modules/processing/name_changes~saveToDatabase(nameChanges) ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/name_changes~saveToDatabase(nameChanges) ⇒ <code>Promise.&lt;void&gt;</code>
 Saves an array of name changes to the 'recent_name_changes' table in the database.
 Clears existing entries before inserting new ones to maintain the latest state.
 
-**Kind**: inner method of [<code>modules/processing/name\_changes</code>](#module_modules/processing/name_changes)  
+**Kind**: inner method of [<code>modules/services/name\_changes</code>](#module_modules/services/name_changes)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the operation is complete.  
 
 | Param | Type | Description |
@@ -1588,14 +1500,14 @@ Clears existing entries before inserting new ones to maintain the latest state.
 ```js
 await saveToDatabase(nameChanges);
 ```
-<a name="module_modules/processing/name_changes..updateRegisteredRSN"></a>
+<a name="module_modules/services/name_changes..updateRegisteredRSN"></a>
 
-### modules/processing/name_changes~updateRegisteredRSN(oldName, newName, channelManager) ⇒ <code>Promise.&lt;boolean&gt;</code>
+### modules/services/name_changes~updateRegisteredRSN(oldName, newName, channelManager) ⇒ <code>Promise.&lt;boolean&gt;</code>
 Updates the 'registered_rsn' table with new RSN mappings based on name changes.
 Handles conflicts where the new RSN might already exist for the same or different users.
 Sends Discord notifications for successful updates and conflict resolutions.
 
-**Kind**: inner method of [<code>modules/processing/name\_changes</code>](#module_modules/processing/name_changes)  
+**Kind**: inner method of [<code>modules/services/name\_changes</code>](#module_modules/services/name_changes)  
 **Returns**: <code>Promise.&lt;boolean&gt;</code> - - Resolves to `true` if the RSN was updated, `false` otherwise.  
 
 | Param | Type | Description |
@@ -1611,14 +1523,14 @@ if (updated) {
 logger.info('RSN updated successfully.');
 }
 ```
-<a name="module_modules/processing/name_changes..processNameChanges"></a>
+<a name="module_modules/services/name_changes..processNameChanges"></a>
 
-### modules/processing/name_changes~processNameChanges(client) ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/name_changes~processNameChanges(client) ⇒ <code>Promise.&lt;void&gt;</code>
 Processes name changes by fetching recent changes from the WOM API,
 saving them to the database, and updating the registered RSNs accordingly.
 Also handles dependencies and conflict resolutions based on the timestamp of changes.
 
-**Kind**: inner method of [<code>modules/processing/name\_changes</code>](#module_modules/processing/name_changes)  
+**Kind**: inner method of [<code>modules/services/name\_changes</code>](#module_modules/services/name_changes)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the name changes have been processed.  
 
 | Param | Type | Description |
@@ -1629,12 +1541,12 @@ Also handles dependencies and conflict resolutions based on the timestamp of cha
 ```js
 await processNameChanges(client);
 ```
-<a name="module_modules/processing/name_changes..NameChange"></a>
+<a name="module_modules/services/name_changes..NameChange"></a>
 
-### modules/processing/name_changes~NameChange : <code>Object</code>
+### modules/services/name_changes~NameChange : <code>Object</code>
 Represents a name change record.
 
-**Kind**: inner typedef of [<code>modules/processing/name\_changes</code>](#module_modules/processing/name_changes)  
+**Kind**: inner typedef of [<code>modules/services/name\_changes</code>](#module_modules/services/name_changes)  
 **Properties**
 
 | Name | Type | Description |
@@ -1643,9 +1555,9 @@ Represents a name change record.
 | newName | <code>string</code> | The new RSN after the change. |
 | resolvedAt | <code>number</code> | The timestamp when the name change was resolved. |
 
-<a name="module_modules/processing/player_data_extractor"></a>
+<a name="module_modules/services/player_data_extractor"></a>
 
-## modules/processing/player\_data\_extractor
+## modules/services/player\_data\_extractor
 Utility functions for extracting and managing player data in the Varietyz Bot.
 This module facilitates fetching, formatting, saving, and maintaining player data using the Wise Old Man API
 and SQLite database. It handles the extraction, transformation, and storage of player data,
@@ -1664,26 +1576,26 @@ External Dependencies:
 - **dbUtils**: To interact with the SQLite database for storing player data.
 
 
-* [modules/processing/player_data_extractor](#module_modules/processing/player_data_extractor)
-    * [~formatDataForSql(data)](#module_modules/processing/player_data_extractor..formatDataForSql) ⇒ <code>Object</code>
-        * [~flattenDict(d, [parentKey], [sep])](#module_modules/processing/player_data_extractor..formatDataForSql..flattenDict) ⇒ <code>Object</code>
-    * [~ensurePlayerDataTable()](#module_modules/processing/player_data_extractor..ensurePlayerDataTable) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~savePlayerDataToDb(playerName, rawData)](#module_modules/processing/player_data_extractor..savePlayerDataToDb) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~loadRegisteredRsnData()](#module_modules/processing/player_data_extractor..loadRegisteredRsnData) ⇒ <code>Promise.&lt;Object&gt;</code>
-    * [~fetchAndSaveRegisteredPlayerData()](#module_modules/processing/player_data_extractor..fetchAndSaveRegisteredPlayerData) ⇒ <code>Promise.&lt;{data: Array.&lt;Object&gt;, fetchFailed: boolean}&gt;</code>
-    * [~removeNonMatchingPlayers(currentClanUsers)](#module_modules/processing/player_data_extractor..removeNonMatchingPlayers) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~fetchAndUpdatePlayerData()](#module_modules/processing/player_data_extractor..fetchAndUpdatePlayerData) ⇒ <code>Promise.&lt;void&gt;</code>
+* [modules/services/player_data_extractor](#module_modules/services/player_data_extractor)
+    * [~formatDataForSql(data)](#module_modules/services/player_data_extractor..formatDataForSql) ⇒ <code>Object</code>
+        * [~flattenDict(d, [parentKey], [sep])](#module_modules/services/player_data_extractor..formatDataForSql..flattenDict) ⇒ <code>Object</code>
+    * [~ensurePlayerDataTable()](#module_modules/services/player_data_extractor..ensurePlayerDataTable) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~savePlayerDataToDb(playerName, rawData)](#module_modules/services/player_data_extractor..savePlayerDataToDb) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~loadRegisteredRsnData()](#module_modules/services/player_data_extractor..loadRegisteredRsnData) ⇒ <code>Promise.&lt;Object&gt;</code>
+    * [~fetchAndSaveRegisteredPlayerData()](#module_modules/services/player_data_extractor..fetchAndSaveRegisteredPlayerData) ⇒ <code>Promise.&lt;{data: Array.&lt;Object&gt;, fetchFailed: boolean}&gt;</code>
+    * [~removeNonMatchingPlayers(currentClanUsers)](#module_modules/services/player_data_extractor..removeNonMatchingPlayers) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~fetchAndUpdatePlayerData()](#module_modules/services/player_data_extractor..fetchAndUpdatePlayerData) ⇒ <code>Promise.&lt;void&gt;</code>
 
-<a name="module_modules/processing/player_data_extractor..formatDataForSql"></a>
+<a name="module_modules/services/player_data_extractor..formatDataForSql"></a>
 
-### modules/processing/player_data_extractor~formatDataForSql(data) ⇒ <code>Object</code>
+### modules/services/player_data_extractor~formatDataForSql(data) ⇒ <code>Object</code>
 Flattens a nested object into a single-level object with concatenated keys.
 Filters out undesired fields and renames keys for database insertion.
 
 This function replicates the old 'formatDataForCsv' but returns an object
 suitable for database storage rather than CSV lines.
 
-**Kind**: inner method of [<code>modules/processing/player\_data\_extractor</code>](#module_modules/processing/player_data_extractor)  
+**Kind**: inner method of [<code>modules/services/player\_data\_extractor</code>](#module_modules/services/player_data_extractor)  
 **Returns**: <code>Object</code> - - The formatted and flattened data object.  
 
 | Param | Type | Description |
@@ -1707,12 +1619,12 @@ country: 'US'
 const formattedData = formatDataForSql(rawData);
 // formattedData = { 'Stats_Attack': 99, 'Stats_Strength': 99 }
 ```
-<a name="module_modules/processing/player_data_extractor..formatDataForSql..flattenDict"></a>
+<a name="module_modules/services/player_data_extractor..formatDataForSql..flattenDict"></a>
 
 #### formatDataForSql~flattenDict(d, [parentKey], [sep]) ⇒ <code>Object</code>
 Recursively flattens a nested object.
 
-**Kind**: inner method of [<code>formatDataForSql</code>](#module_modules/processing/player_data_extractor..formatDataForSql)  
+**Kind**: inner method of [<code>formatDataForSql</code>](#module_modules/services/player_data_extractor..formatDataForSql)  
 **Returns**: <code>Object</code> - - The flattened object.  
 
 | Param | Type | Default | Description |
@@ -1721,25 +1633,25 @@ Recursively flattens a nested object.
 | [parentKey] | <code>string</code> | <code>&quot;&#x27;&#x27;&quot;</code> | The base key to prepend to each key. |
 | [sep] | <code>string</code> | <code>&quot;&#x27;_&#x27;&quot;</code> | The separator between keys. |
 
-<a name="module_modules/processing/player_data_extractor..ensurePlayerDataTable"></a>
+<a name="module_modules/services/player_data_extractor..ensurePlayerDataTable"></a>
 
-### modules/processing/player_data_extractor~ensurePlayerDataTable() ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/player_data_extractor~ensurePlayerDataTable() ⇒ <code>Promise.&lt;void&gt;</code>
 Ensures the 'player_data' table exists in the SQLite database.
 If the table does not exist, it creates one with the specified schema.
 
-**Kind**: inner method of [<code>modules/processing/player\_data\_extractor</code>](#module_modules/processing/player_data_extractor)  
+**Kind**: inner method of [<code>modules/services/player\_data\_extractor</code>](#module_modules/services/player_data_extractor)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the table is ensured.  
 **Example**  
 ```js
 await ensurePlayerDataTable();
 ```
-<a name="module_modules/processing/player_data_extractor..savePlayerDataToDb"></a>
+<a name="module_modules/services/player_data_extractor..savePlayerDataToDb"></a>
 
-### modules/processing/player_data_extractor~savePlayerDataToDb(playerName, rawData) ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/player_data_extractor~savePlayerDataToDb(playerName, rawData) ⇒ <code>Promise.&lt;void&gt;</code>
 Saves formatted player data to the SQLite database.
 It overwrites existing entries for the player to ensure data integrity.
 
-**Kind**: inner method of [<code>modules/processing/player\_data\_extractor</code>](#module_modules/processing/player_data_extractor)  
+**Kind**: inner method of [<code>modules/services/player\_data\_extractor</code>](#module_modules/services/player_data_extractor)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the data is saved.  
 **Throws**:
 
@@ -1755,13 +1667,13 @@ It overwrites existing entries for the player to ensure data integrity.
 ```js
 await savePlayerDataToDb('PlayerOne', rawData);
 ```
-<a name="module_modules/processing/player_data_extractor..loadRegisteredRsnData"></a>
+<a name="module_modules/services/player_data_extractor..loadRegisteredRsnData"></a>
 
-### modules/processing/player_data_extractor~loadRegisteredRsnData() ⇒ <code>Promise.&lt;Object&gt;</code>
+### modules/services/player_data_extractor~loadRegisteredRsnData() ⇒ <code>Promise.&lt;Object&gt;</code>
 Loads all registered RSNs from the database.
 Returns a mapping of user IDs to their associated RSNs.
 
-**Kind**: inner method of [<code>modules/processing/player\_data\_extractor</code>](#module_modules/processing/player_data_extractor)  
+**Kind**: inner method of [<code>modules/services/player\_data\_extractor</code>](#module_modules/services/player_data_extractor)  
 **Returns**: <code>Promise.&lt;Object&gt;</code> - - A mapping of user IDs to arrays of RSNs.  
 **Throws**:
 
@@ -1772,21 +1684,21 @@ Returns a mapping of user IDs to their associated RSNs.
 const rsnData = await loadRegisteredRsnData();
 // rsnData = { 'user1': ['RSN1', 'RSN2'], 'user2': ['RSN3'] }
 ```
-<a name="module_modules/processing/player_data_extractor..fetchAndSaveRegisteredPlayerData"></a>
+<a name="module_modules/services/player_data_extractor..fetchAndSaveRegisteredPlayerData"></a>
 
-### modules/processing/player_data_extractor~fetchAndSaveRegisteredPlayerData() ⇒ <code>Promise.&lt;{data: Array.&lt;Object&gt;, fetchFailed: boolean}&gt;</code>
+### modules/services/player_data_extractor~fetchAndSaveRegisteredPlayerData() ⇒ <code>Promise.&lt;{data: Array.&lt;Object&gt;, fetchFailed: boolean}&gt;</code>
 Fetches and saves registered player data by retrieving data from the WOM API
 and storing it in the SQLite database. Decides which API endpoint to call
 based on the last fetched time.
 
-**Kind**: inner method of [<code>modules/processing/player\_data\_extractor</code>](#module_modules/processing/player_data_extractor)  
-<a name="module_modules/processing/player_data_extractor..removeNonMatchingPlayers"></a>
+**Kind**: inner method of [<code>modules/services/player\_data\_extractor</code>](#module_modules/services/player_data_extractor)  
+<a name="module_modules/services/player_data_extractor..removeNonMatchingPlayers"></a>
 
-### modules/processing/player_data_extractor~removeNonMatchingPlayers(currentClanUsers) ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/player_data_extractor~removeNonMatchingPlayers(currentClanUsers) ⇒ <code>Promise.&lt;void&gt;</code>
 Removes players from the 'player_data' table who are no longer part of the current clan.
 This ensures that the database remains clean and only contains relevant player data.
 
-**Kind**: inner method of [<code>modules/processing/player\_data\_extractor</code>](#module_modules/processing/player_data_extractor)  
+**Kind**: inner method of [<code>modules/services/player\_data\_extractor</code>](#module_modules/services/player_data_extractor)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when non-matching players are removed.  
 
 | Param | Type | Description |
@@ -1798,15 +1710,15 @@ This ensures that the database remains clean and only contains relevant player d
 const currentUsers = new Set(['player1', 'player2']);
 await removeNonMatchingPlayers(currentUsers);
 ```
-<a name="module_modules/processing/player_data_extractor..fetchAndUpdatePlayerData"></a>
+<a name="module_modules/services/player_data_extractor..fetchAndUpdatePlayerData"></a>
 
-### modules/processing/player_data_extractor~fetchAndUpdatePlayerData() ⇒ <code>Promise.&lt;void&gt;</code>
+### modules/services/player_data_extractor~fetchAndUpdatePlayerData() ⇒ <code>Promise.&lt;void&gt;</code>
 Orchestrates the entire player data update process:
 1. Fetches data from WOM for each registered RSN.
 2. Saves the fetched data to the database.
 3. Removes any leftover data that no longer corresponds to registered RSNs.
 
-**Kind**: inner method of [<code>modules/processing/player\_data\_extractor</code>](#module_modules/processing/player_data_extractor)  
+**Kind**: inner method of [<code>modules/services/player\_data\_extractor</code>](#module_modules/services/player_data_extractor)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - - Resolves when the update process is complete.  
 **Example**  
 ```js
@@ -1906,6 +1818,9 @@ External Dependencies:
     * [~runQuery(query, [params])](#module_utils/dbUtils..runQuery) ⇒ <code>Promise.&lt;sqlite3.RunResult&gt;</code>
     * [~getAll(query, [params])](#module_utils/dbUtils..getAll) ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code>
     * [~getOne(query, [params])](#module_utils/dbUtils..getOne) ⇒ <code>Promise.&lt;(Object\|null)&gt;</code>
+    * [~runTransaction(queries)](#module_utils/dbUtils..runTransaction) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~getConfigValue(key, defaultValue)](#module_utils/dbUtils..getConfigValue)
+    * [~setConfigValue(key, value)](#module_utils/dbUtils..setConfigValue)
 
 <a name="module_utils/dbUtils..dbPath"></a>
 
@@ -2005,6 +1920,42 @@ getOne('SELECT * FROM users WHERE id = ?', [1])
     logger.error(err);
 });
 ```
+<a name="module_utils/dbUtils..runTransaction"></a>
+
+### utils/dbUtils~runTransaction(queries) ⇒ <code>Promise.&lt;void&gt;</code>
+Executes a SQL transaction with multiple queries.
+
+**Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| queries | <code>Array.&lt;{query: string, params: Array}&gt;</code> | An array of queries with their parameters. |
+
+<a name="module_utils/dbUtils..getConfigValue"></a>
+
+### utils/dbUtils~getConfigValue(key, defaultValue)
+Fetch a config key from the database (or return a default if not found).
+
+**Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
+
+| Param | Type | Default |
+| --- | --- | --- |
+| key | <code>string</code> |  | 
+| defaultValue | <code>any</code> | <code></code> | 
+
+<a name="module_utils/dbUtils..setConfigValue"></a>
+
+### utils/dbUtils~setConfigValue(key, value)
+Set a config key's value in the database.
+If the key does not exist, insert it. Otherwise, update it.
+
+**Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
+
+| Param | Type |
+| --- | --- |
+| key | <code>string</code> | 
+| value | <code>any</code> | 
+
 <a name="module_utils/fetchPlayerData"></a>
 
 ## utils/fetchPlayerData
@@ -2067,6 +2018,7 @@ External Dependencies:
 * [utils/lastFetchedTime](#module_utils/lastFetchedTime)
     * [~ensurePlayerFetchTimesTable()](#module_utils/lastFetchedTime..ensurePlayerFetchTimesTable) ⇒ <code>Promise.&lt;void&gt;</code>
     * [~getLastFetchedTime(rsn)](#module_utils/lastFetchedTime..getLastFetchedTime) ⇒ <code>Promise.&lt;(Date\|null)&gt;</code>
+    * [~resetPlayerFetchTimesTable()](#module_utils/lastFetchedTime..resetPlayerFetchTimesTable) ⇒ <code>Promise.&lt;void&gt;</code>
     * [~setLastFetchedTime(rsn)](#module_utils/lastFetchedTime..setLastFetchedTime) ⇒ <code>Promise.&lt;void&gt;</code>
 
 <a name="module_utils/lastFetchedTime..ensurePlayerFetchTimesTable"></a>
@@ -2105,6 +2057,19 @@ If the player does not exist in the table, it returns `null`.
 // Retrieve the last fetched timestamp for a player
 const lastFetched = await getLastFetchedTime('playerone');
 console.log(lastFetched); // Outputs: Date object or null
+```
+<a name="module_utils/lastFetchedTime..resetPlayerFetchTimesTable"></a>
+
+### utils/lastFetchedTime~resetPlayerFetchTimesTable() ⇒ <code>Promise.&lt;void&gt;</code>
+Ensures the `player_fetch_times` table gets removed from the SQLite database.
+
+If the table exists, this function deletes it.
+
+**Kind**: inner method of [<code>utils/lastFetchedTime</code>](#module_utils/lastFetchedTime)  
+**Returns**: <code>Promise.&lt;void&gt;</code> - Resolves when the table is ensured to exist.  
+**Example**  
+```js
+await resetPlayerFetchTimesTable();
 ```
 <a name="module_utils/lastFetchedTime..setLastFetchedTime"></a>
 
@@ -2499,25 +2464,129 @@ Validates the format of an RSN (RuneScape Name).
 const validation = validateRsn('PlayerOne');
 logger.info(validation); // { valid: true, message: '' }
 ```
+<a name="module_scripts/create_db"></a>
+
+## scripts/create\_db
+Script to initialize and set up the SQLite database for the Varietyz Bot.
+This script creates necessary tables for storing registered RSNs, clan members, recent name changes,
+player data, as well as tracking player fetch times and active/inactive status.
+The script deletes any existing database file before creating a new one to ensure a clean setup.
+
+Core Features:
+- Deletes any existing database file to ensure a fresh setup.
+- Creates the 'registered_rsn' table to store registered RuneScape names.
+- Creates the 'active_inactive' table to track player progression activity.
+- Creates the 'player_fetch_times' table to store last fetched data timestamps.
+- Creates the 'clan_members' table to store information about clan members.
+- Creates the 'recent_name_changes' table to track name changes for players.
+- Creates the 'player_data' table to store various player-specific data points.
+- Logs the success or failure of each table creation process.
+
+External Dependencies:
+- **SQLite3**: For interacting with the SQLite database.
+- **fs**: For file system operations such as deleting existing databases and creating directories.
+- **path**: For constructing the path to the database file.
+
+
+* [scripts/create_db](#module_scripts/create_db)
+    * [~dbPath](#module_scripts/create_db..dbPath) : <code>string</code>
+    * [~initializeDatabase()](#module_scripts/create_db..initializeDatabase)
+    * [~createRegisteredRsnTable(db)](#module_scripts/create_db..createRegisteredRsnTable)
+    * [~createActiveInactiveTable(db)](#module_scripts/create_db..createActiveInactiveTable)
+    * [~createFetchTimeTable(db)](#module_scripts/create_db..createFetchTimeTable)
+    * [~createClanMembersTable(db)](#module_scripts/create_db..createClanMembersTable)
+    * [~createRecentNameChangesTable(db)](#module_scripts/create_db..createRecentNameChangesTable)
+    * [~createPlayerDataTable(db)](#module_scripts/create_db..createPlayerDataTable)
+
+<a name="module_scripts/create_db..dbPath"></a>
+
+### scripts/create_db~dbPath : <code>string</code>
+Path to the SQLite database file.
+
+**Kind**: inner constant of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+<a name="module_scripts/create_db..initializeDatabase"></a>
+
+### scripts/create_db~initializeDatabase()
+Initializes the SQLite database by deleting any existing database file,
+creating the necessary directories, and establishing a new database connection.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+<a name="module_scripts/create_db..createRegisteredRsnTable"></a>
+
+### scripts/create_db~createRegisteredRsnTable(db)
+Creates the 'registered_rsn' table in the SQLite database.
+This table stores the RuneScape names registered by users.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createActiveInactiveTable"></a>
+
+### scripts/create_db~createActiveInactiveTable(db)
+Creates the 'active_inactive' table in the SQLite database.
+This table stores information about members last active progression state.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createFetchTimeTable"></a>
+
+### scripts/create_db~createFetchTimeTable(db)
+Creates the 'player_fetch_times' table in the SQLite database.
+This table stores information about members last update state.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createClanMembersTable"></a>
+
+### scripts/create_db~createClanMembersTable(db)
+Creates the 'clan_members' table in the SQLite database.
+This table stores information about clan members.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createRecentNameChangesTable"></a>
+
+### scripts/create_db~createRecentNameChangesTable(db)
+Creates the 'recent_name_changes' table in the SQLite database.
+This table records recent name changes of players.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createPlayerDataTable"></a>
+
+### scripts/create_db~createPlayerDataTable(db)
+Creates the 'player_data' table in the SQLite database.
+This table stores various data points related to players.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
 <a name="module_tasks"></a>
 
 ## tasks
-Defines and manages scheduled tasks for the Varietyz Bot.
-Each task is represented as an object that includes its name, function to execute,
-interval for execution, and flags for startup and scheduling behavior. Tasks are
-used to handle automated processes such as data updates, member processing, and
-player data synchronization.
-
-Key Features:
-- Registers and schedules tasks with customizable intervals and execution behavior.
-- Includes tasks for updating data, processing name changes, fetching player data, handling hiscores, and updating voice channels.
-- Integrates with external modules for processing and database operations.
-- Supports asynchronous execution and error logging for each task.
-
-External Dependencies:
-- dotenv: Loads environment variables for configuration.
-- Various processing modules (e.g., member_channel, name_changes, player_data_extractor).
-- Database utilities (`dbUtils`) and logging utilities (`logger`).
+Defines and manages scheduled tasks for the Varietyz Bot.Each task is represented as an object that includes its name, function to execute,interval for execution, and flags for startup and scheduling behavior. Tasks areused to handle automated processes such as data updates, member processing, andplayer data synchronization.Key Features:- Registers and schedules tasks with customizable intervals and execution behavior.- Includes tasks for updating data, processing name changes, fetching player data, handling hiscores, and updating voice channels.- Integrates with external modules for processing and database operations.- Supports asynchronous execution and error logging for each task.External Dependencies:- dotenv: Loads environment variables for configuration.- Various processing modules (e.g., member_channel, name_changes, player_data_extractor).- Database utilities (`dbUtils`) and logging utilities (`logger`).
 
 
 * [tasks](#module_tasks)
@@ -2527,8 +2596,7 @@ External Dependencies:
 <a name="exp_module_tasks--module.exports"></a>
 
 ### module.exports : <code>Array.&lt;Task&gt;</code> ⏏
-An array of scheduled tasks for the Varietyz Bot.
-Each task is an object adhering to the [Task](Task) typedef.
+An array of scheduled tasks for the Varietyz Bot.Each task is an object adhering to the [Task](Task) typedef.
 
 **Kind**: Exported member  
 <a name="module_tasks--module.exports..Task"></a>
@@ -2620,3 +2688,244 @@ Makes a request to the WOM API with rate limiting and retries.
 | methodName | <code>string</code> |  | The method name to call on the endpoint. |
 | [params] | <code>string</code> \| <code>Object</code> | <code>&quot;{}&quot;</code> | The parameters to pass to the API method. |
 
+<a name="CompetitionService"></a>
+
+## CompetitionService
+CompetitionService handles creation, management, and conclusion of competitions.
+
+**Kind**: global class  
+
+* [CompetitionService](#CompetitionService)
+    * [new CompetitionService(client)](#new_CompetitionService_new)
+    * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
+    * [.removeInvalidCompetitions()](#CompetitionService+removeInvalidCompetitions)
+    * [.createDefaultCompetitions()](#CompetitionService+createDefaultCompetitions)
+    * [.createCompetitionFromQueue(competition)](#CompetitionService+createCompetitionFromQueue)
+    * [.createCompetition(type, metric, startsAt, endsAt)](#CompetitionService+createCompetition)
+    * [.updateActiveCompetitionEmbed(competitionType, [forceRefresh])](#CompetitionService+updateActiveCompetitionEmbed)
+    * [.buildPollDropdown(compType)](#CompetitionService+buildPollDropdown)
+    * [.getRandomMetric(type)](#CompetitionService+getRandomMetric)
+    * [.handleVote(interaction)](#CompetitionService+handleVote)
+    * [.updateLeaderboard(competitionType)](#CompetitionService+updateLeaderboard)
+
+<a name="new_CompetitionService_new"></a>
+
+### new CompetitionService(client)
+
+| Param |
+| --- |
+| client | 
+
+<a name="CompetitionService+startNextCompetitionCycle"></a>
+
+### competitionService.startNextCompetitionCycle()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+removeInvalidCompetitions"></a>
+
+### competitionService.removeInvalidCompetitions()
+Removes any competitions from the DB that do not exist on WOM(i.e., WOM returns a 404 or otherwise invalid data).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createDefaultCompetitions"></a>
+
+### competitionService.createDefaultCompetitions()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createCompetitionFromQueue"></a>
+
+### competitionService.createCompetitionFromQueue(competition)
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| competition | 
+
+<a name="CompetitionService+createCompetition"></a>
+
+### competitionService.createCompetition(type, metric, startsAt, endsAt)
+Creates a new competition on WOM, inserts in DB, and posts an embed + dropdown poll
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+| metric | 
+| startsAt | 
+| endsAt | 
+
+<a name="CompetitionService+updateActiveCompetitionEmbed"></a>
+
+### competitionService.updateActiveCompetitionEmbed(competitionType, [forceRefresh])
+Attempts to ensure there's a single "Active Competition" embed in the channelthat matches the current competition's metric/times.If the existing embed is missing or outdated, it is replaced or edited.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| competitionType | <code>string</code> |  | 'SOTW' or 'BOTW' |
+| [forceRefresh] | <code>boolean</code> | <code>false</code> | If true, always edit or replace the embed even if it matches |
+
+<a name="CompetitionService+buildPollDropdown"></a>
+
+### competitionService.buildPollDropdown(compType)
+Builds a dropdown of all skill/boss options, plus their current vote counts (if any)for an active competition of the given type (SOTW/BOTW).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| compType | 
+
+<a name="CompetitionService+getRandomMetric"></a>
+
+### competitionService.getRandomMetric(type)
+Returns a random skill or boss name
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+
+<a name="CompetitionService+handleVote"></a>
+
+### competitionService.handleVote(interaction)
+The main vote handler for the dropdown menu
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| interaction | 
+
+<a name="CompetitionService+updateLeaderboard"></a>
+
+### competitionService.updateLeaderboard(competitionType)
+Update the WOM-based leaderboard
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| competitionType | 
+
+<a name="initializeCompetitionsTables"></a>
+
+## initializeCompetitionsTables()
+Initializes the competitions-related tables in the database.
+
+**Kind**: global function  
+<a name="determinePropType"></a>
+
+## determinePropType(prop) ⇒ <code>string</code> \| <code>null</code>
+Determines the type of a MetricProp based on its properties.
+
+**Kind**: global function  
+**Returns**: <code>string</code> \| <code>null</code> - - Returns 'Skill' or 'Boss' if identified, otherwise null.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| prop | <code>object</code> | The property object from MetricProps. |
+
+<a name="populateSkillsBosses"></a>
+
+## populateSkillsBosses()
+Populates the skills_bosses table with data from MetricProps,excluding ActivityProperties and ComputedMetricProperties.
+
+**Kind**: global function  
+<a name="chunkArray"></a>
+
+## chunkArray(array, size)
+**Kind**: global function  
+
+| Param | Default |
+| --- | --- |
+| array |  | 
+| size | <code>25</code> | 
+
+<a name="getImagePath"></a>
+
+## getImagePath(metric) ⇒ <code>Promise.&lt;string&gt;</code>
+Fetches the file path for the given metric from the database.
+
+**Kind**: global function  
+**Returns**: <code>Promise.&lt;string&gt;</code> - - The absolute file path.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| metric | <code>string</code> | Metric name (e.g., 'agility'). |
+
+<a name="createCompetitionEmbed"></a>
+
+## createCompetitionEmbed(type, metric, startsAt, endsAt) ⇒ <code>Object</code>
+Creates a competition embed with specified details.
+
+**Kind**: global function  
+**Returns**: <code>Object</code> - - The constructed embed and attachment.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| type | <code>string</code> | 'SOTW' or 'BOTW'. |
+| metric | <code>string</code> | Metric name. |
+| startsAt | <code>string</code> | ISO string for competition start time. |
+| endsAt | <code>string</code> | ISO string for competition end time. |
+
+<a name="buildLeaderboardDescription"></a>
+
+## buildLeaderboardDescription(participations, competitionType, guild)
+**Kind**: global function  
+
+| Param |
+| --- |
+| participations | 
+| competitionType | 
+| guild | 
+
+<a name="createVotingDropdown"></a>
+
+## createVotingDropdown(options) ⇒ <code>ActionRowBuilder</code>
+Creates a voting dropdown menu with provided options.Expects "options" to include a "voteCount" property if you want to display it.
+
+**Kind**: global function  
+**Returns**: <code>ActionRowBuilder</code> - - The action row containing the select menu.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| options | <code>Array.&lt;Object&gt;</code> | Array of option objects with shape { label, description, value, voteCount? }. |
+
+<a name="tallyVotesAndAnnounceWinner"></a>
+
+## tallyVotesAndAnnounceWinner(client, competition)
+Tally votes for a competition and announce the winner.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| client | <code>Client</code> | Discord client instance. |
+| competition | <code>Object</code> | Competition object. |
+
+<a name="setupDatabase"></a>
+
+## setupDatabase()
+Initializes the database by creating necessary tables.
+
+**Kind**: global function  
+<a name="getAllFiles"></a>
+
+## getAllFiles(dir) ⇒ <code>Array.&lt;string&gt;</code>
+Recursively get all files from a directory and its subdirectories.
+
+**Kind**: global function  
+**Returns**: <code>Array.&lt;string&gt;</code> - - Array of absolute file paths.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| dir | <code>string</code> | Directory to scan. |
+
+<a name="populateImageCache"></a>
+
+## populateImageCache()
+Populate the image cache table with all files in the resources directory.
+
+**Kind**: global function  

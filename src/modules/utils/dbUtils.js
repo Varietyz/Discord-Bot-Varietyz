@@ -1,3 +1,5 @@
+/* eslint-disable jsdoc/require-returns */
+/* eslint-disable no-undef */
 // @ts-nocheck
 /**
  * @fileoverview Utility functions for interacting with an SQLite database in the Varietyz Bot.
@@ -121,6 +123,25 @@ const getOne = (query, params = []) =>
     });
 
 /**
+ * Executes a SQL transaction with multiple queries.
+ * @param {Array<{query: string, params: Array}>} queries - An array of queries with their parameters.
+ * @returns {Promise<void>}
+ */
+const runTransaction = async (queries) => {
+    try {
+        await db.exec('BEGIN TRANSACTION');
+        for (const { query, params } of queries) {
+            await db.run(query, params);
+        }
+        await db.exec('COMMIT');
+    } catch (error) {
+        await dbInstance.exec('ROLLBACK');
+        logger.error(`Error running transaction: ${error.message}`);
+        throw error;
+    }
+};
+
+/**
  * Gracefully closes the SQLite database connection upon receiving a SIGINT signal.
  * Logs the closure status using the logger and exits the process.
  *
@@ -139,4 +160,43 @@ process.on('SIGINT', () => {
     });
 });
 
-module.exports = { runQuery, getAll, getOne };
+/**
+ * Fetch a config key from the database (or return a default if not found).
+ * @param {string} key
+ * @param {any} defaultValue
+ */
+async function getConfigValue(key, defaultValue = null) {
+    const row = await getOne(
+        `
+    SELECT value
+    FROM config
+    WHERE key = ?
+  `,
+        [key],
+    );
+
+    if (!row) return defaultValue;
+    return row.value; // It's stored as text, so parse if needed.
+}
+
+/**
+ * Set a config key's value in the database.
+ * If the key does not exist, insert it. Otherwise, update it.
+ * @param {string} key
+ * @param {any} value
+ */
+async function setConfigValue(key, value) {
+    // Convert to string if needed
+    const valStr = String(value);
+
+    // Using "INSERT OR REPLACE" to handle upsert:
+    await runQuery(
+        `
+    INSERT OR REPLACE INTO config (key, value)
+    VALUES (?, ?)
+  `,
+        [key, valStr],
+    );
+}
+
+module.exports = { runQuery, getAll, getOne, runTransaction, getConfigValue, setConfigValue };

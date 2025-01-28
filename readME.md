@@ -643,27 +643,27 @@ Defines the `/rsn_list` slash command for administrators. This command retrieves
 
 Defines the `/check_activity` slash command for administrators. This command allows admins to check the current activity status of clan members, view active and inactive members, apply filters, and generate activity reports.
 
-### modules/processing/active_members
+### modules/services/active_members
 
 Utility functions for managing active and inactive clan members within the Varietyz Bot. This module interacts with the WOM API to fetch player data, calculate member activity, and update Discord voice channel names based on member activity.
 
-### modules/processing/auto_roles
+### modules/services/auto_roles
 
 Utility functions for managing automatic role assignments in the Varietyz Bot. This module handles fetching and processing player data, merging data from multiple RSNs, and assigning or removing Discord roles based on players' hiscores and achievements.
 
-### modules/processing/logger
+### modules/services/logger
 
 Configures and exports a Winston logger instance with daily log rotation. The logger handles logging to both the console and log files organized by year and month. It also manages uncaught exceptions and unhandled promise rejections.
 
-### modules/processing/member_channel
+### modules/services/member_channel
 
 Utility functions for managing clan members within the Varietyz Bot. Handles role assignments, updates clan member data, interacts with the WOM API, and updates Discord channels with the latest member details.
 
-### modules/processing/name_changes
+### modules/services/name_changes
 
 Utility functions for handling player name changes within the Varietyz Bot. This module interacts with the WOM API to fetch name changes, updates the database accordingly, and manages associated Discord notifications.
 
-### modules/processing/player_data_extractor
+### modules/services/player_data_extractor
 
 Utility functions for extracting and managing player data. Handles fetching data from external APIs, formatting data for database storage, and ensuring data integrity within the SQLite database.
 

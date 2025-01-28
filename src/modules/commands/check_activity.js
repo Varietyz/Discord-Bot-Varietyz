@@ -19,17 +19,18 @@
  * @module modules/commands/check_activity
  */
 
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, PermissionsBitField, ButtonStyle } = require('discord.js');
 const { DateTime } = require('luxon');
 const logger = require('../utils/logger');
 const { calculateProgressCount, calculateInactivity } = require('../utils/calculateActivity');
 const { getAll } = require('../utils/dbUtils');
-const { updateActivityData } = require('../processing/active_members');
+const { updateActivityData } = require('../services/active_members');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('check_activity')
         .setDescription('View active and inactive players based on their recent progression.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
         .addStringOption((option) => option.setName('status').setDescription('Choose to view active or inactive players.').setRequired(true).addChoices({ name: 'Active', value: 'active' }, { name: 'Inactive', value: 'inactive' })),
 
     /**

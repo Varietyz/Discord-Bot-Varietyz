@@ -64,6 +64,23 @@ async function getLastFetchedTime(rsn) {
 }
 
 /**
+ * Ensures the `player_fetch_times` table gets removed from the SQLite database.
+ *
+ * If the table exists, this function deletes it.
+ *
+ * @async
+ * @function resetPlayerFetchTimesTable
+ * @returns {Promise<void>} Resolves when the table is ensured to exist.
+ * @example
+ * await resetPlayerFetchTimesTable();
+ */
+async function resetPlayerFetchTimesTable() {
+    await runQuery(`
+        DROP TABLE IF EXISTS player_fetch_times
+    `);
+}
+
+/**
  * Updates the last fetched timestamp for a given player to the current time.
  *
  * This function inserts or updates the `player_fetch_times` table with the current timestamp for the specified player.
@@ -93,4 +110,5 @@ module.exports = {
     setLastFetchedTime,
     getLastFetchedTime,
     ensurePlayerFetchTimesTable,
+    resetPlayerFetchTimesTable,
 };
