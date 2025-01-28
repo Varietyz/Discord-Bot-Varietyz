@@ -25,6 +25,12 @@
         "message": "Packaging docs and readme",
         "messageAfter": "Finished packing docs and generating JSDOC_README.md in root folder.",
         "autoShowOutputPanel": "always" // Automatically show the output panel
+      },
+      {
+        "cmd": "npm run generate:cache",
+        "message": "Cache Update",
+        "messageAfter": "Finished updating",
+        "autoShowOutputPanel": "always" // Automatically show the output panel
       }
     ]
   }

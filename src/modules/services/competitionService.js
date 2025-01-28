@@ -189,6 +189,7 @@ class CompetitionService {
      * @param startsAt
      * @param endsAt
      */
+    // Corrected createCompetition method
     async createCompetition(type, metric, startsAt, endsAt) {
         try {
             const title = type === 'SOTW' ? `${metric.replace(/_/g, ' ').toUpperCase()} SOTW` : `${metric.replace(/_/g, ' ').toUpperCase()} BOTW`;
@@ -213,19 +214,19 @@ class CompetitionService {
 
             await db.runQuery(
                 `
-        INSERT INTO competitions (id, title, metric, type, starts_at, ends_at, verification_code)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `,
+            INSERT INTO competitions (id, title, metric, type, starts_at, ends_at, verification_code)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            `,
                 [competitionId, title, metric, type, startsAt.toISOString(), endsAt.toISOString(), verificationCode],
             );
 
             // Update last_selected
             await db.runQuery(
                 `
-        UPDATE skills_bosses
-        SET last_selected_at = ?
-        WHERE name = ?
-      `,
+            UPDATE skills_bosses
+            SET last_selected_at = ?
+            WHERE name = ?
+            `,
                 [new Date().toISOString(), metric],
             );
 
@@ -237,16 +238,21 @@ class CompetitionService {
                 return;
             }
 
-            // build embed
-            const embed = await createCompetitionEmbed(this.client, type, metric, startsAt.toISOString(), endsAt.toISOString());
+            // Build embed
+            const { embeds, files } = await createCompetitionEmbed(this.client, type, metric, startsAt.toISOString(), endsAt.toISOString());
 
-            // fetch skill/boss from DB for initial dropdown
+            if (!embeds || embeds.length === 0) {
+                logger.error('Embed creation failed: No embeds were generated.');
+                return;
+            }
+
+            // Fetch skill/boss from DB for initial dropdown
             const optionsData = await db.getAll(
                 `
-        SELECT name 
-        FROM skills_bosses
-        WHERE type=?
-      `,
+            SELECT name 
+            FROM skills_bosses
+            WHERE type=?
+            `,
                 [type === 'SOTW' ? 'Skill' : 'Boss'],
             );
 
@@ -258,16 +264,16 @@ class CompetitionService {
             const limitedOptions = options.slice(0, 25);
             const dropdown = createVotingDropdown(limitedOptions);
 
-            const pollMsg = await channel.send({ embeds: [embed], components: [dropdown] });
+            const pollMsg = await channel.send({ embeds, files, components: [dropdown] });
             logger.info(`Poll msg posted: ID ${pollMsg.id}`);
 
-            // store in DB
+            // Store in DB
             await db.runQuery(
                 `
-        UPDATE competitions
-        SET message_id = ?
-        WHERE id = ?
-      `,
+            UPDATE competitions
+            SET message_id = ?
+            WHERE id = ?
+            `,
                 [pollMsg.id, competitionId],
             );
         } catch (err) {
@@ -289,14 +295,14 @@ class CompetitionService {
             // 1) Find any active competition in the DB
             const comp = await db.getOne(
                 `
-      SELECT *
-      FROM competitions
-      WHERE type = ?
-        AND starts_at <= ?
-        AND ends_at >= ?
-      ORDER BY ends_at ASC
-      LIMIT 1
-    `,
+            SELECT *
+            FROM competitions
+            WHERE type = ?
+              AND starts_at <= ?
+              AND ends_at >= ?
+            ORDER BY ends_at ASC
+            LIMIT 1
+            `,
                 [competitionType, new Date().toISOString(), new Date().toISOString()],
             );
 
@@ -325,8 +331,13 @@ class CompetitionService {
                 }
             }
 
-            // 3) Build the new embed
-            const newEmbed = await createCompetitionEmbed(this.client, comp.type, comp.metric, comp.starts_at, comp.ends_at);
+            // 3) Build the new embed and attachments
+            const { embeds, files } = await createCompetitionEmbed(this.client, comp.type, comp.metric, comp.starts_at, comp.ends_at);
+
+            if (!embeds || embeds.length === 0) {
+                logger.error('Embed creation failed: No embeds were generated.');
+                return;
+            }
 
             if (oldMsg) {
                 // We have an old message. Decide if it's outdated or forced
@@ -334,7 +345,7 @@ class CompetitionService {
                 let isOutdated = true;
 
                 if (oldEmbed && !forceRefresh) {
-                    const newDesc = newEmbed.data.description;
+                    const newDesc = embeds[0].data.description;
                     const oldDesc = oldEmbed.description;
                     if (oldDesc && newDesc && oldDesc.trim() === newDesc.trim()) {
                         // The embed text is identical, so not “outdated”
@@ -344,7 +355,7 @@ class CompetitionService {
 
                 if (isOutdated) {
                     logger.debug('Editing old competition message with a fresh embed...');
-                    await oldMsg.edit({ embeds: [newEmbed], components: [] });
+                    await oldMsg.edit({ embeds, files, components: [] });
                 } else {
                     logger.debug('Embed not outdated, skipping re-edit...');
                 }
@@ -353,17 +364,18 @@ class CompetitionService {
                 // => Also add the dropdown if you want them to keep voting from that embed
                 const dropdown = await this.buildPollDropdown(comp.type);
                 const posted = await channel.send({
-                    embeds: [newEmbed],
+                    embeds,
+                    files,
                     components: [dropdown], // Add the poll component!
                 });
 
                 // Store in DB
                 await db.runQuery(
                     `
-        UPDATE competitions
-        SET message_id = ?
-        WHERE id = ?
-      `,
+                UPDATE competitions
+                SET message_id = ?
+                WHERE id = ?
+                `,
                     [posted.id, comp.id],
                 );
 

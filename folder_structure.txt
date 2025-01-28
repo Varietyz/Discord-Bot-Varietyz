@@ -19,10 +19,7 @@
 │   │       └─ 📄 apiClient.js
 │   ├─ 📂 config
 │   │   ├─ 📄 constants.js
-│   │   ├─ 📄 easterEggs.js
-│   │   └─ 📂 scripts
-│   │       ├─ 📄 add_tables.js
-│   │       └─ 📄 create_db.js
+│   │   └─ 📄 easterEggs.js
 │   ├─ 📂 data
 │   │   └─ 📄 database.sqlite
 │   ├─ 📄 main.js
@@ -103,7 +100,6 @@
 │   │   │   ├─ 📄 Bulwark.png
 │   │   │   ├─ 📄 Burglar.png
 │   │   │   ├─ 📄 Burnt.png
-│   │   │   ├─ 📄 cache.json
 │   │   │   ├─ 📄 Cadet.png
 │   │   │   ├─ 📄 Captain.png
 │   │   │   ├─ 📄 Carry.png
@@ -426,6 +422,10 @@
 │   │       ├─ 📄 woodcutting.png
 │   │       ├─ 📄 zalcano.png
 │   │       └─ 📄 zulrah.png
+│   ├─ 📂 scripts
+│   │   ├─ 📄 add_tables.js
+│   │   ├─ 📄 create_db.js
+│   │   └─ 📄 populateImageCache.js
 │   └─ 📄 tasks.js
 ├─ 📄 src.rar
 ├─ 📄 template.hbs

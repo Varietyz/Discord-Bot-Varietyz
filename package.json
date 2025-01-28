@@ -10,8 +10,8 @@
         "precommit": "npm run lint-jsdoc && npm run update-readme",
         "lint": "eslint src/**/*.js",
         "lint:fix": "eslint src/**/*.js --fix",
-        "replace-ephemeral": "node .vscode/scripts/replaceEphemeral.js",
-        "generate:cache": "node src/scripts/generateCache.js",
+        "replace-ephemeral": "node .vscode/scripts/replaceEphemeral",
+        "generate:cache": "node src/scripts/populateImageCache.js",
         "path-lint": "eslint . --ignore-path .eslint/.eslintignore --config .eslint/.eslintrc.js"
     },
     "keywords": [],

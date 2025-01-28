@@ -517,10 +517,10 @@ excluding ActivityProperties and ComputedMetricProperties.</p>
 </dd>
 <dt><a href="#chunkArray">chunkArray(array, size)</a></dt>
 <dd></dd>
-<dt><a href="#getImagePath">getImagePath(metric)</a> ⇒ <code>Promise.&lt;string&gt;</code></dt>
-<dd><p>Fetches the file path for the given metric from the database.</p>
+<dt><a href="#getImagePath">getImagePath(fileName)</a> ⇒ <code>Promise.&lt;string&gt;</code></dt>
+<dd><p>Fetch the file path for a given file name from the database.</p>
 </dd>
-<dt><a href="#createCompetitionEmbed">createCompetitionEmbed(type, metric, startsAt, endsAt)</a> ⇒ <code>Object</code></dt>
+<dt><a href="#createCompetitionEmbed">createCompetitionEmbed(type, fileName, startsAt, endsAt)</a> ⇒ <code>Promise.&lt;Object&gt;</code></dt>
 <dd><p>Creates a competition embed with specified details.</p>
 </dd>
 <dt><a href="#buildLeaderboardDescription">buildLeaderboardDescription(participations, competitionType, guild)</a></dt>
@@ -535,11 +535,11 @@ Expects &quot;options&quot; to include a &quot;voteCount&quot; property if you w
 <dt><a href="#setupDatabase">setupDatabase()</a></dt>
 <dd><p>Initializes the database by creating necessary tables.</p>
 </dd>
-<dt><a href="#getAllFiles">getAllFiles(dir)</a> ⇒ <code>Array.&lt;string&gt;</code></dt>
+<dt><a href="#getAllFilesWithMetadata">getAllFilesWithMetadata(dir)</a> ⇒ <code>Array.&lt;{fileName: string, filePath: string}&gt;</code></dt>
 <dd><p>Recursively get all files from a directory and its subdirectories.</p>
 </dd>
 <dt><a href="#populateImageCache">populateImageCache()</a></dt>
-<dd><p>Populate the image cache table with all files in the resources directory.</p>
+<dd><p>Populate the image_cache table with all files in the resources directory.</p>
 </dd>
 </dl>
 
@@ -2845,28 +2845,28 @@ Populates the skills_bosses table with data from MetricProps,excluding Activity
 
 <a name="getImagePath"></a>
 
-## getImagePath(metric) ⇒ <code>Promise.&lt;string&gt;</code>
-Fetches the file path for the given metric from the database.
+## getImagePath(fileName) ⇒ <code>Promise.&lt;string&gt;</code>
+Fetch the file path for a given file name from the database.
 
 **Kind**: global function  
-**Returns**: <code>Promise.&lt;string&gt;</code> - - The absolute file path.  
+**Returns**: <code>Promise.&lt;string&gt;</code> - - The absolute file path of the image.  
 
 | Param | Type | Description |
 | --- | --- | --- |
-| metric | <code>string</code> | Metric name (e.g., 'agility'). |
+| fileName | <code>string</code> | The name of the file (e.g., 'agility', without extension). |
 
 <a name="createCompetitionEmbed"></a>
 
-## createCompetitionEmbed(type, metric, startsAt, endsAt) ⇒ <code>Object</code>
+## createCompetitionEmbed(type, fileName, startsAt, endsAt) ⇒ <code>Promise.&lt;Object&gt;</code>
 Creates a competition embed with specified details.
 
 **Kind**: global function  
-**Returns**: <code>Object</code> - - The constructed embed and attachment.  
+**Returns**: <code>Promise.&lt;Object&gt;</code> - - The constructed embed and attachment.  
 
 | Param | Type | Description |
 | --- | --- | --- |
 | type | <code>string</code> | 'SOTW' or 'BOTW'. |
-| metric | <code>string</code> | Metric name. |
+| fileName | <code>string</code> | Name of the file to use as an image. |
 | startsAt | <code>string</code> | ISO string for competition start time. |
 | endsAt | <code>string</code> | ISO string for competition end time. |
 
@@ -2911,13 +2911,13 @@ Tally votes for a competition and announce the winner.
 Initializes the database by creating necessary tables.
 
 **Kind**: global function  
-<a name="getAllFiles"></a>
+<a name="getAllFilesWithMetadata"></a>
 
-## getAllFiles(dir) ⇒ <code>Array.&lt;string&gt;</code>
+## getAllFilesWithMetadata(dir) ⇒ <code>Array.&lt;{fileName: string, filePath: string}&gt;</code>
 Recursively get all files from a directory and its subdirectories.
 
 **Kind**: global function  
-**Returns**: <code>Array.&lt;string&gt;</code> - - Array of absolute file paths.  
+**Returns**: <code>Array.&lt;{fileName: string, filePath: string}&gt;</code> - - Array of file metadata.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -2926,6 +2926,6 @@ Recursively get all files from a directory and its subdirectories.
 <a name="populateImageCache"></a>
 
 ## populateImageCache()
-Populate the image cache table with all files in the resources directory.
+Populate the image_cache table with all files in the resources directory.
 
 **Kind**: global function  

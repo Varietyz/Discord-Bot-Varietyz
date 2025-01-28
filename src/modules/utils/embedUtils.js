@@ -4,57 +4,104 @@
 // src/modules/utils/embedUtils.js
 
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
+const path = require('path');
 const logger = require('./logger');
-const { getOne } = require('./dbUtils');
-
+const db = require('./dbUtils');
 /**
- * Fetches the file path for the given metric from the database.
- * @param {string} metric - Metric name (e.g., 'agility').
- * @returns {Promise<string>} - The absolute file path.
+ * Normalizes a string for comparison (e.g., trims spaces, converts to lowercase, replaces special characters).
+ * @param {string} str - The string to normalize.
+ * @returns {string} - The normalized string.
  */
-async function getImagePath(metric) {
-    const row = await getOne('SELECT file_path FROM image_cache WHERE file_name = ?', [metric.toLowerCase()]);
-    if (!row) {
-        throw new Error(`Image for metric "${metric}" not found in the cache.`);
-    }
-    return row.file_path;
+function normalizeString(str) {
+    return str
+        .toLowerCase()
+        .trim()
+        .replace(/[\s_-]+/g, '_'); // Replace spaces, dashes, and underscores with a single underscore
 }
 
 /**
- * Creates a competition embed with specified details.
- * @param {string} type - 'SOTW' or 'BOTW'.
- * @param {string} metric - Metric name.
- * @param {string} startsAt - ISO string for competition start time.
- * @param {string} endsAt - ISO string for competition end time.
- * @returns {Object} - The constructed embed and attachment.
+ * Retrieves the file path for a given metric from the database with detailed logging.
+ * @param {string} metric - The metric name to look up.
+ * @returns {Promise<string>} - The file path associated with the metric.
+ * @throws {Error} - Throws an error if the metric is not found.
  */
-const createCompetitionEmbed = async (type, metric, startsAt, endsAt) => {
+async function getImagePath(metric) {
+    try {
+        // Normalize the input metric
+        const normalizedMetric = normalizeString(metric);
+        logger.debug(`Looking up file path for normalized metric: "${normalizedMetric}"`);
+
+        // Fetch all entries for debugging purposes
+        const allEntries = await db.getAll('SELECT file_name, file_path FROM image_cache');
+        logger.debug(`Current database entries:\n${JSON.stringify(allEntries, null, 2)}`);
+
+        // Query the database with enhanced normalization
+        const query = `
+            SELECT file_path 
+            FROM image_cache 
+            WHERE REPLACE(TRIM(LOWER(file_name)), '-', '_') = ?
+        `;
+        logger.debug(`Executing query: ${query}, with parameter: "${normalizedMetric}"`);
+        const result = await db.getOne(query, [normalizedMetric]);
+
+        if (!result) {
+            logger.warn(`No matching file_path found for metric: "${normalizedMetric}"`);
+            throw new Error(`No file path found for metric: "${metric}"`);
+        }
+
+        logger.debug(`Found file path: "${result.file_path}" for metric: "${normalizedMetric}"`);
+        return result.file_path;
+    } catch (err) {
+        logger.error(`Error retrieving file path for metric "${metric}": ${err.message}`);
+        throw err;
+    }
+}
+
+/**
+ * Creates a competition embed with attached images from the local `resources` folder.
+ * @param {Client} client - The Discord.js client.
+ * @param {string} type - Competition type: 'SOTW' or 'BOTW'.
+ * @param {string} metric - The metric name.
+ * @param {string} startsAt - ISO start date of the competition.
+ * @param {string} endsAt - ISO end date of the competition.
+ * @returns {Promise<{ embeds: EmbedBuilder[], files: AttachmentBuilder[] }>} - The embed and its attachments.
+ */
+const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt) => {
     const competitionTitle = type === 'SOTW' ? 'Skill of the Week' : 'Boss of the Week';
 
-    // Fetch the image path from the cache
-    const imagePath = await getImagePath(metric);
+    logger.debug(`Creating competition embed for metric: "${metric}"`);
+    logger.debug(`Competition type: "${type}", Starts: "${startsAt}", Ends: "${endsAt}"`);
 
-    // Create an attachment for the metric image
-    const thumbnailAttachment = new AttachmentBuilder(imagePath, { name: `${metric}.png` });
+    // Path to the resources folder
+    const resourcesFolder = path.resolve(__dirname, '../../resources');
 
-    // Display name for the metric
-    const displayMetric = metric
-        .split('_')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
+    // Determine the file path for the thumbnail image
+    const imagePath = path.join(resourcesFolder, 'skills_bosses', `${metric.toLowerCase()}.png`);
+    logger.debug(`Resolved local image path: "${imagePath}"`);
 
-    const competitionDesc = `**Activity:** \`${displayMetric}\`\n\n` + `**Starts:**\n\`${new Date(startsAt).toUTCString()}\`\n` + `**Ends:**\n\`${new Date(endsAt).toUTCString()}\``;
+    // Check if the file exists
+    let imageAttachment;
+    try {
+        imageAttachment = new AttachmentBuilder(imagePath, { name: `${metric}.png` });
+    } catch (err) {
+        logger.warn(`No image found for metric "${metric}". Using default.`);
+        imageAttachment = new AttachmentBuilder(
+            path.join(resourcesFolder, 'default.png'), // Fallback image
+            { name: 'default.png' },
+        );
+    }
 
     // Build the embed
     const embed = new EmbedBuilder()
         .setTitle(`**${competitionTitle}**`)
-        .setDescription(competitionDesc)
+        .setDescription(`**Activity:** \`${metric.toUpperCase()}\`\n\n` + `**Starts:**\n\`${new Date(startsAt).toUTCString()}\`\n` + `**Ends:**\n\`${new Date(endsAt).toUTCString()}\``)
         .setColor(type === 'SOTW' ? 0x3498db : 0xe74c3c)
-        .setThumbnail(`attachment://${metric}.png`)
+        .setThumbnail(`attachment://${metric}.png`) // Reference the attachment
         .setFooter({ text: 'Select your preferred option from the dropdown menu to cast your vote.' })
         .setTimestamp();
 
-    return { embed, thumbnailAttachment };
+    // Return the embed and attachment
+    return { embeds: [embed], files: [imageAttachment] };
 };
 
 /**
