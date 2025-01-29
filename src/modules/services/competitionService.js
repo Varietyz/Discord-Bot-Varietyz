@@ -257,8 +257,16 @@ class CompetitionService {
             );
 
             const options = optionsData.map((e) => ({
-                label: e.name.replace(/_/g, ' ').toUpperCase(),
-                description: `Vote for ${e.name.replace(/_/g, ' ')}`,
+                label: e.name
+                    .toLowerCase()
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' '),
+                description: `Vote for ${e.name
+                    .toLowerCase()
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')}`,
                 value: e.name,
             }));
             const limitedOptions = options.slice(0, 25);
@@ -473,12 +481,16 @@ class CompetitionService {
 
         // e.g. finalList is your chunk for BOTW or entire list for SOTW
         const options = finalList.map((e) => {
-            const label = e.name.replace(/_/g, ' ').toUpperCase();
+            const label = e.name
+                .toLowerCase()
+                .split('_')
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
             const count = voteMap.get(e.name) || 0;
 
             return {
                 label,
-                description: `Vote for ${label}`,
+                description: '',
                 value: e.name,
                 voteCount: count,
             };
@@ -583,7 +595,11 @@ class CompetitionService {
             );
 
             await interaction.reply({
-                content: `Your vote for **${selectedOption.replace('_', ' ').toUpperCase()}** has been recorded. Thank you!`,
+                content: `Your vote for **${selectedOption
+                    .toLowerCase()
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')}** has been recorded. Thank you!`,
                 flags: 64,
             });
         } catch (err) {

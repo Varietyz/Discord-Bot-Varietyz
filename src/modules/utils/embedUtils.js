@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /* eslint-disable jsdoc/require-returns */
 /* eslint-disable no-unused-vars */
 // @ts-nocheck
@@ -67,7 +68,7 @@ async function getImagePath(metric) {
  * @returns {Promise<{ embeds: EmbedBuilder[], files: AttachmentBuilder[] }>} - The embed and its attachments.
  */
 const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt) => {
-    const competitionTitle = type === 'SOTW' ? 'Skill of the Week' : 'Boss of the Week';
+    const competitionTitle = type === 'SOTW' ? '<:Total_Level:1127669463613976636> Skill of the Week' : '<:Slayer:1127658069984288919> Boss of the Week';
 
     logger.debug(`Creating competition embed for metric: "${metric}"`);
     logger.debug(`Competition type: "${type}", Starts: "${startsAt}", Ends: "${endsAt}"`);
@@ -92,13 +93,30 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt) =>
     }
 
     // Build the embed
+    // Function to convert metric to "Example Name" format
+    /**
+     *
+     * @param metric
+     */
+    function formatMetricName(metric) {
+        return metric
+            .toLowerCase() // Convert to lowercase
+            .split('_') // Split by underscores
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
+            .join(' '); // Join with spaces
+    }
+
+    // Apply formatting to the metric
+    const formattedMetric = formatMetricName(metric);
+
     const embed = new EmbedBuilder()
         .setTitle(`**${competitionTitle}**`)
-        .setDescription(`**Activity:** \`${metric.toUpperCase()}\`\n\n` + `**Starts:**\n\`${new Date(startsAt).toUTCString()}\`\n` + `**Ends:**\n\`${new Date(endsAt).toUTCString()}\``)
+        .setDescription(
+            `\`${formattedMetric}\`\n\n` + `**Starts:**\n\`${new Date(startsAt).toUTCString()}\`\n` + `**Ends:**\n\`${new Date(endsAt).toUTCString()}\`\n\n[Click here to navigate to the Wiki](https://oldschool.runescape.wiki/w/${metric})`,
+        )
         .setColor(type === 'SOTW' ? 0x3498db : 0xe74c3c)
         .setThumbnail(`attachment://${metric}.png`) // Reference the attachment
-        .setFooter({ text: 'Select your preferred option from the dropdown menu to cast your vote.' })
-        .setTimestamp();
+        .setFooter(type === 'SOTW' ? { text: 'Select a Skill from the dropdown menu to vote.' } : { text: 'Select a Boss/Raid from the dropdown menu to vote.' });
 
     // Return the embed and attachment
     return { embeds: [embed], files: [imageAttachment] };
@@ -143,15 +161,15 @@ const createVotingDropdown = (options) => {
 
     // Map each item into the Discord.js SelectMenuOption format
     const dropdownOptions = options.map((opt) => {
-        const votesText = opt.voteCount !== undefined ? ` (${opt.voteCount} votes)` : '';
+        const votesText = opt.voteCount !== undefined ? `Votes: ${opt.voteCount}` : '';
         return {
-            label: `${opt.label}${votesText}`, // e.g. "AGILITY (5 votes)"
-            description: opt.description, // e.g. "Vote for AGILITY"
+            label: opt.label, // e.g. "AGILITY (5 votes)"
+            description: `${opt.description}${votesText}`, // e.g. "Vote for AGILITY"
             value: opt.value, // e.g. "agility"
         };
     });
 
-    const selectMenu = new StringSelectMenuBuilder().setCustomId('vote_dropdown').setPlaceholder('Select an option to vote').addOptions(dropdownOptions);
+    const selectMenu = new StringSelectMenuBuilder().setCustomId('vote_dropdown').setPlaceholder('Select to vote').addOptions(dropdownOptions);
 
     const row = new ActionRowBuilder().addComponents(selectMenu);
 
