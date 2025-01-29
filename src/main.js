@@ -114,7 +114,7 @@ const initializeBot = async () => {
         // Log the bot into Discord
         await client.login(process.env.DISCORD_TOKEN);
         logger.info('Bot logged in successfully.');
-        await competitionService.startNextCompetitionCycle();
+        await competitionService.scheduleRotationsOnStartup();
     } catch (error) {
         logger.error('Bot initialization failed: ' + error.message);
     }

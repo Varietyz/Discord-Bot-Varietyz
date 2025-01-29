@@ -1,17 +1,15 @@
 // @ts-nocheck
 // src/modules/utils/tallyVotes.js
 
-const { EmbedBuilder } = require('discord.js');
 const db = require('./dbUtils');
 const logger = require('./logger');
-const constants = require('../../config/constants');
 
 /**
- * Tally votes for a competition and announce the winner.
+ * Tally votes for a competition and record the winner.
  * @param {Client} client - Discord client instance.
  * @param {Object} competition - Competition object.
  */
-const tallyVotesAndAnnounceWinner = async (client, competition) => {
+const tallyVotesAndRecordWinner = async (client, competition) => {
     try {
         // Fetch all votes for the competition
         const votes = await db.getAll('SELECT vote_choice, COUNT(*) as count FROM votes WHERE competition_id = ? GROUP BY vote_choice ORDER BY count DESC', [competition.id]);
@@ -78,22 +76,6 @@ const tallyVotesAndAnnounceWinner = async (client, competition) => {
             return;
         }
 
-        // Announce the winner in Hall of Fame
-        const hallOfFameChannel = client.channels.cache.get(constants.HALL_OF_FAME_CHANNEL_ID);
-        if (!hallOfFameChannel) {
-            logger.error(`Hall of Fame channel with ID ${constants.HALL_OF_FAME_CHANNEL_ID} not found.`);
-            return;
-        }
-
-        const embed = new EmbedBuilder()
-            .setTitle(`${competition.type} Winner`)
-            .setDescription(`Congratulations to **<@${user.discord_user_id}>** for winning this week's **${competition.type === 'SOTW' ? 'Skills of the Week' : 'Boss of the Week'}** with **${highestVote}** vote(s)! 🎉`)
-            .setColor(0x2ecc71) // Green color for success
-            .setThumbnail('https://example.com/WoMlogo.png') // Replace with actual WoM logo URL
-            .setTimestamp();
-
-        await hallOfFameChannel.send({ embeds: [embed] });
-
         // Begin a database transaction
         await db.runQuery('BEGIN TRANSACTION');
 
@@ -109,14 +91,14 @@ const tallyVotesAndAnnounceWinner = async (client, competition) => {
         } catch (dbError) {
             // Rollback the transaction in case of error
             await db.runQuery('ROLLBACK');
-            logger.error(`Error updating database after announcing winner: ${dbError.message}`);
+            logger.error(`Error updating database after determining winner: ${dbError.message}`);
             return;
         }
 
-        logger.info(`Announced winner ${user.username} for competition ID ${competition.id}.`);
+        logger.info(`Recorded winner ${user.username} for competition ID ${competition.id}.`);
     } catch (error) {
         logger.error(`Error tallying votes for competition ID ${competition.id}: ${error.message}`);
     }
 };
 
-module.exports = { tallyVotesAndAnnounceWinner };
+module.exports = { tallyVotesAndRecordWinner };

@@ -20,7 +20,8 @@ const initializeCompetitionsTables = async () => {
                 verification_code TEXT,
                 previous_metric TEXT,
                 last_selected_at DATETIME,
-                message_id TEXT
+                message_id TEXT,
+                leaderboard_message_id TEXT
             );
         `);
         logger.info('Ensured competitions table.');

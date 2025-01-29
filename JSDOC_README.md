@@ -500,6 +500,9 @@ Manages rate-limited requests, handles retries, and provides access to the WOM A
 <dt><a href="#CompetitionService">CompetitionService</a></dt>
 <dd><p>CompetitionService handles creation, management, and conclusion of competitions.</p>
 </dd>
+<dt><a href="#CompetitionService">CompetitionService</a></dt>
+<dd><p>CompetitionService handles creation, management, and conclusion of competitions.</p>
+</dd>
 </dl>
 
 ## Functions
@@ -517,11 +520,16 @@ excluding ActivityProperties and ComputedMetricProperties.</p>
 </dd>
 <dt><a href="#chunkArray">chunkArray(array, size)</a></dt>
 <dd></dd>
-<dt><a href="#getImagePath">getImagePath(fileName)</a> ⇒ <code>Promise.&lt;string&gt;</code></dt>
-<dd><p>Fetch the file path for a given file name from the database.</p>
+<dt><a href="#chunkArray">chunkArray(array, size)</a></dt>
+<dd></dd>
+<dt><a href="#normalizeString">normalizeString(str)</a> ⇒ <code>string</code></dt>
+<dd><p>Normalizes a string for comparison (e.g., trims spaces, converts to lowercase, replaces special characters).</p>
 </dd>
-<dt><a href="#createCompetitionEmbed">createCompetitionEmbed(type, fileName, startsAt, endsAt)</a> ⇒ <code>Promise.&lt;Object&gt;</code></dt>
-<dd><p>Creates a competition embed with specified details.</p>
+<dt><a href="#getImagePath">getImagePath(metric)</a> ⇒ <code>Promise.&lt;string&gt;</code></dt>
+<dd><p>Retrieves the file path for a given metric from the database with detailed logging.</p>
+</dd>
+<dt><a href="#createCompetitionEmbed">createCompetitionEmbed(client, type, metric, startsAt, endsAt)</a> ⇒ <code>Promise.&lt;{embeds: Array.&lt;EmbedBuilder&gt;, files: Array.&lt;AttachmentBuilder&gt;}&gt;</code></dt>
+<dd><p>Creates a competition embed with attached images from the local <code>resources</code> folder.</p>
 </dd>
 <dt><a href="#buildLeaderboardDescription">buildLeaderboardDescription(participations, competitionType, guild)</a></dt>
 <dd></dd>
@@ -529,11 +537,8 @@ excluding ActivityProperties and ComputedMetricProperties.</p>
 <dd><p>Creates a voting dropdown menu with provided options.
 Expects &quot;options&quot; to include a &quot;voteCount&quot; property if you want to display it.</p>
 </dd>
-<dt><a href="#tallyVotesAndAnnounceWinner">tallyVotesAndAnnounceWinner(client, competition)</a></dt>
-<dd><p>Tally votes for a competition and announce the winner.</p>
-</dd>
-<dt><a href="#setupDatabase">setupDatabase()</a></dt>
-<dd><p>Initializes the database by creating necessary tables.</p>
+<dt><a href="#tallyVotesAndRecordWinner">tallyVotesAndRecordWinner(client, competition)</a></dt>
+<dd><p>Tally votes for a competition and record the winner.</p>
 </dd>
 <dt><a href="#getAllFilesWithMetadata">getAllFilesWithMetadata(dir)</a> ⇒ <code>Array.&lt;{fileName: string, filePath: string}&gt;</code></dt>
 <dd><p>Recursively get all files from a directory and its subdirectories.</p>
@@ -2697,7 +2702,11 @@ CompetitionService handles creation, management, and conclusion of competitions.
 
 * [CompetitionService](#CompetitionService)
     * [new CompetitionService(client)](#new_CompetitionService_new)
+    * [new CompetitionService(client)](#new_CompetitionService_new)
     * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
+    * [.updateCompetitionData()](#CompetitionService+updateCompetitionData)
+    * [.scheduleRotation(endTime)](#CompetitionService+scheduleRotation)
+    * [.scheduleRotationsOnStartup()](#CompetitionService+scheduleRotationsOnStartup)
     * [.removeInvalidCompetitions()](#CompetitionService+removeInvalidCompetitions)
     * [.createDefaultCompetitions()](#CompetitionService+createDefaultCompetitions)
     * [.createCompetitionFromQueue(competition)](#CompetitionService+createCompetitionFromQueue)
@@ -2707,6 +2716,37 @@ CompetitionService handles creation, management, and conclusion of competitions.
     * [.getRandomMetric(type)](#CompetitionService+getRandomMetric)
     * [.handleVote(interaction)](#CompetitionService+handleVote)
     * [.updateLeaderboard(competitionType)](#CompetitionService+updateLeaderboard)
+    * [.getActiveCompetition(competitionType)](#CompetitionService+getActiveCompetition) ⇒ <code>Object</code> \| <code>null</code>
+    * [.getSortedParticipants(competitionId)](#CompetitionService+getSortedParticipants) ⇒ <code>Array</code>
+    * [.formatLeaderboardDescription(participants)](#CompetitionService+formatLeaderboardDescription) ⇒ <code>string</code>
+    * [.buildLeaderboardEmbed(competitionType, description)](#CompetitionService+buildLeaderboardEmbed) ⇒ <code>EmbedBuilder</code>
+    * [.sendOrUpdateEmbed(channel, competition, embed)](#CompetitionService+sendOrUpdateEmbed)
+    * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
+    * [.updateCompetitionData()](#CompetitionService+updateCompetitionData)
+    * [.scheduleRotation(endTime)](#CompetitionService+scheduleRotation)
+    * [.scheduleRotationsOnStartup()](#CompetitionService+scheduleRotationsOnStartup)
+    * [.removeInvalidCompetitions()](#CompetitionService+removeInvalidCompetitions)
+    * [.createDefaultCompetitions()](#CompetitionService+createDefaultCompetitions)
+    * [.createCompetitionFromQueue(competition)](#CompetitionService+createCompetitionFromQueue)
+    * [.createCompetition(type, metric, startsAt, endsAt)](#CompetitionService+createCompetition)
+    * [.updateActiveCompetitionEmbed(competitionType, [forceRefresh])](#CompetitionService+updateActiveCompetitionEmbed)
+    * [.buildPollDropdown(compType)](#CompetitionService+buildPollDropdown)
+    * [.getRandomMetric(type)](#CompetitionService+getRandomMetric)
+    * [.handleVote(interaction)](#CompetitionService+handleVote)
+    * [.updateLeaderboard(competitionType)](#CompetitionService+updateLeaderboard)
+    * [.getActiveCompetition(competitionType)](#CompetitionService+getActiveCompetition) ⇒ <code>Object</code> \| <code>null</code>
+    * [.getSortedParticipants(competitionId)](#CompetitionService+getSortedParticipants) ⇒ <code>Array</code>
+    * [.formatLeaderboardDescription(participants)](#CompetitionService+formatLeaderboardDescription) ⇒ <code>string</code>
+    * [.buildLeaderboardEmbed(competitionType, description)](#CompetitionService+buildLeaderboardEmbed) ⇒ <code>EmbedBuilder</code>
+    * [.sendOrUpdateEmbed(channel, competition, embed)](#CompetitionService+sendOrUpdateEmbed)
+
+<a name="new_CompetitionService_new"></a>
+
+### new CompetitionService(client)
+
+| Param |
+| --- |
+| client | 
 
 <a name="new_CompetitionService_new"></a>
 
@@ -2719,6 +2759,29 @@ CompetitionService handles creation, management, and conclusion of competitions.
 <a name="CompetitionService+startNextCompetitionCycle"></a>
 
 ### competitionService.startNextCompetitionCycle()
+Starts the next competition cycle and schedules the subsequent rotation.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+updateCompetitionData"></a>
+
+### competitionService.updateCompetitionData()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+scheduleRotation"></a>
+
+### competitionService.scheduleRotation(endTime)
+Schedules the rotation using node-schedule.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| endTime | <code>Date</code> | The time when the competition ends. |
+
+<a name="CompetitionService+scheduleRotationsOnStartup"></a>
+
+### competitionService.scheduleRotationsOnStartup()
+On bot startup, schedule rotations based on active competitions.
+
 **Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
 <a name="CompetitionService+removeInvalidCompetitions"></a>
 
@@ -2805,9 +2868,652 @@ Update the WOM-based leaderboard
 
 **Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
 
+| Param | Type | Description |
+| --- | --- | --- |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW' |
+
+<a name="CompetitionService+getActiveCompetition"></a>
+
+### competitionService.getActiveCompetition(competitionType) ⇒ <code>Object</code> \| <code>null</code>
+Fetch the active competition from the database
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+
+<a name="CompetitionService+getSortedParticipants"></a>
+
+### competitionService.getSortedParticipants(competitionId) ⇒ <code>Array</code>
+Fetch and sort participants based on progress gained
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionId | <code>string</code> | 
+
+<a name="CompetitionService+formatLeaderboardDescription"></a>
+
+### competitionService.formatLeaderboardDescription(participants) ⇒ <code>string</code>
+Format the leaderboard description
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| participants | <code>Array</code> | 
+
+<a name="CompetitionService+buildLeaderboardEmbed"></a>
+
+### competitionService.buildLeaderboardEmbed(competitionType, description) ⇒ <code>EmbedBuilder</code>
+Build the leaderboard embed
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+| description | <code>string</code> | 
+
+<a name="CompetitionService+sendOrUpdateEmbed"></a>
+
+### competitionService.sendOrUpdateEmbed(channel, competition, embed)
+Send a new embed or update the existing one
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| channel | <code>Channel</code> | 
+| competition | <code>Object</code> | 
+| embed | <code>EmbedBuilder</code> | 
+
+<a name="CompetitionService+startNextCompetitionCycle"></a>
+
+### competitionService.startNextCompetitionCycle()
+Starts the next competition cycle and schedules the subsequent rotation.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+updateCompetitionData"></a>
+
+### competitionService.updateCompetitionData()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+scheduleRotation"></a>
+
+### competitionService.scheduleRotation(endTime)
+Schedules the rotation using node-schedule.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| endTime | <code>Date</code> | The time when the competition ends. |
+
+<a name="CompetitionService+scheduleRotationsOnStartup"></a>
+
+### competitionService.scheduleRotationsOnStartup()
+On bot startup, schedule rotations based on active competitions.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+removeInvalidCompetitions"></a>
+
+### competitionService.removeInvalidCompetitions()
+Removes any competitions from the DB that do not exist on WOM(i.e., WOM returns a 404 or otherwise invalid data).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createDefaultCompetitions"></a>
+
+### competitionService.createDefaultCompetitions()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createCompetitionFromQueue"></a>
+
+### competitionService.createCompetitionFromQueue(competition)
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
 | Param |
 | --- |
-| competitionType | 
+| competition | 
+
+<a name="CompetitionService+createCompetition"></a>
+
+### competitionService.createCompetition(type, metric, startsAt, endsAt)
+Creates a new competition on WOM, inserts in DB, and posts an embed + dropdown poll
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+| metric | 
+| startsAt | 
+| endsAt | 
+
+<a name="CompetitionService+updateActiveCompetitionEmbed"></a>
+
+### competitionService.updateActiveCompetitionEmbed(competitionType, [forceRefresh])
+Attempts to ensure there's a single "Active Competition" embed in the channelthat matches the current competition's metric/times.If the existing embed is missing or outdated, it is replaced or edited.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| competitionType | <code>string</code> |  | 'SOTW' or 'BOTW' |
+| [forceRefresh] | <code>boolean</code> | <code>false</code> | If true, always edit or replace the embed even if it matches |
+
+<a name="CompetitionService+buildPollDropdown"></a>
+
+### competitionService.buildPollDropdown(compType)
+Builds a dropdown of all skill/boss options, plus their current vote counts (if any)for an active competition of the given type (SOTW/BOTW).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| compType | 
+
+<a name="CompetitionService+getRandomMetric"></a>
+
+### competitionService.getRandomMetric(type)
+Returns a random skill or boss name
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+
+<a name="CompetitionService+handleVote"></a>
+
+### competitionService.handleVote(interaction)
+The main vote handler for the dropdown menu
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| interaction | 
+
+<a name="CompetitionService+updateLeaderboard"></a>
+
+### competitionService.updateLeaderboard(competitionType)
+Update the WOM-based leaderboard
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW' |
+
+<a name="CompetitionService+getActiveCompetition"></a>
+
+### competitionService.getActiveCompetition(competitionType) ⇒ <code>Object</code> \| <code>null</code>
+Fetch the active competition from the database
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+
+<a name="CompetitionService+getSortedParticipants"></a>
+
+### competitionService.getSortedParticipants(competitionId) ⇒ <code>Array</code>
+Fetch and sort participants based on progress gained
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionId | <code>string</code> | 
+
+<a name="CompetitionService+formatLeaderboardDescription"></a>
+
+### competitionService.formatLeaderboardDescription(participants) ⇒ <code>string</code>
+Format the leaderboard description
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| participants | <code>Array</code> | 
+
+<a name="CompetitionService+buildLeaderboardEmbed"></a>
+
+### competitionService.buildLeaderboardEmbed(competitionType, description) ⇒ <code>EmbedBuilder</code>
+Build the leaderboard embed
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+| description | <code>string</code> | 
+
+<a name="CompetitionService+sendOrUpdateEmbed"></a>
+
+### competitionService.sendOrUpdateEmbed(channel, competition, embed)
+Send a new embed or update the existing one
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| channel | <code>Channel</code> | 
+| competition | <code>Object</code> | 
+| embed | <code>EmbedBuilder</code> | 
+
+<a name="CompetitionService"></a>
+
+## CompetitionService
+CompetitionService handles creation, management, and conclusion of competitions.
+
+**Kind**: global class  
+
+* [CompetitionService](#CompetitionService)
+    * [new CompetitionService(client)](#new_CompetitionService_new)
+    * [new CompetitionService(client)](#new_CompetitionService_new)
+    * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
+    * [.updateCompetitionData()](#CompetitionService+updateCompetitionData)
+    * [.scheduleRotation(endTime)](#CompetitionService+scheduleRotation)
+    * [.scheduleRotationsOnStartup()](#CompetitionService+scheduleRotationsOnStartup)
+    * [.removeInvalidCompetitions()](#CompetitionService+removeInvalidCompetitions)
+    * [.createDefaultCompetitions()](#CompetitionService+createDefaultCompetitions)
+    * [.createCompetitionFromQueue(competition)](#CompetitionService+createCompetitionFromQueue)
+    * [.createCompetition(type, metric, startsAt, endsAt)](#CompetitionService+createCompetition)
+    * [.updateActiveCompetitionEmbed(competitionType, [forceRefresh])](#CompetitionService+updateActiveCompetitionEmbed)
+    * [.buildPollDropdown(compType)](#CompetitionService+buildPollDropdown)
+    * [.getRandomMetric(type)](#CompetitionService+getRandomMetric)
+    * [.handleVote(interaction)](#CompetitionService+handleVote)
+    * [.updateLeaderboard(competitionType)](#CompetitionService+updateLeaderboard)
+    * [.getActiveCompetition(competitionType)](#CompetitionService+getActiveCompetition) ⇒ <code>Object</code> \| <code>null</code>
+    * [.getSortedParticipants(competitionId)](#CompetitionService+getSortedParticipants) ⇒ <code>Array</code>
+    * [.formatLeaderboardDescription(participants)](#CompetitionService+formatLeaderboardDescription) ⇒ <code>string</code>
+    * [.buildLeaderboardEmbed(competitionType, description)](#CompetitionService+buildLeaderboardEmbed) ⇒ <code>EmbedBuilder</code>
+    * [.sendOrUpdateEmbed(channel, competition, embed)](#CompetitionService+sendOrUpdateEmbed)
+    * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
+    * [.updateCompetitionData()](#CompetitionService+updateCompetitionData)
+    * [.scheduleRotation(endTime)](#CompetitionService+scheduleRotation)
+    * [.scheduleRotationsOnStartup()](#CompetitionService+scheduleRotationsOnStartup)
+    * [.removeInvalidCompetitions()](#CompetitionService+removeInvalidCompetitions)
+    * [.createDefaultCompetitions()](#CompetitionService+createDefaultCompetitions)
+    * [.createCompetitionFromQueue(competition)](#CompetitionService+createCompetitionFromQueue)
+    * [.createCompetition(type, metric, startsAt, endsAt)](#CompetitionService+createCompetition)
+    * [.updateActiveCompetitionEmbed(competitionType, [forceRefresh])](#CompetitionService+updateActiveCompetitionEmbed)
+    * [.buildPollDropdown(compType)](#CompetitionService+buildPollDropdown)
+    * [.getRandomMetric(type)](#CompetitionService+getRandomMetric)
+    * [.handleVote(interaction)](#CompetitionService+handleVote)
+    * [.updateLeaderboard(competitionType)](#CompetitionService+updateLeaderboard)
+    * [.getActiveCompetition(competitionType)](#CompetitionService+getActiveCompetition) ⇒ <code>Object</code> \| <code>null</code>
+    * [.getSortedParticipants(competitionId)](#CompetitionService+getSortedParticipants) ⇒ <code>Array</code>
+    * [.formatLeaderboardDescription(participants)](#CompetitionService+formatLeaderboardDescription) ⇒ <code>string</code>
+    * [.buildLeaderboardEmbed(competitionType, description)](#CompetitionService+buildLeaderboardEmbed) ⇒ <code>EmbedBuilder</code>
+    * [.sendOrUpdateEmbed(channel, competition, embed)](#CompetitionService+sendOrUpdateEmbed)
+
+<a name="new_CompetitionService_new"></a>
+
+### new CompetitionService(client)
+
+| Param |
+| --- |
+| client | 
+
+<a name="new_CompetitionService_new"></a>
+
+### new CompetitionService(client)
+
+| Param |
+| --- |
+| client | 
+
+<a name="CompetitionService+startNextCompetitionCycle"></a>
+
+### competitionService.startNextCompetitionCycle()
+Starts the next competition cycle and schedules the subsequent rotation.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+updateCompetitionData"></a>
+
+### competitionService.updateCompetitionData()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+scheduleRotation"></a>
+
+### competitionService.scheduleRotation(endTime)
+Schedules the rotation using node-schedule.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| endTime | <code>Date</code> | The time when the competition ends. |
+
+<a name="CompetitionService+scheduleRotationsOnStartup"></a>
+
+### competitionService.scheduleRotationsOnStartup()
+On bot startup, schedule rotations based on active competitions.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+removeInvalidCompetitions"></a>
+
+### competitionService.removeInvalidCompetitions()
+Removes any competitions from the DB that do not exist on WOM(i.e., WOM returns a 404 or otherwise invalid data).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createDefaultCompetitions"></a>
+
+### competitionService.createDefaultCompetitions()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createCompetitionFromQueue"></a>
+
+### competitionService.createCompetitionFromQueue(competition)
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| competition | 
+
+<a name="CompetitionService+createCompetition"></a>
+
+### competitionService.createCompetition(type, metric, startsAt, endsAt)
+Creates a new competition on WOM, inserts in DB, and posts an embed + dropdown poll
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+| metric | 
+| startsAt | 
+| endsAt | 
+
+<a name="CompetitionService+updateActiveCompetitionEmbed"></a>
+
+### competitionService.updateActiveCompetitionEmbed(competitionType, [forceRefresh])
+Attempts to ensure there's a single "Active Competition" embed in the channelthat matches the current competition's metric/times.If the existing embed is missing or outdated, it is replaced or edited.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| competitionType | <code>string</code> |  | 'SOTW' or 'BOTW' |
+| [forceRefresh] | <code>boolean</code> | <code>false</code> | If true, always edit or replace the embed even if it matches |
+
+<a name="CompetitionService+buildPollDropdown"></a>
+
+### competitionService.buildPollDropdown(compType)
+Builds a dropdown of all skill/boss options, plus their current vote counts (if any)for an active competition of the given type (SOTW/BOTW).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| compType | 
+
+<a name="CompetitionService+getRandomMetric"></a>
+
+### competitionService.getRandomMetric(type)
+Returns a random skill or boss name
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+
+<a name="CompetitionService+handleVote"></a>
+
+### competitionService.handleVote(interaction)
+The main vote handler for the dropdown menu
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| interaction | 
+
+<a name="CompetitionService+updateLeaderboard"></a>
+
+### competitionService.updateLeaderboard(competitionType)
+Update the WOM-based leaderboard
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW' |
+
+<a name="CompetitionService+getActiveCompetition"></a>
+
+### competitionService.getActiveCompetition(competitionType) ⇒ <code>Object</code> \| <code>null</code>
+Fetch the active competition from the database
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+
+<a name="CompetitionService+getSortedParticipants"></a>
+
+### competitionService.getSortedParticipants(competitionId) ⇒ <code>Array</code>
+Fetch and sort participants based on progress gained
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionId | <code>string</code> | 
+
+<a name="CompetitionService+formatLeaderboardDescription"></a>
+
+### competitionService.formatLeaderboardDescription(participants) ⇒ <code>string</code>
+Format the leaderboard description
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| participants | <code>Array</code> | 
+
+<a name="CompetitionService+buildLeaderboardEmbed"></a>
+
+### competitionService.buildLeaderboardEmbed(competitionType, description) ⇒ <code>EmbedBuilder</code>
+Build the leaderboard embed
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+| description | <code>string</code> | 
+
+<a name="CompetitionService+sendOrUpdateEmbed"></a>
+
+### competitionService.sendOrUpdateEmbed(channel, competition, embed)
+Send a new embed or update the existing one
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| channel | <code>Channel</code> | 
+| competition | <code>Object</code> | 
+| embed | <code>EmbedBuilder</code> | 
+
+<a name="CompetitionService+startNextCompetitionCycle"></a>
+
+### competitionService.startNextCompetitionCycle()
+Starts the next competition cycle and schedules the subsequent rotation.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+updateCompetitionData"></a>
+
+### competitionService.updateCompetitionData()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+scheduleRotation"></a>
+
+### competitionService.scheduleRotation(endTime)
+Schedules the rotation using node-schedule.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| endTime | <code>Date</code> | The time when the competition ends. |
+
+<a name="CompetitionService+scheduleRotationsOnStartup"></a>
+
+### competitionService.scheduleRotationsOnStartup()
+On bot startup, schedule rotations based on active competitions.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+removeInvalidCompetitions"></a>
+
+### competitionService.removeInvalidCompetitions()
+Removes any competitions from the DB that do not exist on WOM(i.e., WOM returns a 404 or otherwise invalid data).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createDefaultCompetitions"></a>
+
+### competitionService.createDefaultCompetitions()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createCompetitionFromQueue"></a>
+
+### competitionService.createCompetitionFromQueue(competition)
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| competition | 
+
+<a name="CompetitionService+createCompetition"></a>
+
+### competitionService.createCompetition(type, metric, startsAt, endsAt)
+Creates a new competition on WOM, inserts in DB, and posts an embed + dropdown poll
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+| metric | 
+| startsAt | 
+| endsAt | 
+
+<a name="CompetitionService+updateActiveCompetitionEmbed"></a>
+
+### competitionService.updateActiveCompetitionEmbed(competitionType, [forceRefresh])
+Attempts to ensure there's a single "Active Competition" embed in the channelthat matches the current competition's metric/times.If the existing embed is missing or outdated, it is replaced or edited.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| competitionType | <code>string</code> |  | 'SOTW' or 'BOTW' |
+| [forceRefresh] | <code>boolean</code> | <code>false</code> | If true, always edit or replace the embed even if it matches |
+
+<a name="CompetitionService+buildPollDropdown"></a>
+
+### competitionService.buildPollDropdown(compType)
+Builds a dropdown of all skill/boss options, plus their current vote counts (if any)for an active competition of the given type (SOTW/BOTW).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| compType | 
+
+<a name="CompetitionService+getRandomMetric"></a>
+
+### competitionService.getRandomMetric(type)
+Returns a random skill or boss name
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+
+<a name="CompetitionService+handleVote"></a>
+
+### competitionService.handleVote(interaction)
+The main vote handler for the dropdown menu
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| interaction | 
+
+<a name="CompetitionService+updateLeaderboard"></a>
+
+### competitionService.updateLeaderboard(competitionType)
+Update the WOM-based leaderboard
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW' |
+
+<a name="CompetitionService+getActiveCompetition"></a>
+
+### competitionService.getActiveCompetition(competitionType) ⇒ <code>Object</code> \| <code>null</code>
+Fetch the active competition from the database
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+
+<a name="CompetitionService+getSortedParticipants"></a>
+
+### competitionService.getSortedParticipants(competitionId) ⇒ <code>Array</code>
+Fetch and sort participants based on progress gained
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionId | <code>string</code> | 
+
+<a name="CompetitionService+formatLeaderboardDescription"></a>
+
+### competitionService.formatLeaderboardDescription(participants) ⇒ <code>string</code>
+Format the leaderboard description
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| participants | <code>Array</code> | 
+
+<a name="CompetitionService+buildLeaderboardEmbed"></a>
+
+### competitionService.buildLeaderboardEmbed(competitionType, description) ⇒ <code>EmbedBuilder</code>
+Build the leaderboard embed
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+| description | <code>string</code> | 
+
+<a name="CompetitionService+sendOrUpdateEmbed"></a>
+
+### competitionService.sendOrUpdateEmbed(channel, competition, embed)
+Send a new embed or update the existing one
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| channel | <code>Channel</code> | 
+| competition | <code>Object</code> | 
+| embed | <code>EmbedBuilder</code> | 
 
 <a name="initializeCompetitionsTables"></a>
 
@@ -2843,32 +3549,68 @@ Populates the skills_bosses table with data from MetricProps,excluding Activity
 | array |  | 
 | size | <code>25</code> | 
 
-<a name="getImagePath"></a>
+<a name="chunkArray"></a>
 
-## getImagePath(fileName) ⇒ <code>Promise.&lt;string&gt;</code>
-Fetch the file path for a given file name from the database.
+## chunkArray(array, size)
+**Kind**: global function  
+
+| Param | Default |
+| --- | --- |
+| array |  | 
+| size | <code>25</code> | 
+
+<a name="normalizeString"></a>
+
+## normalizeString(str) ⇒ <code>string</code>
+Normalizes a string for comparison (e.g., trims spaces, converts to lowercase, replaces special characters).
 
 **Kind**: global function  
-**Returns**: <code>Promise.&lt;string&gt;</code> - - The absolute file path of the image.  
+**Returns**: <code>string</code> - - The normalized string.  
 
 | Param | Type | Description |
 | --- | --- | --- |
-| fileName | <code>string</code> | The name of the file (e.g., 'agility', without extension). |
+| str | <code>string</code> | The string to normalize. |
+
+<a name="getImagePath"></a>
+
+## getImagePath(metric) ⇒ <code>Promise.&lt;string&gt;</code>
+Retrieves the file path for a given metric from the database with detailed logging.
+
+**Kind**: global function  
+**Returns**: <code>Promise.&lt;string&gt;</code> - - The file path associated with the metric.  
+**Throws**:
+
+- <code>Error</code> - Throws an error if the metric is not found.
+
+
+| Param | Type | Description |
+| --- | --- | --- |
+| metric | <code>string</code> | The metric name to look up. |
 
 <a name="createCompetitionEmbed"></a>
 
-## createCompetitionEmbed(type, fileName, startsAt, endsAt) ⇒ <code>Promise.&lt;Object&gt;</code>
-Creates a competition embed with specified details.
+## createCompetitionEmbed(client, type, metric, startsAt, endsAt) ⇒ <code>Promise.&lt;{embeds: Array.&lt;EmbedBuilder&gt;, files: Array.&lt;AttachmentBuilder&gt;}&gt;</code>
+Creates a competition embed with attached images from the local `resources` folder.
 
 **Kind**: global function  
-**Returns**: <code>Promise.&lt;Object&gt;</code> - - The constructed embed and attachment.  
+**Returns**: <code>Promise.&lt;{embeds: Array.&lt;EmbedBuilder&gt;, files: Array.&lt;AttachmentBuilder&gt;}&gt;</code> - - The embed and its attachments.  
 
 | Param | Type | Description |
 | --- | --- | --- |
-| type | <code>string</code> | 'SOTW' or 'BOTW'. |
-| fileName | <code>string</code> | Name of the file to use as an image. |
-| startsAt | <code>string</code> | ISO string for competition start time. |
-| endsAt | <code>string</code> | ISO string for competition end time. |
+| client | <code>Client</code> | The Discord.js client. |
+| type | <code>string</code> | Competition type: 'SOTW' or 'BOTW'. |
+| metric | <code>string</code> | The metric name. |
+| startsAt | <code>string</code> | ISO start date of the competition. |
+| endsAt | <code>string</code> | ISO end date of the competition. |
+
+<a name="createCompetitionEmbed..formatMetricName"></a>
+
+### createCompetitionEmbed~formatMetricName(metric)
+**Kind**: inner method of [<code>createCompetitionEmbed</code>](#createCompetitionEmbed)  
+
+| Param |
+| --- |
+| metric | 
 
 <a name="buildLeaderboardDescription"></a>
 
@@ -2893,10 +3635,10 @@ Creates a voting dropdown menu with provided options.Expects "options" to inclu
 | --- | --- | --- |
 | options | <code>Array.&lt;Object&gt;</code> | Array of option objects with shape { label, description, value, voteCount? }. |
 
-<a name="tallyVotesAndAnnounceWinner"></a>
+<a name="tallyVotesAndRecordWinner"></a>
 
-## tallyVotesAndAnnounceWinner(client, competition)
-Tally votes for a competition and announce the winner.
+## tallyVotesAndRecordWinner(client, competition)
+Tally votes for a competition and record the winner.
 
 **Kind**: global function  
 
@@ -2905,12 +3647,6 @@ Tally votes for a competition and announce the winner.
 | client | <code>Client</code> | Discord client instance. |
 | competition | <code>Object</code> | Competition object. |
 
-<a name="setupDatabase"></a>
-
-## setupDatabase()
-Initializes the database by creating necessary tables.
-
-**Kind**: global function  
 <a name="getAllFilesWithMetadata"></a>
 
 ## getAllFilesWithMetadata(dir) ⇒ <code>Array.&lt;{fileName: string, filePath: string}&gt;</code>

@@ -24,7 +24,7 @@ const { processNameChanges } = require('./modules/services/name_changes');
 const { fetchAndUpdatePlayerData } = require('./modules/services/player_data_extractor');
 const { fetchAndProcessMember } = require('./modules/services/auto_roles');
 const { updateVoiceChannel } = require('./modules/services/active_members');
-const { tallyVotesAndAnnounceWinner } = require('./modules/utils/tallyVotes');
+const { tallyVotesAndRecordWinner } = require('./modules/utils/tallyVotes');
 const { getAll } = require('./modules/utils/dbUtils');
 const logger = require('./modules/utils/logger');
 const db = require('./modules/utils/dbUtils');
@@ -49,6 +49,32 @@ require('dotenv').config();
  */
 module.exports = [
     {
+        // TODO: HAVE THIS DETERMINED BY COMPETITION START AND END TIMES FOR ACCURACY
+        name: 'rotationTask',
+        func: async (client) => {
+            const competitionService = new CompetitionService(client);
+            await competitionService.startNextCompetitionCycle();
+        },
+        interval: 600 * 3, // Runs every 30 min
+        runOnStart: true,
+        runAsTask: true,
+    },
+    {
+        name: 'tallyVotesAndRecordWinners',
+        func: async (client) => {
+            // Fetch competitions that have ended but not yet processed
+            const now = new Date().toISOString();
+            const endedCompetitions = await db.getAll('SELECT * FROM competitions WHERE ends_at <= ? AND id NOT IN (SELECT competition_id FROM winners)', [now]);
+
+            for (const competition of endedCompetitions) {
+                await tallyVotesAndRecordWinner(client, competition);
+            }
+        },
+        interval: 600 * 3, // Runs every 30 min
+        runOnStart: true,
+        runAsTask: true,
+    },
+    {
         name: 'updateData',
         func: async (client) => await updateData(client),
         interval: 600 * 3, // Runs every 1800 seconds (30 minutes)
@@ -65,7 +91,7 @@ module.exports = [
     {
         name: 'fetchAndUpdatePlayerData',
         func: async () => await fetchAndUpdatePlayerData(),
-        interval: 600 * 1, // Runs every 3600 seconds (1 hour)
+        interval: 3600 * 1, // Runs every 3600 seconds (1 hour)
         runOnStart: true,
         runAsTask: true,
     },
@@ -94,31 +120,6 @@ module.exports = [
         func: async (client) => await updateVoiceChannel(client),
         interval: 3600 * 3, // Runs every 10800 seconds (3 hours)
         runOnStart: true,
-        runAsTask: true,
-    },
-    {
-        name: 'rotationTask',
-        func: async (client) => {
-            const competitionService = new CompetitionService(client);
-            await competitionService.startNextCompetitionCycle();
-        },
-        interval: 604800, // Runs every 7 days (7 * 24 * 60 * 60)
-        runOnStart: false,
-        runAsTask: true,
-    },
-    {
-        name: 'tallyVotesAndAnnounceWinners',
-        func: async (client) => {
-            // Fetch competitions that have ended but not yet processed
-            const now = new Date().toISOString();
-            const endedCompetitions = await db.getAll('SELECT * FROM competitions WHERE ends_at <= ? AND id NOT IN (SELECT competition_id FROM winners)', [now]);
-
-            for (const competition of endedCompetitions) {
-                await tallyVotesAndAnnounceWinner(client, competition);
-            }
-        },
-        interval: 86400, // Runs every day (24 * 60 * 60)
-        runOnStart: false,
         runAsTask: true,
     },
 ];
