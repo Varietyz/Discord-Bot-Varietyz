@@ -500,6 +500,9 @@ Manages rate-limited requests, handles retries, and provides access to the WOM A
 <dt><a href="#CompetitionService">CompetitionService</a></dt>
 <dd><p>CompetitionService handles creation, management, and conclusion of competitions.</p>
 </dd>
+<dt><a href="#CompetitionService">CompetitionService</a></dt>
+<dd><p>CompetitionService handles creation, management, and conclusion of competitions.</p>
+</dd>
 </dl>
 
 ## Functions
@@ -515,25 +518,68 @@ Manages rate-limited requests, handles retries, and provides access to the WOM A
 <dd><p>Populates the skills_bosses table with data from MetricProps,
 excluding ActivityProperties and ComputedMetricProperties.</p>
 </dd>
+<dt><a href="#createCompetition">createCompetition(womclient, db, type, metric, startsAt, endsAt, constants)</a> ⇒ <code>Promise.&lt;Object&gt;</code></dt>
+<dd><p>Creates a new competition on WOM, inserts it into the DB.</p>
+</dd>
 <dt><a href="#chunkArray">chunkArray(array, size)</a></dt>
 <dd></dd>
+<dt><a href="#removeInvalidCompetitions">removeInvalidCompetitions(db)</a></dt>
+<dd><p>Removes invalid competitions by checking with WOM API.</p>
+</dd>
+<dt><a href="#updateActiveCompetitionEmbed">updateActiveCompetitionEmbed(competitionType, db, client, constants)</a></dt>
+<dd><p>Updates the active competition embed in Discord.</p>
+</dd>
+<dt><a href="#buildPollDropdown">buildPollDropdown(compType, db)</a> ⇒ <code>Object</code></dt>
+<dd><p>Builds a dropdown menu for voting based on competition type.
+Supports chunking for BOTW if the list is too large.</p>
+</dd>
+<dt><a href="#chunkArray">chunkArray(array, size)</a> ⇒ <code>Array.&lt;Array&gt;</code></dt>
+<dd><p>Divides an array into chunks of specified size.</p>
+</dd>
+<dt><a href="#updateLeaderboard">updateLeaderboard(competitionType, db, client, constants)</a></dt>
+<dd><p>Updates the leaderboard for a given competition type.</p>
+</dd>
+<dt><a href="#getActiveCompetition">getActiveCompetition(competitionType, db)</a> ⇒ <code>Object</code> | <code>null</code></dt>
+<dd><p>Fetch the active competition from the database.</p>
+</dd>
+<dt><a href="#formatLeaderboardDescription">formatLeaderboardDescription(participants, competitionType, metric, guild)</a> ⇒ <code>string</code></dt>
+<dd><p>Formats the leaderboard description with player names, links, progress, and dynamic metric emojis.</p>
+</dd>
+<dt><a href="#buildLeaderboardEmbed">buildLeaderboardEmbed(competitionType, description, competitionId)</a> ⇒ <code>EmbedBuilder</code></dt>
+<dd><p>Build the leaderboard embed with a clickable title linking to Wise Old Man.</p>
+</dd>
+<dt><a href="#sendOrUpdateEmbed">sendOrUpdateEmbed(channel, competition, embed, db)</a></dt>
+<dd><p>Send a new embed or update the existing one.</p>
+</dd>
+<dt><a href="#scheduleRotation">scheduleRotation(endTime, rotationCallback, scheduledJobs)</a></dt>
+<dd><p>Schedules the rotation using node-schedule.</p>
+</dd>
+<dt><a href="#scheduleRotationsOnStartup">scheduleRotationsOnStartup(db, rotationCallback, constants, scheduledJobs)</a></dt>
+<dd><p>On bot startup, schedule rotations based on active competitions.</p>
+</dd>
+<dt><a href="#handleVote">handleVote(interaction, db, constants)</a></dt>
+<dd><p>Handles a vote interaction from a user.</p>
+</dd>
+<dt><a href="#calculateEndDate">calculateEndDate(rotationWeeks)</a> ⇒ <code>Date</code></dt>
+<dd><p>Calculates the end date for a competition based on rotation weeks.
+Ends on Sunday at 23:59 UTC.</p>
+</dd>
 <dt><a href="#normalizeString">normalizeString(str)</a> ⇒ <code>string</code></dt>
 <dd><p>Normalizes a string for comparison (e.g., trims spaces, converts to lowercase, replaces special characters).</p>
 </dd>
 <dt><a href="#getImagePath">getImagePath(metric)</a> ⇒ <code>Promise.&lt;string&gt;</code></dt>
 <dd><p>Retrieves the file path for a given metric from the database with detailed logging.</p>
 </dd>
-<dt><a href="#createCompetitionEmbed">createCompetitionEmbed(client, type, metric, startsAt, endsAt)</a> ⇒ <code>Promise.&lt;{embeds: Array.&lt;EmbedBuilder&gt;, files: Array.&lt;AttachmentBuilder&gt;}&gt;</code></dt>
+<dt><a href="#createCompetitionEmbed">createCompetitionEmbed(client, type, metric, startsAt, endsAt, competitionId, guild)</a> ⇒ <code>Promise.&lt;{embeds: Array.&lt;EmbedBuilder&gt;, files: Array.&lt;AttachmentBuilder&gt;}&gt;</code></dt>
 <dd><p>Creates a competition embed with attached images from the local <code>resources</code> folder.</p>
 </dd>
 <dt><a href="#buildLeaderboardDescription">buildLeaderboardDescription(participations, competitionType, guild)</a></dt>
 <dd></dd>
-<dt><a href="#createVotingDropdown">createVotingDropdown(options)</a> ⇒ <code>ActionRowBuilder</code></dt>
-<dd><p>Creates a voting dropdown menu with provided options.
-Expects &quot;options&quot; to include a &quot;voteCount&quot; property if you want to display it.</p>
+<dt><a href="#createVotingDropdown">createVotingDropdown(options, competitionType, type)</a> ⇒ <code>ActionRowBuilder</code></dt>
+<dd><p>Creates a voting dropdown menu with provided options.</p>
 </dd>
-<dt><a href="#tallyVotesAndRecordWinner">tallyVotesAndRecordWinner(client, competition)</a></dt>
-<dd><p>Tally votes for a competition and record the winner.</p>
+<dt><a href="#tallyVotesAndRecordWinner">tallyVotesAndRecordWinner(competition)</a> ⇒ <code>Promise.&lt;(string|null)&gt;</code></dt>
+<dd><p>Tally votes for a completed competition and determine the winning metric.</p>
 </dd>
 <dt><a href="#getAllFilesWithMetadata">getAllFilesWithMetadata(dir)</a> ⇒ <code>Array.&lt;{fileName: string, filePath: string}&gt;</code></dt>
 <dd><p>Recursively get all files from a directory and its subdirectories.</p>
@@ -2002,17 +2048,7 @@ if (playerData) {
 <a name="module_utils/lastFetchedTime"></a>
 
 ## utils/lastFetchedTime
-Utility functions for managing player fetch times in a SQLite database.
-Provides functions for ensuring the existence of the `player_fetch_times` table, retrieving the last fetch time,
-and updating the fetch timestamp for a specific player's RuneScape Name (RSN).
-
-Key Features:
-- **Table Management**: Ensures the `player_fetch_times` table exists with a specific schema for tracking player fetch times.
-- **Fetch Time Retrieval**: Retrieves the last fetch timestamp for a given player, returning `null` if not found.
-- **Fetch Time Update**: Updates or inserts the fetch timestamp for a player, ensuring the table remains up-to-date.
-
-External Dependencies:
-- **dbUtils**: For executing database queries and interacting with the SQLite database.
+Utility functions for managing player fetch times in a SQLite database.Provides functions for ensuring the existence of the `player_fetch_times` table, retrieving the last fetch time,and updating the fetch timestamp for a specific player's RuneScape Name (RSN).Key Features:- **Table Management**: Ensures the `player_fetch_times` table exists with a specific schema for tracking player fetch times.- **Fetch Time Retrieval**: Retrieves the last fetch timestamp for a given player, returning `null` if not found.- **Fetch Time Update**: Updates or inserts the fetch timestamp for a player, ensuring the table remains up-to-date.External Dependencies:- **dbUtils**: For executing database queries and interacting with the SQLite database.
 
 
 * [utils/lastFetchedTime](#module_utils/lastFetchedTime)
@@ -2024,26 +2060,18 @@ External Dependencies:
 <a name="module_utils/lastFetchedTime..ensurePlayerFetchTimesTable"></a>
 
 ### utils/lastFetchedTime~ensurePlayerFetchTimesTable() ⇒ <code>Promise.&lt;void&gt;</code>
-Ensures the `player_fetch_times` table exists in the SQLite database.
-
-If the table does not exist, this function creates it with the following schema:
-- `rsn` (TEXT): Primary key representing the RuneScape Name (RSN) of the player.
-- `last_fetched_at` (DATETIME): The timestamp of the last fetch, defaulting to the current time.
+Ensures the `player_fetch_times` table exists in the SQLite database.If the table does not exist, this function creates it with the following schema:- `rsn` (TEXT): Primary key representing the RuneScape Name (RSN) of the player.- `last_fetched_at` (DATETIME): The timestamp of the last fetch, defaulting to the current time.
 
 **Kind**: inner method of [<code>utils/lastFetchedTime</code>](#module_utils/lastFetchedTime)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - Resolves when the table is ensured to exist.  
 **Example**  
 ```js
-// Ensure the table exists before using fetch time functions
-await ensurePlayerFetchTimesTable();
+// Ensure the table exists before using fetch time functionsawait ensurePlayerFetchTimesTable();
 ```
 <a name="module_utils/lastFetchedTime..getLastFetchedTime"></a>
 
 ### utils/lastFetchedTime~getLastFetchedTime(rsn) ⇒ <code>Promise.&lt;(Date\|null)&gt;</code>
-Retrieves the last fetched timestamp for a given player.
-
-This function queries the `player_fetch_times` table for the last fetched time of the specified player.
-If the player does not exist in the table, it returns `null`.
+Retrieves the last fetched timestamp for a given player.This function queries the `player_fetch_times` table for the last fetched time of the specified player.If the player does not exist in the table, it returns `null`.
 
 **Kind**: inner method of [<code>utils/lastFetchedTime</code>](#module_utils/lastFetchedTime)  
 **Returns**: <code>Promise.&lt;(Date\|null)&gt;</code> - A `Date` object representing the last fetched time, or `null` if not found.  
@@ -2054,16 +2082,12 @@ If the player does not exist in the table, it returns `null`.
 
 **Example**  
 ```js
-// Retrieve the last fetched timestamp for a player
-const lastFetched = await getLastFetchedTime('playerone');
-console.log(lastFetched); // Outputs: Date object or null
+// Retrieve the last fetched timestamp for a playerconst lastFetched = await getLastFetchedTime('playerone');console.log(lastFetched); // Outputs: Date object or null
 ```
 <a name="module_utils/lastFetchedTime..resetPlayerFetchTimesTable"></a>
 
 ### utils/lastFetchedTime~resetPlayerFetchTimesTable() ⇒ <code>Promise.&lt;void&gt;</code>
-Ensures the `player_fetch_times` table gets removed from the SQLite database.
-
-If the table exists, this function deletes it.
+Ensures the `player_fetch_times` table gets removed from the SQLite database.If the table exists, this function deletes it.
 
 **Kind**: inner method of [<code>utils/lastFetchedTime</code>](#module_utils/lastFetchedTime)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - Resolves when the table is ensured to exist.  
@@ -2074,10 +2098,7 @@ await resetPlayerFetchTimesTable();
 <a name="module_utils/lastFetchedTime..setLastFetchedTime"></a>
 
 ### utils/lastFetchedTime~setLastFetchedTime(rsn) ⇒ <code>Promise.&lt;void&gt;</code>
-Updates the last fetched timestamp for a given player to the current time.
-
-This function inserts or updates the `player_fetch_times` table with the current timestamp for the specified player.
-If the player already exists in the table, their `last_fetched_at` value is updated.
+Updates the last fetched timestamp for a given player to the current time.This function inserts or updates the `player_fetch_times` table with the current timestamp for the specified player.If the player already exists in the table, their `last_fetched_at` value is updated.
 
 **Kind**: inner method of [<code>utils/lastFetchedTime</code>](#module_utils/lastFetchedTime)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - Resolves when the timestamp is successfully updated.  
@@ -2088,8 +2109,7 @@ If the player already exists in the table, their `last_fetched_at` value is upda
 
 **Example**  
 ```js
-// Update the last fetched timestamp for a player
-await setLastFetchedTime('playerone');
+// Update the last fetched timestamp for a playerawait setLastFetchedTime('playerone');
 ```
 <a name="module_utils/logger"></a>
 
@@ -2697,6 +2717,7 @@ CompetitionService handles creation, management, and conclusion of competitions.
 
 * [CompetitionService](#CompetitionService)
     * [new CompetitionService(client)](#new_CompetitionService_new)
+    * [new CompetitionService(client)](#new_CompetitionService_new)
     * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
     * [.updateCompetitionData()](#CompetitionService+updateCompetitionData)
     * [.scheduleRotation(endTime)](#CompetitionService+scheduleRotation)
@@ -2715,6 +2736,15 @@ CompetitionService handles creation, management, and conclusion of competitions.
     * [.formatLeaderboardDescription(participants)](#CompetitionService+formatLeaderboardDescription) ⇒ <code>string</code>
     * [.buildLeaderboardEmbed(competitionType, description)](#CompetitionService+buildLeaderboardEmbed) ⇒ <code>EmbedBuilder</code>
     * [.sendOrUpdateEmbed(channel, competition, embed)](#CompetitionService+sendOrUpdateEmbed)
+    * [.initialize()](#CompetitionService+initialize)
+    * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
+    * [.updateCompetitionData()](#CompetitionService+updateCompetitionData)
+    * [.createDefaultCompetitions(type)](#CompetitionService+createDefaultCompetitions)
+    * [.createCompetitionFromQueue(competition)](#CompetitionService+createCompetitionFromQueue)
+    * [.scheduleRotationsOnStartup()](#CompetitionService+scheduleRotationsOnStartup)
+    * [.createCompetitionFromVote(competition)](#CompetitionService+createCompetitionFromVote) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [.getRandomMetric(type)](#CompetitionService+getRandomMetric) ⇒ <code>Promise.&lt;string&gt;</code>
+    * [.handleVote(interaction)](#CompetitionService+handleVote)
 
 <a name="new_CompetitionService_new"></a>
 
@@ -2723,6 +2753,14 @@ CompetitionService handles creation, management, and conclusion of competitions.
 | Param |
 | --- |
 | client | 
+
+<a name="new_CompetitionService_new"></a>
+
+### new CompetitionService(client)
+
+| Param | Type | Description |
+| --- | --- | --- |
+| client | <code>Discord.Client</code> | The Discord client instance. |
 
 <a name="CompetitionService+startNextCompetitionCycle"></a>
 
@@ -2898,6 +2936,392 @@ Send a new embed or update the existing one
 | competition | <code>Object</code> | 
 | embed | <code>EmbedBuilder</code> | 
 
+<a name="CompetitionService+initialize"></a>
+
+### competitionService.initialize()
+Initializes the CompetitionService by scheduling rotations on startup.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+startNextCompetitionCycle"></a>
+
+### competitionService.startNextCompetitionCycle()
+Starts the next competition cycle and schedules the subsequent rotation.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+updateCompetitionData"></a>
+
+### competitionService.updateCompetitionData()
+Updates various competition data aspects including leaderboards and embeds.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createDefaultCompetitions"></a>
+
+### competitionService.createDefaultCompetitions(type)
+Creates default competitions when no queued competitions are present.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| type | <code>string</code> | Competition type ('SOTW' or 'BOTW'). |
+
+<a name="CompetitionService+createCompetitionFromQueue"></a>
+
+### competitionService.createCompetitionFromQueue(competition)
+Creates a competition based on queue data.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competition | <code>Object</code> | Competition data from queue. |
+
+<a name="CompetitionService+scheduleRotationsOnStartup"></a>
+
+### competitionService.scheduleRotationsOnStartup()
+On bot startup, schedule rotations based on active competitions.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createCompetitionFromVote"></a>
+
+### competitionService.createCompetitionFromVote(competition) ⇒ <code>Promise.&lt;void&gt;</code>
+Creates a new competition based on the voting results or falls back to the queue/default.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competition | <code>Object</code> | The completed competition. |
+
+<a name="CompetitionService+getRandomMetric"></a>
+
+### competitionService.getRandomMetric(type) ⇒ <code>Promise.&lt;string&gt;</code>
+Returns a random skill or boss name.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| type | <code>string</code> | 'Skill' or 'Boss'. |
+
+<a name="CompetitionService+handleVote"></a>
+
+### competitionService.handleVote(interaction)
+Handles a user vote interaction.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| interaction | <code>Object</code> | The Discord interaction. |
+
+<a name="CompetitionService"></a>
+
+## CompetitionService
+CompetitionService handles creation, management, and conclusion of competitions.
+
+**Kind**: global class  
+
+* [CompetitionService](#CompetitionService)
+    * [new CompetitionService(client)](#new_CompetitionService_new)
+    * [new CompetitionService(client)](#new_CompetitionService_new)
+    * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
+    * [.updateCompetitionData()](#CompetitionService+updateCompetitionData)
+    * [.scheduleRotation(endTime)](#CompetitionService+scheduleRotation)
+    * [.scheduleRotationsOnStartup()](#CompetitionService+scheduleRotationsOnStartup)
+    * [.removeInvalidCompetitions()](#CompetitionService+removeInvalidCompetitions)
+    * [.createDefaultCompetitions()](#CompetitionService+createDefaultCompetitions)
+    * [.createCompetitionFromQueue(competition)](#CompetitionService+createCompetitionFromQueue)
+    * [.createCompetition(type, metric, startsAt, endsAt)](#CompetitionService+createCompetition)
+    * [.updateActiveCompetitionEmbed(competitionType, [forceRefresh])](#CompetitionService+updateActiveCompetitionEmbed)
+    * [.buildPollDropdown(compType)](#CompetitionService+buildPollDropdown)
+    * [.getRandomMetric(type)](#CompetitionService+getRandomMetric)
+    * [.handleVote(interaction)](#CompetitionService+handleVote)
+    * [.updateLeaderboard(competitionType)](#CompetitionService+updateLeaderboard)
+    * [.getActiveCompetition(competitionType)](#CompetitionService+getActiveCompetition) ⇒ <code>Object</code> \| <code>null</code>
+    * [.getSortedParticipants(competitionId)](#CompetitionService+getSortedParticipants) ⇒ <code>Array</code>
+    * [.formatLeaderboardDescription(participants)](#CompetitionService+formatLeaderboardDescription) ⇒ <code>string</code>
+    * [.buildLeaderboardEmbed(competitionType, description)](#CompetitionService+buildLeaderboardEmbed) ⇒ <code>EmbedBuilder</code>
+    * [.sendOrUpdateEmbed(channel, competition, embed)](#CompetitionService+sendOrUpdateEmbed)
+    * [.initialize()](#CompetitionService+initialize)
+    * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
+    * [.updateCompetitionData()](#CompetitionService+updateCompetitionData)
+    * [.createDefaultCompetitions(type)](#CompetitionService+createDefaultCompetitions)
+    * [.createCompetitionFromQueue(competition)](#CompetitionService+createCompetitionFromQueue)
+    * [.scheduleRotationsOnStartup()](#CompetitionService+scheduleRotationsOnStartup)
+    * [.createCompetitionFromVote(competition)](#CompetitionService+createCompetitionFromVote) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [.getRandomMetric(type)](#CompetitionService+getRandomMetric) ⇒ <code>Promise.&lt;string&gt;</code>
+    * [.handleVote(interaction)](#CompetitionService+handleVote)
+
+<a name="new_CompetitionService_new"></a>
+
+### new CompetitionService(client)
+
+| Param |
+| --- |
+| client | 
+
+<a name="new_CompetitionService_new"></a>
+
+### new CompetitionService(client)
+
+| Param | Type | Description |
+| --- | --- | --- |
+| client | <code>Discord.Client</code> | The Discord client instance. |
+
+<a name="CompetitionService+startNextCompetitionCycle"></a>
+
+### competitionService.startNextCompetitionCycle()
+Starts the next competition cycle and schedules the subsequent rotation.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+updateCompetitionData"></a>
+
+### competitionService.updateCompetitionData()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+scheduleRotation"></a>
+
+### competitionService.scheduleRotation(endTime)
+Schedules the rotation using node-schedule.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| endTime | <code>Date</code> | The time when the competition ends. |
+
+<a name="CompetitionService+scheduleRotationsOnStartup"></a>
+
+### competitionService.scheduleRotationsOnStartup()
+On bot startup, schedule rotations based on active competitions.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+removeInvalidCompetitions"></a>
+
+### competitionService.removeInvalidCompetitions()
+Removes any competitions from the DB that do not exist on WOM(i.e., WOM returns a 404 or otherwise invalid data).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createDefaultCompetitions"></a>
+
+### competitionService.createDefaultCompetitions()
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createCompetitionFromQueue"></a>
+
+### competitionService.createCompetitionFromQueue(competition)
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| competition | 
+
+<a name="CompetitionService+createCompetition"></a>
+
+### competitionService.createCompetition(type, metric, startsAt, endsAt)
+Creates a new competition on WOM, inserts in DB, and posts an embed + dropdown poll
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+| metric | 
+| startsAt | 
+| endsAt | 
+
+<a name="CompetitionService+updateActiveCompetitionEmbed"></a>
+
+### competitionService.updateActiveCompetitionEmbed(competitionType, [forceRefresh])
+Attempts to ensure there's a single "Active Competition" embed in the channelthat matches the current competition's metric/times.If the existing embed is missing or outdated, it is replaced or edited.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| competitionType | <code>string</code> |  | 'SOTW' or 'BOTW' |
+| [forceRefresh] | <code>boolean</code> | <code>false</code> | If true, always edit or replace the embed even if it matches |
+
+<a name="CompetitionService+buildPollDropdown"></a>
+
+### competitionService.buildPollDropdown(compType)
+Builds a dropdown of all skill/boss options, plus their current vote counts (if any)for an active competition of the given type (SOTW/BOTW).
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| compType | 
+
+<a name="CompetitionService+getRandomMetric"></a>
+
+### competitionService.getRandomMetric(type)
+Returns a random skill or boss name
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| type | 
+
+<a name="CompetitionService+handleVote"></a>
+
+### competitionService.handleVote(interaction)
+The main vote handler for the dropdown menu
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param |
+| --- |
+| interaction | 
+
+<a name="CompetitionService+updateLeaderboard"></a>
+
+### competitionService.updateLeaderboard(competitionType)
+Update the WOM-based leaderboard
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW' |
+
+<a name="CompetitionService+getActiveCompetition"></a>
+
+### competitionService.getActiveCompetition(competitionType) ⇒ <code>Object</code> \| <code>null</code>
+Fetch the active competition from the database
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+
+<a name="CompetitionService+getSortedParticipants"></a>
+
+### competitionService.getSortedParticipants(competitionId) ⇒ <code>Array</code>
+Fetch and sort participants based on progress gained
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionId | <code>string</code> | 
+
+<a name="CompetitionService+formatLeaderboardDescription"></a>
+
+### competitionService.formatLeaderboardDescription(participants) ⇒ <code>string</code>
+Format the leaderboard description
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| participants | <code>Array</code> | 
+
+<a name="CompetitionService+buildLeaderboardEmbed"></a>
+
+### competitionService.buildLeaderboardEmbed(competitionType, description) ⇒ <code>EmbedBuilder</code>
+Build the leaderboard embed
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| competitionType | <code>string</code> | 
+| description | <code>string</code> | 
+
+<a name="CompetitionService+sendOrUpdateEmbed"></a>
+
+### competitionService.sendOrUpdateEmbed(channel, competition, embed)
+Send a new embed or update the existing one
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type |
+| --- | --- |
+| channel | <code>Channel</code> | 
+| competition | <code>Object</code> | 
+| embed | <code>EmbedBuilder</code> | 
+
+<a name="CompetitionService+initialize"></a>
+
+### competitionService.initialize()
+Initializes the CompetitionService by scheduling rotations on startup.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+startNextCompetitionCycle"></a>
+
+### competitionService.startNextCompetitionCycle()
+Starts the next competition cycle and schedules the subsequent rotation.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+updateCompetitionData"></a>
+
+### competitionService.updateCompetitionData()
+Updates various competition data aspects including leaderboards and embeds.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createDefaultCompetitions"></a>
+
+### competitionService.createDefaultCompetitions(type)
+Creates default competitions when no queued competitions are present.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| type | <code>string</code> | Competition type ('SOTW' or 'BOTW'). |
+
+<a name="CompetitionService+createCompetitionFromQueue"></a>
+
+### competitionService.createCompetitionFromQueue(competition)
+Creates a competition based on queue data.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competition | <code>Object</code> | Competition data from queue. |
+
+<a name="CompetitionService+scheduleRotationsOnStartup"></a>
+
+### competitionService.scheduleRotationsOnStartup()
+On bot startup, schedule rotations based on active competitions.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+<a name="CompetitionService+createCompetitionFromVote"></a>
+
+### competitionService.createCompetitionFromVote(competition) ⇒ <code>Promise.&lt;void&gt;</code>
+Creates a new competition based on the voting results or falls back to the queue/default.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competition | <code>Object</code> | The completed competition. |
+
+<a name="CompetitionService+getRandomMetric"></a>
+
+### competitionService.getRandomMetric(type) ⇒ <code>Promise.&lt;string&gt;</code>
+Returns a random skill or boss name.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| type | <code>string</code> | 'Skill' or 'Boss'. |
+
+<a name="CompetitionService+handleVote"></a>
+
+### competitionService.handleVote(interaction)
+Handles a user vote interaction.
+
+**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| interaction | <code>Object</code> | The Discord interaction. |
+
 <a name="initializeCompetitionsTables"></a>
 
 ## initializeCompetitionsTables()
@@ -2922,6 +3346,24 @@ Determines the type of a MetricProp based on its properties.
 Populates the skills_bosses table with data from MetricProps,excluding ActivityProperties and ComputedMetricProperties.
 
 **Kind**: global function  
+<a name="createCompetition"></a>
+
+## createCompetition(womclient, db, type, metric, startsAt, endsAt, constants) ⇒ <code>Promise.&lt;Object&gt;</code>
+Creates a new competition on WOM, inserts it into the DB.
+
+**Kind**: global function  
+**Returns**: <code>Promise.&lt;Object&gt;</code> - - The newly created competition.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| womclient | <code>WOMClient</code> | The WOMClient instance. |
+| db | <code>Object</code> | The database utility. |
+| type | <code>string</code> | Competition type ('SOTW' or 'BOTW'). |
+| metric | <code>string</code> | The metric name. |
+| startsAt | <code>Date</code> | Competition start time. |
+| endsAt | <code>Date</code> | Competition end time. |
+| constants | <code>Object</code> | Configuration constants. |
+
 <a name="chunkArray"></a>
 
 ## chunkArray(array, size)
@@ -2931,6 +3373,176 @@ Populates the skills_bosses table with data from MetricProps,excluding Activity
 | --- | --- |
 | array |  | 
 | size | <code>25</code> | 
+
+<a name="removeInvalidCompetitions"></a>
+
+## removeInvalidCompetitions(db)
+Removes invalid competitions by checking with WOM API.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>Object</code> | The database utility. |
+
+<a name="updateActiveCompetitionEmbed"></a>
+
+## updateActiveCompetitionEmbed(competitionType, db, client, constants)
+Updates the active competition embed in Discord.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW'. |
+| db | <code>Object</code> | The database utility. |
+| client | <code>Discord.Client</code> | The Discord client. |
+| constants | <code>Object</code> | Configuration constants. |
+
+<a name="buildPollDropdown"></a>
+
+## buildPollDropdown(compType, db) ⇒ <code>Object</code>
+Builds a dropdown menu for voting based on competition type.Supports chunking for BOTW if the list is too large.
+
+**Kind**: global function  
+**Returns**: <code>Object</code> - - Discord dropdown component.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| compType | <code>string</code> | 'SOTW' or 'BOTW'. |
+| db | <code>Object</code> | The database utility. |
+
+<a name="chunkArray"></a>
+
+## chunkArray(array, size) ⇒ <code>Array.&lt;Array&gt;</code>
+Divides an array into chunks of specified size.
+
+**Kind**: global function  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| array | <code>Array</code> |  | The array to chunk. |
+| size | <code>number</code> | <code>25</code> | The size of each chunk. |
+
+<a name="updateLeaderboard"></a>
+
+## updateLeaderboard(competitionType, db, client, constants)
+Updates the leaderboard for a given competition type.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW'. |
+| db | <code>Object</code> | The database utility. |
+| client | <code>Object</code> | The Discord client. |
+| constants | <code>Object</code> | Configuration constants. |
+
+<a name="getActiveCompetition"></a>
+
+## getActiveCompetition(competitionType, db) ⇒ <code>Object</code> \| <code>null</code>
+Fetch the active competition from the database.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW'. |
+| db | <code>Object</code> | The database utility. |
+
+<a name="formatLeaderboardDescription"></a>
+
+## formatLeaderboardDescription(participants, competitionType, metric, guild) ⇒ <code>string</code>
+Formats the leaderboard description with player names, links, progress, and dynamic metric emojis.
+
+**Kind**: global function  
+**Returns**: <code>string</code> - - The formatted leaderboard description.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| participants | <code>Array</code> | The competition participants. |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW'. |
+| metric | <code>string</code> | The competition metric (e.g., "Mining", "Agility"). |
+| guild | <code>Guild</code> | The Discord guild object to fetch emojis. |
+
+<a name="buildLeaderboardEmbed"></a>
+
+## buildLeaderboardEmbed(competitionType, description, competitionId) ⇒ <code>EmbedBuilder</code>
+Build the leaderboard embed with a clickable title linking to Wise Old Man.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| competitionType | <code>string</code> | 'SOTW' or 'BOTW'. |
+| description | <code>string</code> | The leaderboard description. |
+| competitionId | <code>number</code> | The ID of the competition. |
+
+<a name="sendOrUpdateEmbed"></a>
+
+## sendOrUpdateEmbed(channel, competition, embed, db)
+Send a new embed or update the existing one.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| channel | <code>Channel</code> |  |
+| competition | <code>Object</code> |  |
+| embed | <code>EmbedBuilder</code> |  |
+| db | <code>Object</code> | The database utility. |
+
+<a name="scheduleRotation"></a>
+
+## scheduleRotation(endTime, rotationCallback, scheduledJobs)
+Schedules the rotation using node-schedule.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| endTime | <code>Date</code> | The time when the competition ends. |
+| rotationCallback | <code>function</code> | The function to call when the job triggers. |
+| scheduledJobs | <code>Map</code> | Map of scheduled jobs. |
+
+<a name="scheduleRotationsOnStartup"></a>
+
+## scheduleRotationsOnStartup(db, rotationCallback, constants, scheduledJobs)
+On bot startup, schedule rotations based on active competitions.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>Object</code> | The database utility. |
+| rotationCallback | <code>function</code> | The function to call when rotation is triggered. |
+| constants | <code>Object</code> | Configuration constants. |
+| scheduledJobs | <code>Map</code> | Map of scheduled jobs. |
+
+<a name="handleVote"></a>
+
+## handleVote(interaction, db, constants)
+Handles a vote interaction from a user.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| interaction | <code>Object</code> | The Discord interaction. |
+| db | <code>Object</code> | The database utility. |
+| constants | <code>Object</code> | Configuration constants. |
+
+<a name="calculateEndDate"></a>
+
+## calculateEndDate(rotationWeeks) ⇒ <code>Date</code>
+Calculates the end date for a competition based on rotation weeks.Ends on Sunday at 23:59 UTC.
+
+**Kind**: global function  
+**Returns**: <code>Date</code> - - The end date set to Sunday at 23:59 UTC.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| rotationWeeks | <code>number</code> | Number of weeks for the competition duration. |
 
 <a name="normalizeString"></a>
 
@@ -2962,7 +3574,7 @@ Retrieves the file path for a given metric from the database with detailed loggi
 
 <a name="createCompetitionEmbed"></a>
 
-## createCompetitionEmbed(client, type, metric, startsAt, endsAt) ⇒ <code>Promise.&lt;{embeds: Array.&lt;EmbedBuilder&gt;, files: Array.&lt;AttachmentBuilder&gt;}&gt;</code>
+## createCompetitionEmbed(client, type, metric, startsAt, endsAt, competitionId, guild) ⇒ <code>Promise.&lt;{embeds: Array.&lt;EmbedBuilder&gt;, files: Array.&lt;AttachmentBuilder&gt;}&gt;</code>
 Creates a competition embed with attached images from the local `resources` folder.
 
 **Kind**: global function  
@@ -2975,15 +3587,8 @@ Creates a competition embed with attached images from the local `resources` fold
 | metric | <code>string</code> | The metric name. |
 | startsAt | <code>string</code> | ISO start date of the competition. |
 | endsAt | <code>string</code> | ISO end date of the competition. |
-
-<a name="createCompetitionEmbed..formatMetricName"></a>
-
-### createCompetitionEmbed~formatMetricName(metric)
-**Kind**: inner method of [<code>createCompetitionEmbed</code>](#createCompetitionEmbed)  
-
-| Param |
-| --- |
-| metric | 
+| competitionId |  |  |
+| guild |  |  |
 
 <a name="buildLeaderboardDescription"></a>
 
@@ -2998,8 +3603,8 @@ Creates a competition embed with attached images from the local `resources` fold
 
 <a name="createVotingDropdown"></a>
 
-## createVotingDropdown(options) ⇒ <code>ActionRowBuilder</code>
-Creates a voting dropdown menu with provided options.Expects "options" to include a "voteCount" property if you want to display it.
+## createVotingDropdown(options, competitionType, type) ⇒ <code>ActionRowBuilder</code>
+Creates a voting dropdown menu with provided options.
 
 **Kind**: global function  
 **Returns**: <code>ActionRowBuilder</code> - - The action row containing the select menu.  
@@ -3007,18 +3612,20 @@ Creates a voting dropdown menu with provided options.Expects "options" to inclu
 | Param | Type | Description |
 | --- | --- | --- |
 | options | <code>Array.&lt;Object&gt;</code> | Array of option objects with shape { label, description, value, voteCount? }. |
+| competitionType |  |  |
+| type |  |  |
 
 <a name="tallyVotesAndRecordWinner"></a>
 
-## tallyVotesAndRecordWinner(client, competition)
-Tally votes for a competition and record the winner.
+## tallyVotesAndRecordWinner(competition) ⇒ <code>Promise.&lt;(string\|null)&gt;</code>
+Tally votes for a completed competition and determine the winning metric.
 
 **Kind**: global function  
+**Returns**: <code>Promise.&lt;(string\|null)&gt;</code> - - The winning metric or null if no votes exist.  
 
 | Param | Type | Description |
 | --- | --- | --- |
-| client | <code>Client</code> | Discord client instance. |
-| competition | <code>Object</code> | Competition object. |
+| competition | <code>Object</code> | The completed competition. |
 
 <a name="getAllFilesWithMetadata"></a>
 

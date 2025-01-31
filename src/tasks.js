@@ -18,16 +18,14 @@
  *
  * @module tasks
  */
-const CompetitionService = require('./modules/services/competitionService');
+const CompetitionService = require('./modules/services/competitionServices/competitionService');
 const { updateData } = require('./modules/services/member_channel');
 const { processNameChanges } = require('./modules/services/name_changes');
 const { fetchAndUpdatePlayerData } = require('./modules/services/player_data_extractor');
 const { fetchAndProcessMember } = require('./modules/services/auto_roles');
 const { updateVoiceChannel } = require('./modules/services/active_members');
-const { tallyVotesAndRecordWinner } = require('./modules/utils/tallyVotes');
 const { getAll } = require('./modules/utils/dbUtils');
 const logger = require('./modules/utils/logger');
-const db = require('./modules/utils/dbUtils');
 require('dotenv').config();
 
 /**
@@ -54,21 +52,6 @@ module.exports = [
         func: async (client) => {
             const competitionService = new CompetitionService(client);
             await competitionService.startNextCompetitionCycle();
-        },
-        interval: 600 * 3, // Runs every 30 min
-        runOnStart: true,
-        runAsTask: true,
-    },
-    {
-        name: 'tallyVotesAndRecordWinners',
-        func: async (client) => {
-            // Fetch competitions that have ended but not yet processed
-            const now = new Date().toISOString();
-            const endedCompetitions = await db.getAll('SELECT * FROM competitions WHERE ends_at <= ? AND id NOT IN (SELECT competition_id FROM winners)', [now]);
-
-            for (const competition of endedCompetitions) {
-                await tallyVotesAndRecordWinner(client, competition);
-            }
         },
         interval: 600 * 3, // Runs every 30 min
         runOnStart: true,

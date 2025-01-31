@@ -1,17 +1,14 @@
-/* eslint-disable no-undef */
-/* eslint-disable no-unused-vars */
 /* eslint-disable jsdoc/require-returns */
 // @ts-nocheck
-/* eslint-disable node/no-unsupported-features/es-syntax */
 
 const { EmbedBuilder } = require('discord.js');
-const db = require('../utils/dbUtils');
-const { getConfigValue, setConfigValue } = require('../utils/dbUtils');
-const logger = require('../utils/logger');
-const { createCompetitionEmbed, createVotingDropdown, buildLeaderboardDescription } = require('../utils/embedUtils');
-const constants = require('../../config/constants');
+const db = require('../../utils/dbUtils');
+const { getConfigValue, setConfigValue } = require('../../utils/dbUtils');
+const logger = require('../../utils/logger');
+const { createCompetitionEmbed, createVotingDropdown } = require('../../utils/embedUtils');
+const constants = require('../../../config/constants');
 const schedule = require('node-schedule');
-const WOMApiClient = require('../../api/wise_old_man/apiClient');
+const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 require('dotenv').config();
 
 const { WOMClient, Metric } = require('@wise-old-man/utils');
@@ -46,68 +43,140 @@ class CompetitionService {
     /**
      * Starts the next competition cycle and schedules the subsequent rotation.
      */
+    /**
+     * Starts the next competition cycle and schedules the subsequent rotation.
+     */
     async startNextCompetitionCycle() {
         try {
-            const now = new Date().toISOString();
-            const activeCompetitions = await db.getAll(
-                `
+            const now = new Date();
+            const nowISOString = now.toISOString();
+
+            // Define the competition types to handle
+            const competitionTypes = ['SOTW', 'BOTW'];
+
+            // To keep track of the nearest end time across all competition types
+            let overallNearestEndTime = null;
+
+            for (const type of competitionTypes) {
+                // ===== Step 1: Process Ended Competitions for the Current Type =====
+                const endedCompetitions = await db.getAll(
+                    `
+                SELECT *
+                FROM competitions
+                WHERE ends_at <= ?
+                  AND type = ?
+                `,
+                    [nowISOString, type],
+                );
+
+                if (endedCompetitions.length > 0) {
+                    for (const comp of endedCompetitions) {
+                        logger.info(`Competition ${comp.id} of type ${comp.type} has ended and was processed.`);
+                    }
+                }
+
+                // ===== Step 2: Check for Active Competitions of the Current Type =====
+                const activeCompetitions = await db.getAll(
+                    `
                 SELECT *
                 FROM competitions
                 WHERE ends_at > ?
-                  AND type IN ('SOTW','BOTW')
+                  AND type = ?
                 ORDER BY ends_at ASC
                 `,
-                [now],
-            );
+                    [nowISOString, type],
+                );
 
-            if (activeCompetitions.length > 0) {
-                // Update embeds and remove invalid competitions
-                await this.updateCompetitionData();
-                logger.info('An active competition is still running. Skipping new creation.');
-                // Schedule rotation based on the nearest competition end time
-                const nearestEnd = activeCompetitions[0].ends_at;
-                this.scheduleRotation(new Date(nearestEnd));
-                return;
-            }
+                if (activeCompetitions.length > 0) {
+                    // Update embeds and perform any necessary updates
+                    // await this.updateCompetitionData();
+                    await this.removeInvalidCompetitions();
+                    logger.info(`There are still active ${type} competitions running. Skipping new ${type} competition creation.`);
 
-            // Rotation logic: increment index, create competitions
-            let rotationIndex = parseInt(await getConfigValue('boss_rotation_index', '0'), 10) || 0;
-            rotationIndex = (rotationIndex + 1) % 9999;
-            await setConfigValue('boss_rotation_index', rotationIndex);
-            logger.info(`Updated boss_rotation_index => ${rotationIndex}`);
+                    // Find the nearest end time for the current type
+                    const nearestEnd = activeCompetitions[0].ends_at;
+                    const nearestEndDate = new Date(nearestEnd);
 
-            const queuedCompetitions = await db.getAll('SELECT * FROM competition_queue ORDER BY queued_at ASC');
-            if (queuedCompetitions.length === 0) {
-                logger.info('No queued comps found. Creating default comps.');
-                await this.createDefaultCompetitions();
-            } else {
-                for (const comp of queuedCompetitions) {
-                    await this.createCompetitionFromQueue(comp);
+                    // Update the overall nearest end time if necessary
+                    if (!overallNearestEndTime || nearestEndDate < overallNearestEndTime) {
+                        overallNearestEndTime = nearestEndDate;
+                    }
+
+                    // Continue to the next competition type without creating a new competition for this type
+                    continue;
                 }
-                await db.runQuery('DELETE FROM competition_queue');
-                logger.info('Cleared competition queue after creation.');
-            }
 
-            // Update embeds after creating competitions
-            await this.updateCompetitionData();
+                // ===== Step 3: Handle Rotation and Create New Competition for the Current Type =====
+                // Increment and update the rotation index
+                let rotationIndex = parseInt(await getConfigValue('boss_rotation_index', '0'), 10) || 0;
+                rotationIndex = (rotationIndex + 1) % 9999; // Adjust modulus as needed
+                await setConfigValue('boss_rotation_index', rotationIndex);
+                logger.info(`Updated boss_rotation_index => ${rotationIndex}`);
+
+                // Fetch queued competitions for the current type
+                const queuedCompetitions = await db.getAll(
+                    `
+                SELECT *
+                FROM competition_queue
+                WHERE type = ?
+                ORDER BY queued_at ASC
+                `,
+                    [type],
+                );
+
+                if (queuedCompetitions.length === 0) {
+                    logger.info(`No queued competitions found for type ${type}. Creating default competitions.`);
+                    await this.createDefaultCompetitions(type);
+                } else {
+                    for (const comp of queuedCompetitions) {
+                        // Create competition based on queue
+                        await this.createCompetitionFromQueue(comp);
+                        logger.info(`Created competition from queue: ${comp.id} of type ${type}`);
+                    }
+                    // Clear the competition queue for the current type after processing
+                    await db.runQuery(
+                        `
+                    DELETE FROM competition_queue
+                    WHERE type = ?
+                    `,
+                        [type],
+                    );
+                    logger.info(`Cleared competition queue for type ${type} after creating competitions.`);
+                }
+
+                // Update embeds after creating competitions
+                await this.updateCompetitionData();
+                logger.info(`Created new competition(s) for type ${type}.`);
+
+                // Fetch newly created active competitions for the current type to find the nearest end time
+                const newActiveCompetitions = await db.getAll(
+                    `
+                SELECT *
+                FROM competitions
+                WHERE ends_at > ?
+                  AND type = ?
+                ORDER BY ends_at ASC
+                `,
+                    [new Date().toISOString(), type],
+                );
+
+                if (newActiveCompetitions.length > 0) {
+                    const nearestEnd = newActiveCompetitions[0].ends_at;
+                    const nearestEndDate = new Date(nearestEnd);
+                    if (!overallNearestEndTime || nearestEndDate < overallNearestEndTime) {
+                        overallNearestEndTime = nearestEndDate;
+                    }
+                }
+            }
 
             logger.info('Next competition cycle setup completed.');
 
-            // Schedule rotation based on the newly created competitions' end times
-            const newActiveCompetitions = await db.getAll(
-                `
-                SELECT *
-                FROM competitions
-                WHERE ends_at > ?
-                  AND type IN ('SOTW','BOTW')
-                ORDER BY ends_at ASC
-                `,
-                [new Date().toISOString()],
-            );
-
-            if (newActiveCompetitions.length > 0) {
-                const nearestEnd = newActiveCompetitions[0].ends_at;
-                this.scheduleRotation(new Date(nearestEnd));
+            // ===== Step 4: Schedule Rotation Based on the Nearest End Time Across All Types =====
+            if (overallNearestEndTime) {
+                this.scheduleRotation(overallNearestEndTime);
+                logger.info(`Scheduled next rotation at ${overallNearestEndTime.toISOString()}.`);
+            } else {
+                logger.info('No active competitions found. Rotation not scheduled.');
             }
         } catch (err) {
             logger.error(`Error in startNextCompetitionCycle: ${err.message}`);
@@ -507,8 +576,12 @@ class CompetitionService {
                 }
 
                 if (isOutdated) {
-                    logger.debug('Editing old competition message with a fresh embed...');
-                    await oldMsg.edit({ embeds, files, components: [] });
+                    logger.debug('Editing old competition message with a fresh embed and dropdown...');
+
+                    // Rebuild the dropdown based on the competition type
+                    const dropdown = await this.buildPollDropdown(comp.type);
+
+                    await oldMsg.edit({ embeds, files, components: [dropdown] });
                 } else {
                     logger.debug('Embed not outdated, skipping re-edit...');
                 }

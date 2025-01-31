@@ -29,7 +29,7 @@ const path = require('path');
 const tasks = require('./tasks');
 const initializeCompetitionsTables = require('./migrations/initializeCompetitionTables');
 const populateSkillsBosses = require('./migrations/populateSkillsBosses');
-const CompetitionService = require('./modules/services/competitionService');
+const CompetitionService = require('./modules/services/competitionServices/competitionService');
 
 /**
  * Create a new Discord client instance with necessary intents.
@@ -114,7 +114,6 @@ const initializeBot = async () => {
         // Log the bot into Discord
         await client.login(process.env.DISCORD_TOKEN);
         logger.info('Bot logged in successfully.');
-        await competitionService.scheduleRotationsOnStartup();
     } catch (error) {
         logger.error('Bot initialization failed: ' + error.message);
     }

@@ -252,7 +252,7 @@ async function processNameChanges(client) {
                 userId: userIdEntry[0].user_id,
             });
         } else {
-            logger.warn(`[processNameChanges] No user_id found for RSN: "${oldName}". Skipping.`);
+            /* empty */
         }
     }
 

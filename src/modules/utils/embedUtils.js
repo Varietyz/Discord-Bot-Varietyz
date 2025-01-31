@@ -1,3 +1,4 @@
+/* eslint-disable jsdoc/check-param-names */
 /* eslint-disable max-len */
 /* eslint-disable jsdoc/require-returns */
 /* eslint-disable no-unused-vars */
@@ -65,9 +66,11 @@ async function getImagePath(metric) {
  * @param {string} metric - The metric name.
  * @param {string} startsAt - ISO start date of the competition.
  * @param {string} endsAt - ISO end date of the competition.
+ * @param competitionId
+ * @param guild
  * @returns {Promise<{ embeds: EmbedBuilder[], files: AttachmentBuilder[] }>} - The embed and its attachments.
  */
-const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt) => {
+const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, competitionId) => {
     const competitionTitle = type === 'SOTW' ? '<:Total_Level:1127669463613976636> Skill of the Week' : '<:Slayer:1127658069984288919> Boss of the Week';
 
     logger.debug(`Creating competition embed for metric: "${metric}"`);
@@ -92,33 +95,43 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt) =>
         );
     }
 
-    // Build the embed
-    // Function to convert metric to "Example Name" format
-    /**
-     *
-     * @param metric
-     */
-    function formatMetricName(metric) {
-        return metric
-            .toLowerCase() // Convert to lowercase
-            .split('_') // Split by underscores
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
-            .join(' '); // Join with spaces
+    let guild;
+    try {
+        guild = await client.guilds.fetch(process.env.GUILD_ID);
+        logger.debug(`✅ Successfully fetched guild: ${guild.name}`);
+    } catch (err) {
+        logger.warn(`⚠️ Failed to fetch guild. Reason: ${err.message}`);
+        guild = null;
     }
 
-    // Apply formatting to the metric
-    const formattedMetric = formatMetricName(metric);
+    // ✅ Fetch metric emoji safely
+    let metricEmoji = '';
+    if (guild) {
+        const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_'); // Normalize metric name
+        const foundEmoji = guild.emojis.cache.find((e) => e.name.toLowerCase() === normalizedMetric);
+        metricEmoji = foundEmoji ? foundEmoji.toString() : ''; // Ensure it's a string
+        logger.debug(`🔍 Found emoji for "${metric}": ${metricEmoji}`);
+    } else {
+        logger.warn(`⚠️ Guild is undefined; cannot fetch emoji for metric: ${metric}`);
+    }
+
+    // ✅ Format metric name
+    const formattedMetric = metric
+        .toLowerCase()
+        .split('_')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
 
     const embed = new EmbedBuilder()
         .setTitle(`**${competitionTitle}**`)
-        .setDescription(
-            `\`${formattedMetric}\`\n\n` + `**Starts:**\n\`${new Date(startsAt).toUTCString()}\`\n` + `**Ends:**\n\`${new Date(endsAt).toUTCString()}\`\n\n[Click here to navigate to the Wiki](https://oldschool.runescape.wiki/w/${metric})`,
-        )
+        .setURL(`https://wiseoldman.net/competitions/${competitionId}`)
+        .setDescription(`## ${metricEmoji} [${formattedMetric}](https://oldschool.runescape.wiki/w/${metric})`)
+        .addFields({ name: '🕛 Start', value: `<t:${Math.floor(new Date(startsAt).getTime() / 1000)}:F>`, inline: true }, { name: '🕛 Ends', value: `<t:${Math.floor(new Date(endsAt).getTime() / 1000)}:F>`, inline: true })
         .setColor(type === 'SOTW' ? 0x3498db : 0xe74c3c)
         .setThumbnail(`attachment://${metric}.png`) // Reference the attachment
-        .setFooter(type === 'SOTW' ? { text: 'Select a Skill from the dropdown menu to vote.' } : { text: 'Select a Boss/Raid from the dropdown menu to vote.' });
+        .setImage(type === 'SOTW' ? 'https://i.ibb.co/DP2F5L9/sotw-banner.png' : 'https://i.ibb.co/MGLHPrk/botw-banner.png')
+        .setFooter({ text: type === 'SOTW' ? 'Select a Skill from the dropdown menu to vote.' : 'Select a Boss/Raid from the dropdown menu to vote.' });
 
-    // Return the embed and attachment
     return { embeds: [embed], files: [imageAttachment] };
 };
 
@@ -146,20 +159,19 @@ function buildLeaderboardDescription(participations, competitionType, guild) {
 
 /**
  * Creates a voting dropdown menu with provided options.
- * Expects "options" to include a "voteCount" property if you want to display it.
  * @param {Array<Object>} options - Array of option objects
  * with shape { label, description, value, voteCount? }.
+ * @param competitionType
+ * @param type
  * @returns {ActionRowBuilder} - The action row containing the select menu.
  */
-const createVotingDropdown = (options) => {
-    // If no options, handle gracefully
+const createVotingDropdown = (options, type) => {
     if (!options || options.length === 0) {
-        const selectMenu = new StringSelectMenuBuilder().setCustomId('vote_dropdown').setPlaceholder('No options available').setDisabled(true);
+        const selectMenu = new StringSelectMenuBuilder().setCustomId('vote_dropdown').setPlaceholder('⚠️ Voting is currently disabled').setDisabled(true);
 
         return new ActionRowBuilder().addComponents(selectMenu);
     }
 
-    // Map each item into the Discord.js SelectMenuOption format
     const dropdownOptions = options.map((opt) => {
         const votesText = opt.voteCount !== undefined ? `Votes: ${opt.voteCount}` : '';
         return {
@@ -169,11 +181,12 @@ const createVotingDropdown = (options) => {
         };
     });
 
-    const selectMenu = new StringSelectMenuBuilder().setCustomId('vote_dropdown').setPlaceholder('Select to vote').addOptions(dropdownOptions);
-
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-
-    return row;
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('vote_dropdown')
+        .setPlaceholder(type === 'SOTW' ? '☝️ Select a skill to vote' : '☝️ Select a boss to vote')
+        .addOptions(dropdownOptions);
+    logger.debug(type);
+    return new ActionRowBuilder().addComponents(selectMenu);
 };
 
 module.exports = { createCompetitionEmbed, buildLeaderboardDescription, createVotingDropdown };

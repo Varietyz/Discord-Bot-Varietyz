@@ -77,7 +77,7 @@ class WOMApiClient {
      * @throws {Error} Throws an error if all retries fail and the error is critical.
      */
     async retryRequest(endpoint, methodName, params, retries = 15) {
-        const nonCriticalErrors = ['has been updated recently', 'Invalid username', 'Failed to load hiscores'];
+        const nonCriticalErrors = ['has been updated recently', 'Invalid username', 'Failed to load hiscores', 'Competition not found'];
 
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
@@ -90,6 +90,8 @@ class WOMApiClient {
                 if (isNonCritical) {
                     if (error.message.includes('Invalid username', 'Failed to load hiscores')) {
                         logger.warn(`[WOMApiClient] Non-existing, Unranked or Banned player found: ${params}`);
+                    } else if (error.message.includes('Competition not found')) {
+                        logger.warn(`[WOMApiClient] Competition not found for request: ${params}`);
                     } else {
                         logger.warn(`[WOMApiClient] ${params} has been updated recently. Skipping.`);
                     }
