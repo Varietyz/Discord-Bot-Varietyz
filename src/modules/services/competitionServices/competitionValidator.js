@@ -2,12 +2,42 @@
 // @ts-nocheck
 // competitionService/competitionValidator.js
 
+/**
+ * @fileoverview
+ * **Competition Validator** 🛠️
+ *
+ * This module contains functions to validate and update competition data
+ * by cross-referencing with the WOM API. It helps ensure that the database
+ * only contains valid competitions by removing those that no longer exist or
+ * updating details that have changed on the WOM platform.
+ *
+ * **Key Features:**
+ * - Checks each competition entry in the database against the WOM API.
+ * - Removes competitions (and associated votes) that are not found on WOM.
+ * - Updates competition details (title, metric, start/end times) if discrepancies are found.
+ *
+ * @module competitionService/competitionValidator
+ */
+
 const logger = require('../../utils/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 
 /**
- * Removes invalid competitions by checking with WOM API.
- * @param {Object} db - The database utility.
+ * 🎯 **Removes Invalid Competitions**
+ *
+ * Iterates over all competitions in the database and validates each against the WOM API.
+ * If a competition is not found (or returns null), it deletes the competition and its
+ * associated votes from the database. Additionally, if there are discrepancies in the
+ * competition details (e.g., title, metric, start/end times), the function updates the
+ * database with the latest data from WOM.
+ *
+ * @async
+ * @function removeInvalidCompetitions
+ * @param {Object} db - The database utility object used for querying and updating competitions.
+ *
+ * @example
+ * // Remove competitions that are no longer valid:
+ * await removeInvalidCompetitions(db);
  */
 async function removeInvalidCompetitions(db) {
     try {
@@ -30,11 +60,10 @@ async function removeInvalidCompetitions(db) {
                 const { id, title, metric, startsAt, endsAt } = womDetails;
                 logger.debug(`WOM Competition Details for ID ${id}: Title="${title}", Metric="${metric}", StartsAt="${startsAt}", EndsAt="${endsAt}"`);
 
-                // Compare API data with DB entry
+                // Compare API data with DB entry and prepare updates if necessary.
                 const dbCompetition = comp;
                 const updates = {};
 
-                // Compare and prepare updates
                 if (dbCompetition.title !== title) {
                     updates.title = title;
                     logger.info(`Updating title for competition ID ${comp.id}: "${dbCompetition.title}" => "${title}"`);
@@ -61,7 +90,7 @@ async function removeInvalidCompetitions(db) {
                     logger.info(`Updating ends_at for competition ID ${comp.id}: "${dbCompetition.ends_at}" => "${updates.ends_at}"`);
                 }
 
-                // If any updates are present, execute the update query
+                // If any updates are present, execute the update query.
                 const updateKeys = Object.keys(updates);
                 if (updateKeys.length > 0) {
                     const setClause = updateKeys.map((key) => `${key} = ?`).join(', ');

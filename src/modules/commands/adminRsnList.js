@@ -1,22 +1,23 @@
+/* eslint-disable no-process-exit */
+// @ts-nocheck
 /**
- * @fileoverview Defines the `/rsn_list` slash command for the Varietyz Bot.
- * This command allows users with appropriate permissions to view a comprehensive list of
- * all registered RuneScape Names (RSNs) and their associated ranks for clan members.
- * It provides a paginated view, sorted by rank hierarchy, and allows for navigation
- * through interactive buttons.
+ * @fileoverview
+ * **RSN List Command** 📜
  *
- * Core Features: (Administrator-only command)
+ * Defines the `/rsn_list` slash command for the Varietyz Bot.
+ * This command allows users to view all registered RuneScape Names (RSNs) along with their associated ranks for clan members.
+ * The command displays the data in a paginated embed with interactive navigation buttons.
+ *
+ * **Core Features:**
  * - Displays RSNs grouped by Discord user.
- * - Includes rank emojis and links to Wise Old Man profiles.
- * - Paginated display with navigation controls.
- * - Data is sorted by rank hierarchy, with guests listed last.
+ * - Shows rank emojis and provides links to Wise Old Man profiles.
+ * - Supports paginated navigation via buttons.
  *
- * External Dependencies:
- * - **Discord.js**: For handling slash commands, creating embeds, and managing interactive components like buttons.
- * - **Wise Old Man API**: For fetching player profiles and rank details.
- * - **SQLite**: For managing registered RSN data in the database.
+ * **External Dependencies:**
+ * - discord.js for embeds, actions rows, buttons.
+ * - SQLite for retrieving RSN and clan member data.
  *
- * @module modules/commands/rsn_list
+ * @module modules/commands/adminRsnList
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
@@ -30,6 +31,21 @@ const { rankHierarchy } = require('../../config/constants');
 module.exports = {
     data: new SlashCommandBuilder().setName('rsn_list').setDescription('View all registered RSNs and their associated ranks for clan members.').setDefaultMemberPermissions(0),
 
+    /**
+     * 🎯 **Executes the /rsn_list Command**
+     *
+     * Fetches RSN data from the database and clan member data, then paginates and displays the RSNs in an embed.
+     * The embed includes interactive navigation buttons for paging through the results.
+     *
+     * @async
+     * @function execute
+     * @param {Discord.CommandInteraction} interaction - The command interaction object.
+     * @returns {Promise<void>} Resolves when the command execution is complete.
+     *
+     * @example
+     * // Invoked when a user runs /rsn_list.
+     * await execute(interaction);
+     */
     async execute(interaction) {
         try {
             logger.info(`Command 'rsnlist' triggered by user: ${interaction.user.username}`);
@@ -86,6 +102,7 @@ module.exports = {
                     });
                 }
 
+                // Update button disabled states based on the current page.
                 // @ts-ignore
                 row.components[0].setDisabled(currentPage === 0);
                 // @ts-ignore
@@ -97,8 +114,6 @@ module.exports = {
                 });
             });
 
-            // @ts-ignore
-            // @ts-ignore
             collector.on('end', async (collected, reason) => {
                 if (reason === 'time') {
                     await interaction.editReply({
@@ -117,47 +132,61 @@ module.exports = {
 };
 
 /**
- * Gets the highest rank of a user's RSNs.
+ * 🎯 **Determines the Highest Rank Among RSNs for a User**
  *
- * @param {Array} rsns - The user's RSNs.
- * @param {Array} clanMembers - The clan member data.
- * @returns {Object} - An object containing the highest rank and the RSN associated with it.
+ * For a given array of RSNs and clan member data, this function determines which RSN corresponds to the highest rank
+ * based on a predefined rank hierarchy. If no clan member data is found, the rank defaults to 'guest'.
+ *
+ * @function getHighestRank
+ * @param {Array<string>} rsns - The user's RSNs.
+ * @param {Array<Object>} clanMembers - The clan member data.
+ * @returns {Object} An object containing the highest rank and its associated RSN.
+ *
+ * @example
+ * const highest = getHighestRank(['PlayerOne', 'PlayerTwo'], clanMembers);
+ * console.log(highest); // { rsn: 'PlayerOne', rank: 'Leader' }
  */
 function getHighestRank(rsns, clanMembers) {
     const rankedRsns = rsns.map((rsn) => {
         const normalizedRSN = normalizeRsn(rsn);
         const member = clanMembers.find((member) => normalizeRsn(member.name) === normalizedRSN);
-        const rank = member ? member.rank : 'guest'; // Default to 'guest' if no rank found
+        const rank = member ? member.rank : 'guest'; // Default to 'guest' if not found.
         return { rsn, rank };
     });
 
-    // Sort by rank hierarchy, with highest rank first
+    // Sort RSNs by rank hierarchy (highest first).
     rankedRsns.sort((a, b) => rankHierarchy[b.rank.toLowerCase()] - rankHierarchy[a.rank.toLowerCase()]);
 
-    return rankedRsns[0]; // Return the highest rank and associated RSN
+    return rankedRsns[0];
 }
 
 /**
- * Paginates the RSN data into an array of EmbedBuilder objects, sorted by rank.
+ * 🎯 **Paginates RSN Data into Embed Pages**
  *
- * @param {Array} rsnData - The RSN data from the database.
- * @param {Array} clanMembers - The clan member data from the database.
- * @param {number} itemsPerPage - The number of items per page.
- * @returns {EmbedBuilder[]} - An array of EmbedBuilder objects.
+ * Splits the RSN data (grouped by user) into multiple pages for display.
+ * Each page is represented by an EmbedBuilder object containing RSN information and pagination details.
+ *
+ * @function paginateRSNData
+ * @param {Array<Object>} rsnData - The RSN data from the database.
+ * @param {Array<Object>} clanMembers - The clan member data from the database.
+ * @param {number} itemsPerPage - The maximum number of users per page.
+ * @returns {EmbedBuilder[]} An array of embeds, each representing a page.
+ *
+ * @example
+ * const pages = paginateRSNData(rsnData, clanMembers, 10);
+ * console.log(`Generated ${pages.length} pages.`);
  */
 function paginateRSNData(rsnData, clanMembers, itemsPerPage) {
     const rsnGroupedByUser = groupRSNByUser(rsnData);
 
-    // Sort user IDs based on highest rank hierarchy, with `guest` users at the end
+    // Sort user IDs based on highest rank hierarchy, placing 'guest' users at the end.
     const sortedUserIds = Object.keys(rsnGroupedByUser).sort((a, b) => {
         const rankA = getHighestRank(rsnGroupedByUser[a], clanMembers);
         const rankB = getHighestRank(rsnGroupedByUser[b], clanMembers);
 
-        // Sort `guest` rank after all other ranks
         if (rankA.rank === 'guest' && rankB.rank !== 'guest') return 1;
         if (rankB.rank === 'guest' && rankA.rank !== 'guest') return -1;
 
-        // Sort by rank hierarchy
         return rankHierarchy[rankB.rank.toLowerCase()] - rankHierarchy[rankA.rank.toLowerCase()];
     });
 
@@ -186,12 +215,20 @@ function paginateRSNData(rsnData, clanMembers, itemsPerPage) {
 }
 
 /**
- * Prepares the user content for the embed, prioritizing RSNs with rank emojis.
+ * 🎯 **Prepares Formatted Content for a User's RSN List**
  *
+ * Generates a formatted string for a user's RSNs, including a Discord mention,
+ * rank emojis, and clickable links to Wise Old Man profiles.
+ *
+ * @function prepareUserContent
  * @param {string} userId - The Discord user ID.
- * @param {Array} rsns - An array of RSNs linked to the user.
- * @param {Array} clanMembers - The clan member data.
- * @returns {string} - A formatted string for the user's RSNs and ranks.
+ * @param {Array<string>} rsns - The RSNs associated with the user.
+ * @param {Array<Object>} clanMembers - The clan member data.
+ * @returns {string} A formatted string containing the user's mention and their RSNs.
+ *
+ * @example
+ * const content = prepareUserContent('123456789012345678', ['PlayerOne'], clanMembers);
+ * console.log(content);
  */
 function prepareUserContent(userId, rsns, clanMembers) {
     const userMention = `<@${userId}>`;
@@ -207,16 +244,23 @@ function prepareUserContent(userId, rsns, clanMembers) {
                 content: rank ? `- ${emoji}[${rsn}](${profileLink})` : `- [${rsn}](${profileLink})`,
             };
         })
-        .sort((a, b) => rankHierarchy[b.rank.toLowerCase()] - rankHierarchy[a.rank.toLowerCase()]); // Sort by rank
+        .sort((a, b) => rankHierarchy[b.rank.toLowerCase()] - rankHierarchy[a.rank.toLowerCase()]); // Sort by rank.
 
     return `${userMention}\n${rankedRsns.map((entry) => entry.content).join('\n')}`;
 }
 
 /**
- * Groups RSNs by user ID.
+ * 🎯 **Groups RSNs by Discord User**
  *
- * @param {Array} rsnData - The RSN data from the database.
- * @returns {Object} - An object where keys are user IDs and values are arrays of RSNs.
+ * Organizes RSN data into an object where each key is a user ID and each value is an array of RSNs for that user.
+ *
+ * @function groupRSNByUser
+ * @param {Array<Object>} rsnData - An array of objects containing `user_id` and `rsn` properties.
+ * @returns {Object} An object mapping user IDs to arrays of RSNs.
+ *
+ * @example
+ * const grouped = groupRSNByUser(rsnData);
+ * console.log(grouped); // { 'user1': ['RSN1', 'RSN2'], 'user2': ['RSN3'] }
  */
 function groupRSNByUser(rsnData) {
     const grouped = {};

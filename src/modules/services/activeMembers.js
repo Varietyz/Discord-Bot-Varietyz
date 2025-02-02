@@ -1,24 +1,26 @@
 /* eslint-disable no-unused-vars */
 // @ts-nocheck
 /**
- * @fileoverview Utility functions for managing active and inactive clan members within the Varietyz Bot.
- * This module interacts with the WOM API to fetch player data, calculate member activity,
- * and update Discord voice channel names based on member activity, reflecting the count of active members.
+ * @fileoverview
+ * **Active/Inactive Clan Member Activity Utilities** ⚡
  *
- * Key Features:
- * - **Activity Data Update**: Fetches player data from the WOM API and updates the 'active_inactive' table in the database.
- * - **Activity Calculation**: Calculates the number of active players based on their progress in the last 7 days and inactive players in the last 21 days.
- * - **Voice Channel Update**: Dynamically updates the name of a Discord voice channel to reflect the number of active members in the clan.
- * - **Retry Mechanism**: Implements a retry mechanism for fetching player data from the WOM API, with exponential backoff for error handling.
- * - **Data Integrity**: Ensures accurate and up-to-date tracking of player progress using the Luxon DateTime library and the WOM API.
+ * This module provides utility functions for managing active and inactive clan members within the Varietyz Bot.
+ * It interacts with the WOM API to fetch player data, calculates member activity based on progress within specified
+ * intervals, and dynamically updates a Discord voice channel name to reflect the number of active clan members.
  *
- * External Dependencies:
- * - **Wise Old Man (WOM) API**: Used to fetch player data and group details for active and inactive member calculations.
- * - **Luxon**: Used for date and time manipulation to calculate activity intervals.
- * - **Discord.js**: For interacting with the Discord guild and voice channels, updating channel names based on activity.
- * - **dbUtils**: Handles interactions with the SQLite database for storing and querying player activity data.
+ * **Key Features:**
+ * - **Activity Data Update**: Fetches player data from the WOM API and updates the `active_inactive` table in the database.
+ * - **Activity Calculation**: Determines the number of active players (last 7 days) and inactive players (last 21 days) using Luxon.
+ * - **Voice Channel Update**: Dynamically updates the Discord voice channel name with the current active member count.
+ * - **Retry Mechanism**: Implements exponential backoff for retrying failed data fetch attempts from the WOM API.
  *
- * @module modules/services/active_members
+ * **External Dependencies:**
+ * - **Luxon**: For date and time manipulation.
+ * - **Wise Old Man (WOM) API**: To fetch player and group details.
+ * - **Discord.js**: For interacting with the Discord guild and channels.
+ * - **dbUtils**: For database interactions.
+ *
+ * @module modules/services/activeMembers
  */
 
 const { DateTime } = require('luxon');
@@ -27,6 +29,7 @@ const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const { VOICE_CHANNEL_ID } = require('../../config/constants');
 const { getAll, runQuery } = require('../utils/dbUtils');
 const { calculateInactivity, calculateProgressCount, ensureActiveInactiveTable } = require('../utils/calculateActivity');
+
 /**
  * Object to store player progress data.
  * Keys are player names (RSNs), and values are Luxon DateTime objects representing the last progression date.
@@ -36,15 +39,21 @@ const { calculateInactivity, calculateProgressCount, ensureActiveInactiveTable }
 const playerProgress = {};
 
 /**
- * Fetches player data from the WOM API and updates the 'active_inactive' database table.
+ * 🎯 **Fetches and Updates Player Activity Data**
+ *
+ * Retrieves player data from the WOM API and updates the `active_inactive` database table with each player's last progress date.
+ * The function implements a retry mechanism with exponential backoff to handle intermittent failures.
  *
  * @async
  * @function updateActivityData
- * @param {number} [maxRetries=3] - The maximum number of retry attempts in case of failure.
- * @param {number} [baseDelay=5000] - The base delay in milliseconds before retrying after a failure.
- * @returns {Promise<void>} Resolves when data is successfully fetched and processed.
- * @throws {Error} - Throws an error if all retry attempts fail.
+ * @param {number} [maxRetries=3] - The maximum number of retry attempts if fetching data fails.
+ * @param {number} [baseDelay=5000] - The base delay (in milliseconds) before retrying.
+ * @returns {Promise<void>} Resolves when the activity data has been successfully fetched and processed.
+ *
+ * @throws {Error} Throws an error if all retry attempts fail.
+ *
  * @example
+ * // Update activity data with up to 5 retries and a 10-second base delay:
  * await updateActivityData(5, 10000);
  */
 async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
@@ -64,7 +73,7 @@ async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
                     if (player?.lastChangedAt) {
                         const lastProgressed = DateTime.fromJSDate(player.lastChangedAt);
                         if (lastProgressed.isValid) {
-                            // Save to the database
+                            // Save to the database (insert or update on conflict)
                             await runQuery(
                                 `INSERT INTO active_inactive (username, last_progressed)
                                  VALUES (?, ?)
@@ -100,14 +109,18 @@ async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
 }
 
 /**
- * Updates the Discord voice channel name to reflect the current number of active clan members.
- * It fetches and processes player data, calculates the active member count, and updates the channel name accordingly.
+ * 🎯 **Updates the Discord Voice Channel Name Based on Active Members**
+ *
+ * Retrieves the current active member count (calculated from player progress data),
+ * and updates the name of the designated Discord voice channel to display the number of active clan members.
  *
  * @async
  * @function updateVoiceChannel
  * @param {Discord.Client} client - The Discord client instance.
- * @returns {Promise<void>} - Resolves when the voice channel name has been updated.
+ * @returns {Promise<void>} Resolves when the voice channel name has been updated.
+ *
  * @example
+ * // Update the voice channel with the current active member count:
  * await updateVoiceChannel(client);
  */
 async function updateVoiceChannel(client) {
@@ -116,6 +129,7 @@ async function updateVoiceChannel(client) {
         if (guild) {
             const voiceChannel = guild.channels.cache.get(VOICE_CHANNEL_ID);
             if (voiceChannel) {
+                // Update activity data before calculating the count.
                 await updateActivityData(3, 5000);
                 const emoji = '🟢';
                 const count = await calculateProgressCount();

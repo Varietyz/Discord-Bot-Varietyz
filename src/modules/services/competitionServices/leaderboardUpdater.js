@@ -4,11 +4,23 @@ const logger = require('../../utils/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 
 /**
- * Updates the leaderboard for a given competition type.
- * @param {string} competitionType - 'SOTW' or 'BOTW'.
- * @param {Object} db - The database utility.
- * @param {Object} client - The Discord client.
- * @param {Object} constants - Configuration constants.
+ * 🎯 **Updates the Competition Leaderboard**
+ *
+ * Retrieves active competition details, fetches competition data from the WOM API,
+ * sorts participants by progress gained, formats the leaderboard, and sends or updates
+ * the leaderboard embed in the corresponding Discord channel.
+ *
+ * @async
+ * @function updateLeaderboard
+ * @param {string} competitionType - The competition type, either `SOTW` or `BOTW`.
+ * @param {Object} db - The database utility object.
+ * @param {Object} client - The Discord client instance.
+ * @param {Object} constants - Configuration constants (e.g., channel IDs).
+ * @returns {Promise<void>} Resolves when the leaderboard has been updated.
+ *
+ * @example
+ * // Update the SOTW leaderboard:
+ * await updateLeaderboard('SOTW', db, client, constants);
  */
 async function updateLeaderboard(competitionType, db, client, constants) {
     try {
@@ -41,10 +53,10 @@ async function updateLeaderboard(competitionType, db, client, constants) {
             return;
         }
 
-        // ✅ Sort participants based on progress gained
+        // ✅ Sort participants based on progress gained (descending order)
         const sortedParticipants = participations.sort((a, b) => b.progress.gained - a.progress.gained);
 
-        // ✅ Format leaderboard with metric emoji
+        // ✅ Format leaderboard description with metric emoji and participant data
         const embedDescription = formatLeaderboardDescription(sortedParticipants, competitionType, metric, channel.guild);
 
         const embed = buildLeaderboardEmbed(competitionType, embedDescription, competition.id);
@@ -57,10 +69,18 @@ async function updateLeaderboard(competitionType, db, client, constants) {
 }
 
 /**
- * Fetch the active competition from the database.
- * @param {string} competitionType - 'SOTW' or 'BOTW'.
- * @param {Object} db - The database utility.
- * @returns {Object|null}
+ * 🎯 **Fetches the Active Competition**
+ *
+ * Retrieves the active competition from the database based on the current timestamp.
+ *
+ * @async
+ * @function getActiveCompetition
+ * @param {string} competitionType - The competition type, either `SOTW` or `BOTW`.
+ * @param {Object} db - The database utility object.
+ * @returns {Promise<Object|null>} Returns the active competition object or `null` if not found.
+ *
+ * @example
+ * const activeComp = await getActiveCompetition('BOTW', db);
  */
 async function getActiveCompetition(competitionType, db) {
     return await db.getOne(
@@ -76,19 +96,40 @@ async function getActiveCompetition(competitionType, db) {
 }
 
 /**
- * Formats the leaderboard description with player names, links, progress, and dynamic metric emojis.
- * @param {Array} participants - The competition participants.
- * @param {string} competitionType - 'SOTW' or 'BOTW'.
+ * 🎯 **Formats the Leaderboard Description**
+ *
+ * Constructs a formatted description string for the leaderboard embed, including player names,
+ * progress, and dynamically fetched metric emojis.
+ *
+ * @function formatLeaderboardDescription
+ * @param {Array<Object>} participants - Array of participant objects with progress details.
+ * @param {string} competitionType - The competition type, either `SOTW` or `BOTW`.
  * @param {string} metric - The competition metric (e.g., "Mining", "Agility").
- * @param {Guild} guild - The Discord guild object to fetch emojis.
- * @returns {string} - The formatted leaderboard description.
+ * @param {Guild} guild - The Discord guild object used to fetch custom emojis.
+ * @returns {string} A formatted string containing the leaderboard description.
+ *
+ * @example
+ * const description = formatLeaderboardDescription(participants, 'SOTW', 'Mining', guild);
  */
 function formatLeaderboardDescription(participants, competitionType, metric, guild) {
     // Normalize the metric name to match emoji names in the guild
     const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_');
 
     // Fetch the correct emoji from the guild
-    const metricEmoji = guild.emojis.cache.find((e) => e.name.toLowerCase() === normalizedMetric) || '';
+    let metricEmoji = '';
+    if (guild) {
+        const foundEmoji = guild.emojis.cache.find((e) => e.name.toLowerCase() === normalizedMetric);
+        if (foundEmoji && foundEmoji.available) {
+            metricEmoji = foundEmoji.toString(); // Use custom emoji if available
+        } else {
+            // Use fallback emojis based on competition type
+            metricEmoji = competitionType === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️';
+            logger.warn(`⚠️ Custom emoji "${normalizedMetric}" not found or unavailable. Using fallback ${metricEmoji}`);
+        }
+    } else {
+        logger.warn(`⚠️ Guild is undefined; cannot fetch emoji for metric: ${metric}`);
+        metricEmoji = competitionType === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️'; // Default fallback when guild is null
+    }
 
     let desc = '';
 
@@ -103,11 +144,18 @@ function formatLeaderboardDescription(participants, competitionType, metric, gui
 }
 
 /**
- * Build the leaderboard embed with a clickable title linking to Wise Old Man.
- * @param {string} competitionType - 'SOTW' or 'BOTW'.
- * @param {string} description - The leaderboard description.
+ * 🎯 **Builds the Leaderboard Embed**
+ *
+ * Creates a Discord embed for the leaderboard with a clickable title linking to the Wise Old Man website.
+ *
+ * @function buildLeaderboardEmbed
+ * @param {string} competitionType - The competition type, either `SOTW` or `BOTW`.
+ * @param {string} description - The formatted leaderboard description.
  * @param {number} competitionId - The ID of the competition.
- * @returns {EmbedBuilder}
+ * @returns {EmbedBuilder} A Discord EmbedBuilder instance representing the leaderboard.
+ *
+ * @example
+ * const embed = buildLeaderboardEmbed('BOTW', description, competition.id);
  */
 function buildLeaderboardEmbed(competitionType, description, competitionId) {
     const typeEmoji = competitionType === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '<:Slayer:1127658069984288919>';
@@ -122,11 +170,21 @@ function buildLeaderboardEmbed(competitionType, description, competitionId) {
 }
 
 /**
- * Send a new embed or update the existing one.
- * @param {Channel} channel
- * @param {Object} competition
- * @param {EmbedBuilder} embed
- * @param {Object} db - The database utility.
+ * 🎯 **Sends or Updates the Leaderboard Embed**
+ *
+ * If the competition already has a leaderboard message, this function attempts to fetch and edit it.
+ * If it fails (e.g., message not found), a new message is sent and the competition record is updated.
+ *
+ * @async
+ * @function sendOrUpdateEmbed
+ * @param {Channel} channel - The Discord channel where the leaderboard is posted.
+ * @param {Object} competition - The competition object containing leaderboard information.
+ * @param {EmbedBuilder} embed - The embed to send or update.
+ * @param {Object} db - The database utility object.
+ * @returns {Promise<void>} Resolves when the message has been sent or updated.
+ *
+ * @example
+ * await sendOrUpdateEmbed(channel, competition, embed, db);
  */
 async function sendOrUpdateEmbed(channel, competition, embed, db) {
     if (competition.leaderboard_message_id) {

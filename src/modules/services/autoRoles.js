@@ -1,23 +1,26 @@
 // @ts-nocheck
 /**
- * @fileoverview Utility functions for managing automatic role assignments based on player data in the Varietyz Bot.
- * This module fetches and processes data from multiple RuneScape Names (RSNs), merges the data for role assignments,
- * and assigns or removes Discord roles based on hiscores and achievements such as boss kills, activities, and skills.
+ * @fileoverview
+ * **Auto Roles Service Utilities** 🤖
  *
- * Key Features:
+ * This module contains utility functions for managing automatic role assignments based on player data in the Varietyz Bot.
+ * It fetches and processes data from multiple RuneScape Names (RSNs), merges the data for role assignments,
+ * and assigns or removes Discord roles based on hiscores and achievements (such as boss kills, activities, and skills).
+ *
+ * **Key Features:**
  * - **Role Assignment**: Automatically assigns roles based on boss kills, activity scores, and skill levels from RSN data.
  * - **Data Merging**: Combines data from multiple RSNs into a single profile for each player, ensuring the highest achievements are retained.
  * - **Dynamic Role Updates**: Removes outdated roles and assigns new ones based on the player's latest achievements.
  * - **Discord Notifications**: Sends embed messages in a designated channel to notify players of role assignments and removals.
  * - **Custom Mappings**: Maps boss and activity names to corresponding Discord role names for easier management.
  *
- * External Dependencies:
- * - **Wise Old Man (WOM) API**: Retrieves player data and achievements for role assignment.
- * - **Discord.js**: Used for interacting with Discord to assign roles, send notifications, and manage guild data.
- * - **dbUtils**: Handles database interactions to fetch and store player data linked to Discord users.
- * - **normalizeRsn**: Provides utilities for normalizing RSNs to ensure consistency across data processing.
+ * **External Dependencies:**
+ * - **Wise Old Man (WOM) API**: Retrieves player data and achievements.
+ * - **Discord.js**: For interacting with Discord (assigning roles, sending notifications, managing guild data).
+ * - **dbUtils**: Handles database interactions.
+ * - **normalizeRsn**: Provides utilities for normalizing RSNs.
  *
- * @module modules/services/auto_roles
+ * @module modules/services/autoRoles
  */
 
 const { EmbedBuilder } = require('discord.js');
@@ -27,13 +30,16 @@ const { getAll } = require('../utils/dbUtils.js');
 const { normalizeRsn } = require('../utils/normalizeRsn.js');
 
 /**
- * Maps a boss name to its corresponding Discord role name.
+ * 🎯 **Maps a Boss Name to Its Corresponding Discord Role Name**
+ *
+ * Returns a custom-mapped role name for a given boss. If no mapping exists, it returns the original boss name.
  *
  * @function mapBossToRole
  * @param {string} bossName - The name of the boss.
- * @returns {string} - The corresponding Discord role name.
+ * @returns {string} The corresponding Discord role name.
+ *
  * @example
- * const roleName = mapBossToRole('K\'ril Tsutsaroth'); // 'K\'ril Tsutsaroth'
+ * const roleName = mapBossToRole("K'ril Tsutsaroth"); // Returns "K'ril Tsutsaroth"
  */
 function mapBossToRole(bossName) {
     const roleMap = {
@@ -50,13 +56,16 @@ function mapBossToRole(bossName) {
 }
 
 /**
- * Maps an activity name to its corresponding Discord role name.
+ * 🎯 **Maps an Activity Name to Its Corresponding Discord Role Name**
+ *
+ * Returns a custom-mapped role name for a given activity. If no mapping exists, it returns the original activity name.
  *
  * @function mapActivityToRole
  * @param {string} activityName - The name of the activity.
- * @returns {string} - The corresponding Discord role name.
+ * @returns {string} The corresponding Discord role name.
+ *
  * @example
- * const roleName = mapActivityToRole('Clue Scrolls All'); // 'Clue Solver'
+ * const roleName = mapActivityToRole('Clue Scrolls All'); // Returns "Clue Solver"
  */
 function mapActivityToRole(activityName) {
     const roleMap = {
@@ -72,15 +81,18 @@ function mapActivityToRole(activityName) {
 }
 
 /**
- * Retrieves all RuneScape Names (RSNs) associated with a given Discord user from the database.
+ * 🎯 **Retrieves All RSNs for a Discord User**
+ *
+ * Queries the database for all RuneScape Names (RSNs) linked to a given Discord user ID.
  *
  * @async
  * @function getUserRSNs
  * @param {string} userId - The Discord user ID.
- * @returns {Promise<string[]>} - A promise that resolves to an array of RSNs.
+ * @returns {Promise<string[]>} A promise that resolves to an array of RSNs.
+ *
  * @example
  * const rsns = await getUserRSNs('123456789012345678');
- * logger.info(rsns); // ['PlayerOne', 'PlayerTwo']
+ * // Might log: ['PlayerOne', 'PlayerTwo']
  */
 async function getUserRSNs(userId) {
     const rows = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userId]);
@@ -88,13 +100,16 @@ async function getUserRSNs(userId) {
 }
 
 /**
- * Fetches player data for a specific RSN from the database.
- * It standardizes the RSN before performing the query to ensure accurate retrieval.
+ * 🎯 **Fetches Player Data for a Given RSN**
+ *
+ * Normalizes the provided RSN and queries the database for associated player data.
+ * Returns an object mapping data keys to their values.
  *
  * @async
  * @function getPlayerDataForRSN
  * @param {string} rsn - The RuneScape Name to fetch data for.
- * @returns {Promise<Object>} - A promise that resolves to an object mapping data keys to values.
+ * @returns {Promise<Object>} A promise that resolves to an object with player data.
+ *
  * @example
  * const playerData = await getPlayerDataForRSN('PlayerOne');
  * logger.info(playerData);
@@ -122,14 +137,16 @@ async function getPlayerDataForRSN(rsn) {
 }
 
 /**
- * Merges hiscores data from multiple RSNs, ensuring that the highest values are retained
- * for skills, boss kills, and activities. This allows treating multiple RSNs as a single
- * combined account for role assignments.
+ * 🎯 **Merges Hiscores Data from Multiple RSNs**
+ *
+ * Combines hiscores data from an array of RSNs so that the highest values are retained for skills,
+ * boss kills, and activities. This effectively treats multiple RSNs as a single combined account.
  *
  * @async
  * @function mergeRsnData
  * @param {string[]} rsns - An array of RSNs to merge data from.
- * @returns {Promise<Object>} - A promise that resolves to the merged hiscores data.
+ * @returns {Promise<Object>} A promise that resolves to an object containing the merged hiscores data.
+ *
  * @example
  * const mergedData = await mergeRsnData(['PlayerOne', 'PlayerTwo']);
  * logger.info(mergedData);
@@ -142,14 +159,13 @@ async function mergeRsnData(rsns) {
         const data = await getPlayerDataForRSN(rsn);
 
         for (const [key, value] of Object.entries(data)) {
-            // If it's a numeric skill, boss, or activity, store the max
+            // If it's a numeric skill, boss, or activity, store the max value.
             if ((key.startsWith('Skills ') && key.endsWith(' Level')) || (key.startsWith('Bosses ') && key.endsWith(' Kills')) || (key.startsWith('Activities ') && key.endsWith(' Score'))) {
                 const oldVal = merged[key] ? parseInt(merged[key], 10) : 0;
                 const newVal = parseInt(value, 10);
                 merged[key] = Math.max(oldVal, newVal).toString();
             } else {
-                // For top-level fields (DisplayName, Type, etc.), just overwrite or pick the first
-                // We'll overwrite in this example.
+                // For top-level fields (e.g., DisplayName), overwrite with the latest value.
                 merged[key] = value;
             }
         }
@@ -159,21 +175,23 @@ async function mergeRsnData(rsns) {
 }
 
 /**
- * Fetches and processes data for a Discord guild member based on their associated RSNs.
- * It retrieves RSNs from the database, fetches and merges hiscores data, and assigns
- * appropriate Discord roles based on the merged data.
+ * 🎯 **Fetches and Processes Member Data for Auto Role Assignment**
+ *
+ * Retrieves RSNs linked to a Discord user, merges hiscores data from those RSNs,
+ * and then assigns or updates Discord roles based on the merged data.
  *
  * @async
  * @function fetchAndProcessMember
  * @param {Discord.Guild} guild - The Discord guild (server).
  * @param {string} userId - The Discord user ID.
- * @returns {Promise<void>} - Resolves when the member has been processed.
+ * @returns {Promise<void>} Resolves when the member has been processed.
+ *
  * @example
  * await fetchAndProcessMember(guild, '123456789012345678');
  */
 async function fetchAndProcessMember(guild, userId) {
     try {
-        // 1) Get the user's RSNs from the database
+        // 1) Get the user's RSNs from the database.
         const rsns = await getUserRSNs(userId);
 
         if (!rsns.length) {
@@ -181,17 +199,17 @@ async function fetchAndProcessMember(guild, userId) {
             return;
         }
 
-        // 2) Attempt to fetch the corresponding GuildMember
+        // 2) Attempt to fetch the corresponding GuildMember.
         const member = await guild.members.fetch(userId).catch(() => null);
         if (!member) {
             logger.error(`Member with ID ${userId} not found in the guild`);
             return;
         }
 
-        // 3) Merge data across all RSNs
+        // 3) Merge data across all RSNs.
         const mergedData = await mergeRsnData(rsns);
 
-        // 4) Assign roles based on the merged hiscores data
+        // 4) Assign roles based on the merged hiscores data.
         await handleHiscoresData(guild, member, rsns, mergedData);
         logger.info(`Processed data for RSNs: ${rsns.join(', ')} (User ID: ${userId})`);
     } catch (error) {
@@ -200,16 +218,18 @@ async function fetchAndProcessMember(guild, userId) {
 }
 
 /**
- * Handles the assignment of roles based on hiscores data. It delegates to specific
- * functions for OSRS roles and achievement-based roles.
+ * 🎯 **Handles Role Assignments Based on Hiscores Data**
+ *
+ * Delegates to specific functions to assign OSRS roles (skill-based) and achievement-based roles.
  *
  * @async
  * @function handleHiscoresData
- * @param {Discord.Guild} guild - The Discord guild (server).
+ * @param {Discord.Guild} guild - The Discord guild.
  * @param {Discord.GuildMember} member - The Discord guild member.
  * @param {string[]} rsns - Array of RSNs linked to the member.
  * @param {Object} hiscoresData - Merged hiscores data.
- * @returns {Promise<void>} - Resolves when all role assignments are complete.
+ * @returns {Promise<void>} Resolves when role assignments are complete.
+ *
  * @example
  * await handleHiscoresData(guild, member, ['PlayerOne'], mergedData);
  */
@@ -224,28 +244,31 @@ async function handleHiscoresData(guild, member, rsns, hiscoresData) {
 }
 
 /**
- * Assigns or updates boss kill and activity-based roles based on players' achievements.
+ * 🎯 **Assigns Achievement-Based Roles**
+ *
+ * Processes hiscores data to assign or update roles based on boss kills and activity scores.
  *
  * @async
  * @function createAchievementRoles
- * @param {Discord.Guild} guild - The Discord guild (server).
+ * @param {Discord.Guild} guild - The Discord guild.
  * @param {Discord.GuildMember} member - The Discord guild member.
  * @param {Object} hiscoresData - Merged hiscores data.
  * @param {Discord.TextChannel} channelUpdate - The channel to send role update messages.
- * @returns {Promise<void>} - Resolves when all achievement roles are processed.
+ * @returns {Promise<void>} Resolves when all achievement roles are processed.
+ *
  * @example
  * await createAchievementRoles(guild, member, mergedData, channelUpdate);
  */
 async function createAchievementRoles(guild, member, hiscoresData, channelUpdate) {
-    // Use the first RSN for display purposes
+    // Use the first RSN for display purposes.
     const rsns = await getUserRSNs(member.id);
     const playerName = rsns.length > 0 ? rsns[0] : 'Unknown RSN';
 
     for (const key in hiscoresData) {
         const score = parseInt(hiscoresData[key], 10) || 0;
-        if (score <= 0) continue; // Skip zero or non-numeric
+        if (score <= 0) continue; // Skip non-positive scores.
 
-        // Boss kills
+        // Boss kills.
         if (key.startsWith('Bosses ') && key.endsWith(' Kills')) {
             const bossName = key.replace('Bosses ', '').replace(' Kills', '');
             if (score >= 100) {
@@ -253,28 +276,33 @@ async function createAchievementRoles(guild, member, hiscoresData, channelUpdate
             }
         }
 
-        // Activities
+        // Activities.
         if (key.startsWith('Activities ') && key.endsWith(' Score')) {
             const activityName = key.replace('Activities ', '').replace(' Score', '');
             await maybeAssignActivityRole(guild, member, activityName, score, playerName, channelUpdate);
         }
     }
 }
+
 /**
- * Assigns a boss-related Discord role to a member if they meet the kill threshold.
- * Sends an embed message to the designated channel upon successful role assignment.
+ * 🎯 **Assigns a Boss-Related Role if Criteria Are Met**
+ *
+ * Checks if the member has not yet been assigned the role corresponding to the given boss.
+ * If the member's boss kill count meets or exceeds the threshold (>= 100), the role is assigned,
+ * and a notification embed is sent to the designated channel.
  *
  * @async
  * @function maybeAssignBossRole
- * @param {Discord.Guild} guild - The Discord guild (server).
- * @param {Discord.GuildMember} member - The Discord guild member.
- * @param {string} bossName - The name of the boss.
- * @param {number} kills - Number of kills the member has achieved.
+ * @param {Discord.Guild} guild - The Discord guild.
+ * @param {Discord.GuildMember} member - The guild member.
+ * @param {string} bossName - The boss name.
+ * @param {number} kills - The number of kills achieved.
  * @param {string} playerName - The RSN of the player.
  * @param {Discord.TextChannel} channelUpdate - The channel to send role update messages.
- * @returns {Promise<void>} - Resolves when the role assignment is complete.
+ * @returns {Promise<void>} Resolves when the role assignment is complete.
+ *
  * @example
- * await maybeAssignBossRole(guild, member, 'K\'ril Tsutsaroth', 150, 'PlayerOne', channelUpdate);
+ * await maybeAssignBossRole(guild, member, "K'ril Tsutsaroth", 150, 'PlayerOne', channelUpdate);
  */
 async function maybeAssignBossRole(guild, member, bossName, kills, playerName, channelUpdate) {
     const roleName = mapBossToRole(bossName);
@@ -293,18 +321,21 @@ async function maybeAssignBossRole(guild, member, bossName, kills, playerName, c
 }
 
 /**
- * Assigns an activity-related Discord role to a member if they meet the score threshold.
- * Sends an embed message to the designated channel upon successful role assignment.
+ * 🎯 **Assigns an Activity-Related Role if Criteria Are Met**
+ *
+ * Checks if the member's activity score for a specific activity meets the threshold.
+ * If so, the corresponding role is assigned and a notification embed is sent.
  *
  * @async
  * @function maybeAssignActivityRole
- * @param {Discord.Guild} guild - The Discord guild (server).
- * @param {Discord.GuildMember} member - The Discord guild member.
+ * @param {Discord.Guild} guild - The Discord guild.
+ * @param {Discord.GuildMember} member - The guild member.
  * @param {string} activityName - The name of the activity.
- * @param {number} score - The activity score the member has achieved.
+ * @param {number} score - The achieved score.
  * @param {string} playerName - The RSN of the player.
  * @param {Discord.TextChannel} channelUpdate - The channel to send role update messages.
- * @returns {Promise<void>} - Resolves when the role assignment is complete.
+ * @returns {Promise<void>} Resolves when the role assignment is complete.
+ *
  * @example
  * await maybeAssignActivityRole(guild, member, 'Clue Scrolls All', 200, 'PlayerOne', channelUpdate);
  */
@@ -335,30 +366,32 @@ async function maybeAssignActivityRole(guild, member, activityName, score, playe
 }
 
 /**
- * Assigns or updates OSRS skill-based roles (e.g., 99 Attack, 2277 Total) based on hiscores data.
- * It also removes any 99 skill roles that the member no longer qualifies for.
+ * 🎯 **Assigns or Updates OSRS Skill-Based Roles**
+ *
+ * Evaluates hiscores data for each skill to assign "99" roles when applicable,
+ * and removes any "99" roles that the member should no longer have.
  *
  * @async
  * @function createUpdateOsrsRoles
- * @param {Discord.Guild} guild - The Discord guild (server).
- * @param {Discord.GuildMember} member - The Discord guild member.
+ * @param {Discord.Guild} guild - The Discord guild.
+ * @param {Discord.GuildMember} member - The guild member.
  * @param {Object} hiscoresData - Merged hiscores data.
  * @param {Discord.TextChannel} channelUpdate - The channel to send role update messages.
- * @returns {Promise<void>} - Resolves when all OSRS roles are processed.
+ * @returns {Promise<void>} Resolves when all OSRS roles have been processed.
+ *
  * @example
  * await createUpdateOsrsRoles(guild, member, mergedData, channelUpdate);
  */
 async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate) {
-    // Use the first RSN for display purposes
+    // Use the first RSN for display purposes.
     const rsns = await getUserRSNs(member.id);
     const playerName = rsns.length > 0 ? rsns[0] : 'Unknown RSN';
 
     const currentRoles = new Set(member.roles.cache.map((role) => role.name));
-
-    // Track new 99 roles we assign so we don't remove them afterwards
+    // Track new 99 roles assigned to avoid removing them later.
     const newlyAssigned99Roles = new Set();
 
-    // 1) Check each "Skills X Level" for 99
+    // 1) Check each "Skills X Level" for level 99.
     for (const key in hiscoresData) {
         if (!key.startsWith('Skills ') || !key.endsWith(' Level')) continue;
 
@@ -383,7 +416,7 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
         }
     }
 
-    // 2) Check for 2277 total or Max Cape
+    // 2) Check for overall achievements (e.g., 2277 Total Level and Max Cape).
     const overallKey = 'Skills Overall Level';
     if (hiscoresData[overallKey] && hiscoresData[overallKey] === '2277') {
         const role2277Total = guild.roles.cache.find((r) => r.name === '2277 Total');
@@ -414,7 +447,7 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
         }
     }
 
-    // 3) Remove any 99 skill roles the user shouldn't have
+    // 3) Remove any 99 skill roles that the member should no longer have.
     for (const roleName of currentRoles) {
         if (!roleName.startsWith('99 ')) continue;
         if (!newlyAssigned99Roles.has(roleName)) {
@@ -423,7 +456,7 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
                 await member.roles.remove(role);
                 const embed = new EmbedBuilder()
                     .setTitle('Role Removed!')
-                    .setDescription(`⚠️ **Hey, <@${member.id}>!**\n<a:redutility4:1224115732632309760> It seems the role \`${roleName}\` isn’t supposed to be assigned to you. Let me take care of that and remove it for you! 🔄`)
+                    .setDescription(`⚠️ **Hey, <@${member.id}>!**\n<a:redutility4:1224115732632309760> It seems the role \`${roleName}\` isn’t supposed to be assigned to you. Removing it now. 🔄`)
                     .setColor(0xff0000)
                     .setTimestamp();
 
@@ -434,7 +467,4 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
     }
 }
 
-/**
- * Exports the main function responsible for fetching and processing member data.
- */
 module.exports = { fetchAndProcessMember };

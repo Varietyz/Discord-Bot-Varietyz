@@ -1,22 +1,22 @@
 /**
- * @fileoverview Utility functions for extracting and managing player data in the Varietyz Bot.
- * This module facilitates fetching, formatting, saving, and maintaining player data using the Wise Old Man API
- * and SQLite database. It handles the extraction, transformation, and storage of player data,
- * ensuring the database is up-to-date and accurate.
+ * @fileoverview
+ * **Player Data Extractor Utilities** 📊
  *
- * Key Features:
- * - **Data Formatting**: Flattens and renames nested player data into a format suitable for database storage.
- * - **Database Management**: Manages the `player_data` table and ensures player data is saved and updated correctly.
- * - **API Integration**: Fetches player data from the Wise Old Man API and integrates it into the database.
- * - **Player Synchronization**: Synchronizes player data with registered RSNs and removes stale or outdated records.
- * - **Rate-Limiting**: Implements rate-limiting to handle frequent API requests efficiently.
+ * This module facilitates fetching, formatting, saving, and maintaining player data in the Varietyz Bot.
+ * It integrates with the Wise Old Man (WOM) API to fetch player data and uses an SQLite database for storage.
+ * Key operations include:
+ * - **Data Formatting**: Flattening and renaming nested player data into a format suitable for database insertion.
+ * - **Database Management**: Managing the `player_data` table to ensure player data is saved and updated correctly.
+ * - **API Integration**: Fetching player data from the WOM API.
+ * - **Player Synchronization**: Synchronizing player data with registered RSNs and removing stale records.
+ * - **Rate-Limiting**: Handling frequent API requests efficiently.
  *
- * External Dependencies:
- * - **Wise Old Man (WOM) API**: Fetches player data for RSNs.
+ * **External Dependencies:**
+ * - **Wise Old Man (WOM) API**: For fetching player data.
  * - **luxon**: For date manipulation and calculating time intervals.
- * - **dbUtils**: To interact with the SQLite database for storing player data.
+ * - **dbUtils**: For interacting with the SQLite database.
  *
- * @module modules/services/player_data_extractor
+ * @module modules/services/playerDataExtractor
  */
 
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
@@ -26,39 +26,40 @@ const { sleep } = require('../utils/sleepUtil');
 const { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable } = require('../utils/lastFetchedTime');
 
 /**
- * Flattens a nested object into a single-level object with concatenated keys.
- * Filters out undesired fields and renames keys for database insertion.
+ * 🎯 **Formats and Flattens Player Data for SQL Storage**
  *
- * This function replicates the old 'formatDataForCsv' but returns an object
- * suitable for database storage rather than CSV lines.
+ * Flattens a nested data object into a single-level object with concatenated keys,
+ * filters out undesired fields, and renames keys for database insertion.
  *
+ * @function formatDataForSql
  * @param {Object} data - The nested data object to format.
- * @returns {Object} - The formatted and flattened data object.
+ * @returns {Object} The formatted and flattened data object.
+ *
  * @example
  * const rawData = {
- * player: {
- * stats: {
- * attack: 99,
- * strength: 99
- * },
- * info: {
- * username: 'PlayerOne',
- * country: 'US'
- * }
- * }
+ *   player: {
+ *     stats: {
+ *       attack: 99,
+ *       strength: 99
+ *     },
+ *     info: {
+ *       username: 'PlayerOne',
+ *       country: 'US'
+ *     }
+ *   }
  * };
  * const formattedData = formatDataForSql(rawData);
- * // formattedData = { 'Stats_Attack': 99, 'Stats_Strength': 99 }
+ * // formattedData = { 'Stats Attack': 99, 'Stats Strength': 99 }
  */
 function formatDataForSql(data) {
-    // 1. Flatten all nested objects
+    // 1. Flatten all nested objects.
     /**
      * Recursively flattens a nested object.
      *
      * @param {Object} d - The object to flatten.
-     * @param {string} [parentKey=''] - The base key to prepend to each key.
+     * @param {string} [parentKey=''] - The base key to prepend.
      * @param {string} [sep='_'] - The separator between keys.
-     * @returns {Object} - The flattened object.
+     * @returns {Object} The flattened object.
      */
     function flattenDict(d, parentKey = '', sep = '_') {
         const items = {};
@@ -75,7 +76,7 @@ function formatDataForSql(data) {
 
     const flattenedData = flattenDict(data);
 
-    // 2. Exclusion lists
+    // 2. Exclusion lists for attributes and substrings.
     const excludeAttributes = [
         'id',
         'username',
@@ -97,25 +98,24 @@ function formatDataForSql(data) {
     ];
     const excludeSubstrings = ['experience', 'rank', 'ehp', 'ehb', 'metric'];
 
-    // 3. Rename & filter
+    // 3. Rename and filter keys.
     const formattedData = {};
     for (const [key, value] of Object.entries(flattenedData)) {
         if (excludeAttributes.includes(key) || excludeSubstrings.some((sub) => key.includes(sub))) {
             continue;
         }
 
-        // Skip -1 sentinel
+        // Skip sentinel values.
         if (value === -1) {
             continue;
         }
 
-        // Rename from e.g. "latestSnapshot_data_skills_attack_level" => "LatestSnapshot Data Skills Attack Level"
+        // Rename keys (e.g., "latestSnapshot_data_skills_attack_level" becomes "LatestSnapshot Data Skills Attack Level")
         const formattedKey = key
             .replace('latestSnapshot_data_', '')
             .replace('_metric', '')
-            .replace(/_/g, ' ') // underscores => spaces
-            .replace(/\b\w/g, (char) => char.toUpperCase()); // uppercase each word
-
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
         formattedData[formattedKey] = value;
     }
 
@@ -123,12 +123,14 @@ function formatDataForSql(data) {
 }
 
 /**
- * Ensures the 'player_data' table exists in the SQLite database.
- * If the table does not exist, it creates one with the specified schema.
+ * 🎯 **Ensures the Player Data Table Exists**
+ *
+ * Checks if the `player_data` table exists in the SQLite database; if not, creates it with the specified schema.
  *
  * @async
  * @function ensurePlayerDataTable
- * @returns {Promise<void>} - Resolves when the table is ensured.
+ * @returns {Promise<void>} Resolves when the table is ensured.
+ *
  * @example
  * await ensurePlayerDataTable();
  */
@@ -145,30 +147,34 @@ async function ensurePlayerDataTable() {
 }
 
 /**
- * Saves formatted player data to the SQLite database.
- * It overwrites existing entries for the player to ensure data integrity.
+ * 🎯 **Saves Player Data to the Database**
+ *
+ * Formats the raw player data using `formatDataForSql`, deletes any existing data for the player,
+ * and inserts the formatted data into the `player_data` table.
  *
  * @async
  * @function savePlayerDataToDb
  * @param {string} playerName - The name of the player.
  * @param {Object} rawData - The raw data object fetched from the API.
- * @returns {Promise<void>} - Resolves when the data is saved.
- * @throws {Error} - Throws an error if database operations fail.
+ * @returns {Promise<void>} Resolves when the data is saved.
+ *
+ * @throws {Error} Throws an error if database operations fail.
+ *
  * @example
  * await savePlayerDataToDb('PlayerOne', rawData);
  */
 async function savePlayerDataToDb(playerName, rawData) {
-    // 1) Ensure table
+    // Ensure the table exists.
     await ensurePlayerDataTable();
 
-    // 2) Flatten & filter
+    // Flatten and filter the raw data.
     const formattedData = formatDataForSql(rawData);
 
-    // 3) Delete old data for this player
+    // Delete old data for this player.
     const playerId = playerName.toLowerCase().trim();
     await runQuery('DELETE FROM player_data WHERE player_id = ?', [playerId]);
 
-    // 4) Insert each key->value
+    // Insert each key-value pair with the current timestamp.
     const now = new Date().toISOString();
     const insertQuery = `
         INSERT INTO player_data (player_id, data_key, data_value, last_updated)
@@ -180,13 +186,14 @@ async function savePlayerDataToDb(playerName, rawData) {
 }
 
 /**
- * Loads all registered RSNs from the database.
- * Returns a mapping of user IDs to their associated RSNs.
+ * 🎯 **Loads Registered RSN Data**
+ *
+ * Retrieves all registered RSNs from the database and returns a mapping of user IDs to arrays of RSNs.
  *
  * @async
  * @function loadRegisteredRsnData
- * @returns {Promise<Object>} - A mapping of user IDs to arrays of RSNs.
- * @throws {Error} - Throws an error if the database query fails.
+ * @returns {Promise<Object>} A mapping of user IDs to arrays of RSNs.
+ *
  * @example
  * const rsnData = await loadRegisteredRsnData();
  * // rsnData = { 'user1': ['RSN1', 'RSN2'], 'user2': ['RSN3'] }
@@ -199,7 +206,6 @@ async function loadRegisteredRsnData() {
         `;
         const rows = await getAll(query);
 
-        // Transform rows into a mapping { user_id: [rsn1, rsn2, ...] }
         const rsnMapping = {};
         rows.forEach(({ user_id, rsn }) => {
             if (!rsnMapping[user_id]) {
@@ -216,23 +222,30 @@ async function loadRegisteredRsnData() {
 }
 
 /**
- * Fetches and saves registered player data by retrieving data from the WOM API
- * and storing it in the SQLite database. Decides which API endpoint to call
- * based on the last fetched time.
+ * 🎯 **Fetches and Saves Registered Player Data**
+ *
+ * Retrieves registered RSNs from the database, fetches the corresponding player data from the WOM API
+ * based on the last fetched time, and saves the data to the database. Implements rate-limiting between requests.
  *
  * @async
  * @function fetchAndSaveRegisteredPlayerData
- * @returns {Promise<{data: Array<Object>, fetchFailed: boolean}>}
+ * @returns {Promise<{data: Array<Object>, fetchFailed: boolean}>} An object containing the fetched data and a flag indicating if any fetch failed.
+ *
+ * @example
+ * const result = await fetchAndSaveRegisteredPlayerData();
+ * if (!result.fetchFailed) {
+ *   logger.info('Player data fetched successfully.');
+ * }
  */
 async function fetchAndSaveRegisteredPlayerData() {
     logger.info('Starting fetch for registered player data...');
 
     try {
-        // Fetch registered RSNs from the database
+        // Load registered RSNs.
         const registeredRsnData = await loadRegisteredRsnData();
         logger.info('Loaded registered RSNs from database.');
 
-        // Flatten the RSN map { user1: [rsn1, rsn2], user2: [rsn3] } => [rsn1, rsn2, rsn3]
+        // Flatten the RSN map into a list.
         const rsns = Object.values(registeredRsnData).flat();
         logger.info(`Found ${rsns.length} RSNs to process.`);
 
@@ -246,11 +259,10 @@ async function fetchAndSaveRegisteredPlayerData() {
 
         for (const rsn of rsns) {
             logger.info(`Processing player: ${rsn}`);
-
             try {
                 const normalizedRsn = rsn.toLowerCase().trim();
 
-                // Retrieve the last fetched time
+                // Retrieve the last fetched time.
                 const lastFetched = await getLastFetchedTime(normalizedRsn);
                 const now = new Date();
                 let playerData;
@@ -258,7 +270,7 @@ async function fetchAndSaveRegisteredPlayerData() {
                 if (lastFetched) {
                     const hoursSinceLastFetch = (now.getTime() - lastFetched.getTime()) / (1000 * 60 * 60);
                     if (hoursSinceLastFetch > 24) {
-                        logger.info(`More than 24 hours since last update on Wise Old Man for ${rsn}. Updating....`);
+                        logger.info(`More than 24 hours since last update on Wise Old Man for ${rsn}. Updating...`);
                         playerData = await WOMApiClient.request('players', 'updatePlayer', normalizedRsn);
                         await setLastFetchedTime(normalizedRsn);
                     } else {
@@ -266,27 +278,25 @@ async function fetchAndSaveRegisteredPlayerData() {
                         playerData = await WOMApiClient.request('players', 'getPlayerDetails', normalizedRsn);
                     }
                 } else {
-                    // If never fetched before, use 'updatePlayer'
+                    // If never fetched before, use updatePlayer.
                     logger.info(`No previous fetch found for ${rsn}. Using 'updatePlayer'.`);
                     playerData = await WOMApiClient.request('players', 'updatePlayer', normalizedRsn);
                     await setLastFetchedTime(normalizedRsn);
                 }
 
-                // Save data to the database
+                // Save the fetched data.
                 await savePlayerDataToDb(rsn, playerData);
                 logger.info(`Saved player data to database for: ${rsn}`);
 
-                // Track successfully processed players
                 validMembersWithData.push({
                     username: normalizedRsn,
                     displayName: playerData.displayName,
                     lastProgressedAt: playerData.lastChangedAt || null,
                 });
 
-                // Rate-limit delay
+                // Rate-limit between requests.
                 await sleep(1500);
             } catch (err) {
-                // Handle specific non-critical error
                 if (err.message.includes('Cannot convert undefined or null to object')) {
                     logger.warn(`Non-critical issue processing player ${rsn}: ${err.message}`);
                 } else {
@@ -305,19 +315,20 @@ async function fetchAndSaveRegisteredPlayerData() {
 }
 
 /**
- * Removes players from the 'player_data' table who are no longer part of the current clan.
- * This ensures that the database remains clean and only contains relevant player data.
+ * 🎯 **Removes Non-Matching Player Data**
+ *
+ * Deletes player data from the `player_data` table for players whose IDs are not in the current clan.
  *
  * @async
  * @function removeNonMatchingPlayers
- * @param {Set<string>} currentClanUsers - A set of current clan user IDs.
- * @returns {Promise<void>} - Resolves when non-matching players are removed.
+ * @param {Set<string>} currentClanUsers - A set of current clan player IDs.
+ * @returns {Promise<void>} Resolves when non-matching records are removed.
+ *
  * @example
  * const currentUsers = new Set(['player1', 'player2']);
  * await removeNonMatchingPlayers(currentUsers);
  */
 async function removeNonMatchingPlayers(currentClanUsers) {
-    // Gather all distinct player_ids in 'player_data'
     const allPlayers = await getAll('SELECT DISTINCT player_id FROM player_data');
 
     for (const { player_id } of allPlayers) {
@@ -329,20 +340,23 @@ async function removeNonMatchingPlayers(currentClanUsers) {
 }
 
 /**
+ * 🎯 **Fetches and Updates Player Data**
+ *
  * Orchestrates the entire player data update process:
- * 1. Fetches data from WOM for each registered RSN.
- * 2. Saves the fetched data to the database.
- * 3. Removes any leftover data that no longer corresponds to registered RSNs.
+ * 1. Ensures necessary tables exist.
+ * 2. Fetches data for all registered RSNs from the WOM API and saves it to the database.
+ * 3. Removes stale data for players no longer registered.
  *
  * @async
  * @function fetchAndUpdatePlayerData
- * @returns {Promise<void>} - Resolves when the update process is complete.
+ * @returns {Promise<void>} Resolves when the update process is complete.
+ *
  * @example
  * await fetchAndUpdatePlayerData();
  */
 async function fetchAndUpdatePlayerData() {
     logger.info('Starting player data update process.');
-    // Ensure necessary tables exist
+    // Ensure necessary tables exist.
     await ensurePlayerDataTable();
     await ensurePlayerFetchTimesTable();
 
@@ -356,8 +370,6 @@ async function fetchAndUpdatePlayerData() {
     if (clanData) {
         const currentClanUsers = new Set(clanData.map((member) => member.username.toLowerCase()));
         logger.info('Retrieved current RSN list.');
-
-        // Optional: remove DB data for non-registered RSNs
         await removeNonMatchingPlayers(currentClanUsers);
     } else {
         logger.warn('No data fetched, update process aborted.');
@@ -369,5 +381,5 @@ async function fetchAndUpdatePlayerData() {
 module.exports = {
     fetchAndUpdatePlayerData,
     fetchAndSaveRegisteredPlayerData,
-    savePlayerDataToDb, // Exported if needed by other modules
+    savePlayerDataToDb, // Exported if needed by other modules.
 };

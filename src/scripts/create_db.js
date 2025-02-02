@@ -1,25 +1,26 @@
-/* eslint-disable no-process-exit */
 // @ts-nocheck
+/* eslint-disable no-process-exit */
 /**
- * @fileoverview Script to initialize and set up the SQLite database for the Varietyz Bot.
- * This script creates necessary tables for storing registered RSNs, clan members, recent name changes,
- * player data, as well as tracking player fetch times and active/inactive status.
- * The script deletes any existing database file before creating a new one to ensure a clean setup.
+ * @fileoverview
+ * **Database Initialization Script** 🛠️
  *
- * Core Features:
- * - Deletes any existing database file to ensure a fresh setup.
- * - Creates the 'registered_rsn' table to store registered RuneScape names.
- * - Creates the 'active_inactive' table to track player progression activity.
- * - Creates the 'player_fetch_times' table to store last fetched data timestamps.
- * - Creates the 'clan_members' table to store information about clan members.
- * - Creates the 'recent_name_changes' table to track name changes for players.
- * - Creates the 'player_data' table to store various player-specific data points.
- * - Logs the success or failure of each table creation process.
+ * This script initializes and sets up the SQLite database for the Varietyz Bot.
+ * It deletes any existing database file to ensure a clean setup and then creates all necessary tables:
+ * - `registered_rsn`: Stores registered RuneScape names.
+ * - `clan_members`: Stores information about clan members.
+ * - `recent_name_changes`: Tracks recent name changes.
+ * - `player_data`: Stores various player-specific data points.
+ * - `player_fetch_times`: Tracks the last time player data was fetched.
+ * - `active_inactive`: Tracks active and inactive player progression.
  *
- * External Dependencies:
+ * The script logs the success or failure of each table creation process and closes the database connection
+ * gracefully upon completion.
+ *
+ * **External Dependencies:**
  * - **SQLite3**: For interacting with the SQLite database.
- * - **fs**: For file system operations such as deleting existing databases and creating directories.
- * - **path**: For constructing the path to the database file.
+ * - **fs**: For file system operations (deleting existing database, creating directories).
+ * - **path**: For constructing file paths.
+ * - **logger**: For logging operations and errors.
  *
  * @module scripts/create_db
  */
@@ -35,31 +36,36 @@ const logger = require('../modules/utils/logger'); // Import the logger
  */
 const dbPath = path.join(__dirname, '..', '..', 'data', 'database.sqlite');
 
-// eslint-disable-next-line jsdoc/require-returns
 /**
  * Initializes the SQLite database by deleting any existing database file,
  * creating the necessary directories, and establishing a new database connection.
+ *
+ * @function initializeDatabase
+ * @returns {sqlite3.Database} The new SQLite database instance.
+ *
+ * @example
+ * const db = initializeDatabase();
  */
 function initializeDatabase() {
-    // Delete existing database file if it exists
+    // Delete existing database file if it exists.
     if (fs.existsSync(dbPath)) {
         fs.unlinkSync(dbPath);
         logger.info('Existing database file deleted.');
     }
 
-    // Create the database directory if it doesn't exist
+    // Create the database directory if it doesn't exist.
     if (!fs.existsSync(path.dirname(dbPath))) {
         fs.mkdirSync(path.dirname(dbPath), { recursive: true });
         logger.info('Created database directory.');
     }
 
-    // Establish a new database connection
+    // Establish a new database connection.
     const db = new sqlite3.Database(dbPath, (err) => {
         if (err) {
             logger.error(`Error connecting to SQLite: ${err.message}`);
-            throw err; // Terminate script if connection fails
+            throw err; // Terminate script if connection fails.
         } else {
-            logger.info('Connected to SQLite at:', dbPath);
+            logger.info(`Connected to SQLite at: ${dbPath}`);
         }
     });
 
@@ -67,9 +73,9 @@ function initializeDatabase() {
 }
 
 /**
- * Creates the 'registered_rsn' table in the SQLite database.
- * This table stores the RuneScape names registered by users.
+ * Creates the 'registered_rsn' table to store registered RuneScape names.
  *
+ * @function createRegisteredRsnTable
  * @param {sqlite3.Database} db - The SQLite database instance.
  */
 function createRegisteredRsnTable(db) {
@@ -91,53 +97,9 @@ function createRegisteredRsnTable(db) {
 }
 
 /**
- * Creates the 'active_inactive' table in the SQLite database.
- * This table stores information about members last active progression state.
+ * Creates the 'clan_members' table to store clan member information.
  *
- * @param {sqlite3.Database} db - The SQLite database instance.
- */
-function createActiveInactiveTable(db) {
-    const query = `
-        CREATE TABLE IF NOT EXISTS active_inactive (
-            username TEXT PRIMARY KEY,
-            last_progressed DATETIME
-        );
-    `;
-    db.run(query, (err) => {
-        if (err) {
-            logger.error(`Error creating 'active_inactive' table: ${err.message}`);
-        } else {
-            logger.info('\'active_inactive\' table created (empty).');
-        }
-    });
-}
-
-/**
- * Creates the 'player_fetch_times' table in the SQLite database.
- * This table stores information about members last update state.
- *
- * @param {sqlite3.Database} db - The SQLite database instance.
- */
-function createFetchTimeTable(db) {
-    const query = `
-        CREATE TABLE IF NOT EXISTS player_fetch_times (
-            rsn TEXT PRIMARY KEY,
-            last_fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `;
-    db.run(query, (err) => {
-        if (err) {
-            logger.error(`Error creating 'player_fetch_times' table: ${err.message}`);
-        } else {
-            logger.info('\'player_fetch_times\' table created (empty).');
-        }
-    });
-}
-
-/**
- * Creates the 'clan_members' table in the SQLite database.
- * This table stores information about clan members.
- *
+ * @function createClanMembersTable
  * @param {sqlite3.Database} db - The SQLite database instance.
  */
 function createClanMembersTable(db) {
@@ -159,9 +121,9 @@ function createClanMembersTable(db) {
 }
 
 /**
- * Creates the 'recent_name_changes' table in the SQLite database.
- * This table records recent name changes of players.
+ * Creates the 'recent_name_changes' table to track recent player name changes.
  *
+ * @function createRecentNameChangesTable
  * @param {sqlite3.Database} db - The SQLite database instance.
  */
 function createRecentNameChangesTable(db) {
@@ -183,9 +145,9 @@ function createRecentNameChangesTable(db) {
 }
 
 /**
- * Creates the 'player_data' table in the SQLite database.
- * This table stores various data points related to players.
+ * Creates the 'player_data' table to store various player-specific data points.
  *
+ * @function createPlayerDataTable
  * @param {sqlite3.Database} db - The SQLite database instance.
  */
 function createPlayerDataTable(db) {
@@ -207,12 +169,56 @@ function createPlayerDataTable(db) {
     });
 }
 
-// Main execution flow
+/**
+ * Creates the 'player_fetch_times' table to track when player data was last fetched.
+ *
+ * @function createFetchTimeTable
+ * @param {sqlite3.Database} db - The SQLite database instance.
+ */
+function createFetchTimeTable(db) {
+    const query = `
+        CREATE TABLE IF NOT EXISTS player_fetch_times (
+            rsn TEXT PRIMARY KEY,
+            last_fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `;
+    db.run(query, (err) => {
+        if (err) {
+            logger.error(`Error creating 'player_fetch_times' table: ${err.message}`);
+        } else {
+            logger.info('\'player_fetch_times\' table created (empty).');
+        }
+    });
+}
+
+/**
+ * Creates the 'active_inactive' table to track player activity status.
+ *
+ * @function createActiveInactiveTable
+ * @param {sqlite3.Database} db - The SQLite database instance.
+ */
+function createActiveInactiveTable(db) {
+    const query = `
+        CREATE TABLE IF NOT EXISTS active_inactive (
+            username TEXT PRIMARY KEY,
+            last_progressed DATETIME
+        );
+    `;
+    db.run(query, (err) => {
+        if (err) {
+            logger.error(`Error creating 'active_inactive' table: ${err.message}`);
+        } else {
+            logger.info('\'active_inactive\' table created (empty).');
+        }
+    });
+}
+
+// Main execution flow.
 (function main() {
     try {
         const db = initializeDatabase();
 
-        // Serialize database operations to ensure they run sequentially
+        // Serialize database operations to run sequentially.
         db.serialize(() => {
             createRegisteredRsnTable(db);
             createClanMembersTable(db);
@@ -222,7 +228,7 @@ function createPlayerDataTable(db) {
             createActiveInactiveTable(db);
         });
 
-        // Close the database connection after all tables are created
+        // Close the database connection after all tables are created.
         db.close((err) => {
             if (err) {
                 logger.error(`Error closing the database: ${err.message}`);
@@ -233,6 +239,6 @@ function createPlayerDataTable(db) {
         });
     } catch (error) {
         logger.error(`Database initialization failed: ${error.message}`);
-        process.exit(1); // Exit with failure code
+        process.exit(1); // Exit with failure code.
     }
 })();

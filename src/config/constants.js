@@ -1,19 +1,22 @@
-// src\config\constants.js
 require('dotenv').config();
+
 /**
- * @fileoverview Defines and exports all constant values used throughout the Varietyz Bot.
- * This module includes general bot configurations, channel IDs, WOM API settings, rate limiting configurations,
- * and role definitions with associated emojis and colors.
+ * @fileoverview
+ * **Constants for Varietyz Bot** ⚙️
  *
- * Core Features:
- * - Provides the bot's name and command prefix for general configuration.
- * - Defines Discord channel IDs used by the bot for various functionalities.
- * - Defines a rank hierarchy and maps role names to their respective hierarchy index.
- * - Includes detailed role definitions with associated emojis and color codes for Discord roles.
+ * Defines and exports all constant values used throughout the Varietyz Bot.
+ * This module includes general bot configurations, Discord channel IDs, WOM API settings,
+ * rate limiting configurations, and role definitions with associated emojis and colors.
  *
- * External Dependencies:
- * - **Discord.js**: For handling interactions with Discord, including channel management and role definitions.
- * - **Luxon**: For date and time manipulations (used in rate limiting and activity tracking).
+ * **Core Features:**
+ * - Provides the bot's name and command prefix.
+ * - Defines Discord channel IDs for various functionalities.
+ * - Establishes a rank hierarchy and maps role names to their respective hierarchy indices.
+ * - Specifies detailed role definitions with associated emojis and hexadecimal color codes.
+ *
+ * **External Dependencies:**
+ * - **Discord.js**: For managing interactions with Discord.
+ * - **Luxon**: For date and time manipulations.
  *
  * @module config/constants
  */
@@ -69,7 +72,6 @@ module.exports = {
      * @namespace GeneralBotConstants
      * @description General configuration constants for the Varietyz Bot.
      */
-    // General Bot Constants
     APP_NAME: 'Varietyz Bot',
     COMMAND_PREFIX: '!',
     WOM_GROUP_ID: process.env.WOM_GROUP_ID,
@@ -93,7 +95,7 @@ module.exports = {
 
     /**
      * @namespace rankHierarchy
-     * @description Clan rank hierachy to use for easy sorting.
+     * @description Clan rank hierarchy for easy sorting.
      */
     rankHierarchy,
 
@@ -101,7 +103,7 @@ module.exports = {
      * @typedef {Object} Rank
      * @property {string} emoji - The emoji associated with the rank.
      * @property {string} role - The name of the Discord role.
-     * @property {number} color - The color code for the role embed (in hexadecimal).
+     * @property {number} color - The hexadecimal color code for the role.
      */
 
     /**
@@ -246,6 +248,4 @@ module.exports = {
             color: 0x434343, // Grey
         },
     },
-
-    // Additional constants and configurations for bot-related operations can go here...
 };

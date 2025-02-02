@@ -25,35 +25,42 @@
 │   ├─ 📄 main.js
 │   ├─ 📂 migrations
 │   │   ├─ 📄 initializeCompetitionTables.js
+│   │   ├─ 📄 migrateEndedCompetitions.js
 │   │   └─ 📄 populateSkillsBosses.js
 │   ├─ 📂 modules
 │   │   ├─ 📂 commands
-│   │   │   ├─ 📄 admin_assign_rsn.js
-│   │   │   ├─ 📄 admin_remove_rsn.js
-│   │   │   ├─ 📄 admin_rename_rsn.js
-│   │   │   ├─ 📄 check_activity.js
+│   │   │   ├─ 📄 adminAssignRsn.js
+│   │   │   ├─ 📄 adminCheckActivity.js
+│   │   │   ├─ 📄 adminQueueCompetition.js
+│   │   │   ├─ 📄 adminRemoveRsn.js
+│   │   │   ├─ 📄 adminRenameRsn.js
+│   │   │   ├─ 📄 adminRsnList.js
+│   │   │   ├─ 📄 adminSetRotationPeriod.js
+│   │   │   ├─ 📄 adminSyncMembers.js
+│   │   │   ├─ 📄 adminUpdateClannieChannel.js
+│   │   │   ├─ 📄 help.js
 │   │   │   ├─ 📄 listCompetitions.js
-│   │   │   ├─ 📄 queueCompetition.js
-│   │   │   ├─ 📄 remove_rsn.js
-│   │   │   ├─ 📄 rsn.js
-│   │   │   ├─ 📄 rsn_list.js
-│   │   │   └─ 📄 setRotationPeriod.js
+│   │   │   ├─ 📄 profile.js
+│   │   │   ├─ 📄 removeRsn.js
+│   │   │   └─ 📄 rsn.js
 │   │   ├─ 📂 events
 │   │   ├─ 📂 services
-│   │   │   ├─ 📄 active_members.js
-│   │   │   ├─ 📄 auto_roles.js
+│   │   │   ├─ 📄 activeMembers.js
+│   │   │   ├─ 📄 autoRoles.js
 │   │   │   ├─ 📂 competitionServices
+│   │   │   │   ├─ 📄 alltimeCompetitionWinners.js
 │   │   │   │   ├─ 📄 competitionCreator.js
 │   │   │   │   ├─ 📄 competitionService copy.js
 │   │   │   │   ├─ 📄 competitionService.js
 │   │   │   │   ├─ 📄 competitionValidator.js
+│   │   │   │   ├─ 📄 competitionWinners.js
 │   │   │   │   ├─ 📄 embedHandler.js
 │   │   │   │   ├─ 📄 helpers.js
 │   │   │   │   ├─ 📄 leaderboardUpdater.js
 │   │   │   │   └─ 📄 scheduler.js
-│   │   │   ├─ 📄 member_channel.js
-│   │   │   ├─ 📄 name_changes.js
-│   │   │   └─ 📄 player_data_extractor.js
+│   │   │   ├─ 📄 memberChannel.js
+│   │   │   ├─ 📄 nameChanges.js
+│   │   │   └─ 📄 playerDataExtractor.js
 │   │   └─ 📂 utils
 │   │       ├─ 📄 calculateActivity.js
 │   │       ├─ 📄 dateUtils.js

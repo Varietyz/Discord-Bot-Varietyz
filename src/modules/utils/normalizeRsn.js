@@ -1,14 +1,13 @@
 /**
- * @fileoverview Utility function for normalizing RuneScape names (RSNs).
- * Ensures RSNs are stored in a consistent format for database operations and efficient lookups.
- * This module helps maintain uniformity in RSN storage and improves search accuracy.
+ * @fileoverview
+ * **RuneScape Name (RSN) Normalizer** 🔄
  *
- * Key Features:
+ * This module provides a utility function for normalizing RuneScape names (RSNs).
+ * It ensures that RSNs are stored in a consistent format for database operations and efficient lookups.
+ *
+ * **Key Features:**
  * - **RSN Normalization**: Converts RSNs to a standard format by removing unwanted characters, collapsing multiple spaces, and converting the entire string to lowercase.
- * - **Error Handling**: Ensures input is a valid string, throwing an error if the input is invalid.
- *
- * External Dependencies:
- * - None.
+ * - **Error Handling**: Validates that the input is a string, throwing an error if not.
  *
  * @module utils/normalizeRsn
  */
@@ -26,8 +25,9 @@
  * @param {string} rsn - The RuneScape name to normalize. Must be a non-empty string.
  * @returns {string} The normalized RSN in lowercase with standardized spacing.
  * @throws {TypeError} If the provided `rsn` is not a string.
+ *
  * @example
- * // Example of normalizing an RSN
+ * // Example of normalizing an RSN:
  * const normalized = normalizeRsn('  John_Doe-- ');
  * console.log(normalized); // 'john doe'
  */

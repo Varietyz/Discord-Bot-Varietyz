@@ -1,17 +1,20 @@
 // @ts-nocheck
 /**
- * @fileoverview Utility function for managing Discord channels in the Varietyz Bot.
- * Provides a function to purge messages from a specified Discord channel while respecting rate limits.
- * This function is optimized to handle large volumes of messages by processing them in batches.
+ * @fileoverview
+ * **Discord Channel Purger** 🧹
  *
- * Key Features:
- * - **Efficient Message Deletion**: Deletes messages in batches of up to 100 to handle large volumes.
- * - **Rate Limit Management**: Introduces delays between deletions to avoid hitting Discord's rate limits.
- * - **Error Handling**: Logs and handles any errors that occur during the message deletion process.
+ * This module provides a utility function to purge messages from a specified Discord text channel while respecting rate limits.
+ * It is optimized to handle large volumes of messages by processing them in batches, ensuring efficient deletion without
+ * triggering Discord's rate limits.
  *
- * External Dependencies:
- * - `sleep` function from `./sleepUtil` to introduce delays between deletions.
- * - `logger` module for logging operations and errors.
+ * **Key Features:**
+ * - **Efficient Message Deletion**: Deletes messages in batches of up to 100.
+ * - **Rate Limit Management**: Introduces delays between deletions to prevent hitting Discord's rate limits.
+ * - **Error Handling**: Logs and handles errors that occur during the deletion process.
+ *
+ * **External Dependencies:**
+ * - `sleep` from `./sleepUtil`: Introduces delays between deletion batches.
+ * - `logger`: Logs information, warnings, and errors.
  *
  * @module utils/purgeChannel
  */
@@ -20,18 +23,17 @@ const logger = require('./logger');
 const { sleep } = require('./sleepUtil');
 
 /**
- * Deletes all messages in a specified Discord text channel.
+ * 🎯 **Purges All Messages from a Discord Text Channel**
  *
- * This function fetches and deletes messages in batches of up to 100 to efficiently
- * handle large volumes of messages. It also introduces delays between deletions to
- * prevent hitting Discord's rate limits.
+ * Fetches and deletes messages in batches of up to 100 until the channel is empty.
+ * A delay is added between each batch to avoid Discord's rate limits.
  *
  * @function purgeChannel
- * @param {Discord.TextChannel} channel - The Discord channel to purge.
- * @returns {Promise<void>} A promise that resolves when all messages in the channel are deleted.
- * @throws {Error} Logs and handles any errors that occur during the purge process.
+ * @param {Discord.TextChannel} channel - The Discord text channel from which messages will be purged.
+ * @returns {Promise<void>} Resolves when all messages in the channel are deleted.
+ *
  * @example
- * // Purge all messages in a specified channel
+ * // Purge all messages in a specified channel:
  * const channel = client.channels.cache.get('CHANNEL_ID');
  * if (channel) {
  *     await purgeChannel(channel);
@@ -40,24 +42,24 @@ const { sleep } = require('./sleepUtil');
 async function purgeChannel(channel) {
     let messagesToDelete = [];
     try {
-        // Fetch up to 100 messages at a time
+        // Continuously fetch and delete messages in batches of up to 100.
         do {
-            const fetchedMessages = await channel.messages.fetch({
-                limit: 100,
-            });
+            const fetchedMessages = await channel.messages.fetch({ limit: 100 });
             if (fetchedMessages.size === 0) {
                 break;
             }
             messagesToDelete = fetchedMessages;
-            await channel.bulkDelete(messagesToDelete, true); // Bulk delete the fetched messages
+            // Bulk delete fetched messages. The "true" flag ignores messages older than 14 days.
+            await channel.bulkDelete(messagesToDelete, true);
             logger.info(`[Util] Deleted ${messagesToDelete.size} messages.`);
 
-            // Adding a delay between deletions to avoid hitting rate limits
+            // Delay 1 second between batches to avoid hitting rate limits.
             await sleep(1000);
-        } while (messagesToDelete.size > 0); // Repeat until no more messages left
+        } while (messagesToDelete.size > 0);
     } catch (error) {
         logger.error(`[Util] Error deleting messages: ${error}`);
-        await sleep(2000); // Delay on error to avoid hitting rate limits
+        // On error, delay slightly before exiting or retrying.
+        await sleep(2000);
     }
 }
 

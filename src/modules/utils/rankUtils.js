@@ -1,17 +1,20 @@
-// @ts-nocheck
 /**
- * @fileoverview Utility functions for managing RuneScape clan ranks in the Varietyz Bot.
- * Provides tools for retrieving rank-specific details, formatting experience points, and normalizing rank strings.
- * These utilities enhance the presentation and handling of rank-related data in Discord interactions.
+ * @fileoverview
+ * **RuneScape Clan Rank Utilities** 🎖️
  *
- * Key Features:
- * - **Rank Emojis**: Retrieves emojis associated with specific ranks for better visualization.
+ * This module provides utility functions for managing RuneScape clan ranks in the Varietyz Bot.
+ * It offers tools for retrieving rank-specific details (such as emojis and colors), formatting experience
+ * points, and normalizing rank strings. These utilities enhance the presentation and handling of rank-related
+ * data in Discord interactions.
+ *
+ * **Key Features:**
+ * - **Rank Emojis**: Retrieves emojis associated with specific ranks.
  * - **Rank Colors**: Provides hexadecimal color codes for ranks, with a default fallback.
  * - **Experience Formatting**: Formats numerical experience points with commas for readability.
  * - **Rank String Normalization**: Converts rank identifiers to display-friendly formats.
  *
- * External Dependencies:
- * - `RANKS` object from the `../../config/constants` module, which defines rank metadata (e.g., emojis, colors).
+ * **External Dependencies:**
+ * - The `RANKS` object from the `../../config/constants` module, which defines rank metadata (e.g., emojis, colors).
  *
  * @module utils/rankUtils
  */
@@ -19,15 +22,17 @@
 const { RANKS } = require('../../config/constants');
 
 /**
- * Retrieves the emoji representation for a given rank.
+ * 🎯 **Retrieves the Emoji for a Given Rank**
+ *
+ * Returns the emoji associated with the provided rank. The lookup is case-insensitive.
  *
  * @function getRankEmoji
- * @param {string} rank - The rank of the clan member. Expected to be case-insensitive.
- * @returns {string} The corresponding rank emoji, or an empty string if no emoji is associated with the rank.
+ * @param {string} rank - The clan member's rank.
+ * @returns {string} The corresponding rank emoji, or an empty string if no emoji is defined.
+ *
  * @example
- * // Example: Leader rank
  * const emoji = getRankEmoji('Leader');
- * console.log(emoji); // '👑'
+ * console.log(emoji); // e.g., '👑'
  */
 function getRankEmoji(rank) {
     const rankData = RANKS[rank.toLowerCase()];
@@ -35,16 +40,18 @@ function getRankEmoji(rank) {
 }
 
 /**
- * Retrieves the color associated with a given rank.
+ * 🎯 **Retrieves the Color for a Given Rank**
+ *
+ * Returns the hexadecimal color code associated with the provided rank. The lookup is case-insensitive.
+ * If the rank is not found, it returns a default yellow color.
  *
  * @function getRankColor
- * @param {string} rank - The rank of the clan member. Expected to be case-insensitive.
- * @returns {number} The corresponding rank color in hexadecimal format (e.g., `0xff0000`),
- * or a default yellow color (`0xffff00`) if the rank is not found.
+ * @param {string} rank - The clan member's rank.
+ * @returns {number} The rank color in hexadecimal format (e.g., 0xff0000), or 0xffff00 as a default.
+ *
  * @example
- * // Example: Officer rank
  * const color = getRankColor('Officer');
- * console.log(color); // 0xff0000
+ * console.log(color); // e.g., 0xff0000
  */
 function getRankColor(rank) {
     const rankData = RANKS[rank.toLowerCase()];
@@ -52,14 +59,18 @@ function getRankColor(rank) {
 }
 
 /**
- * Formats experience points by converting them to an integer and adding commas for readability.
+ * 🎯 **Formats Experience Points**
+ *
+ * Converts the provided experience value to an integer and formats it with commas
+ * to improve readability.
  *
  * @function formatExp
- * @param {number|string} experience - The experience points to format. Can be a number or a string representation of a number.
- * @returns {string} The formatted experience points with commas.
+ * @param {number|string} experience - The experience points to format.
+ * @returns {string} The formatted experience with commas.
+ *
  * @throws {TypeError} If the input cannot be parsed as a number.
+ *
  * @example
- * // Example: Formatting experience
  * const formattedExp = formatExp(1234567);
  * console.log(formattedExp); // '1,234,567'
  */
@@ -69,15 +80,16 @@ function formatExp(experience) {
 }
 
 /**
- * Formats a rank string by replacing underscores with spaces and capitalizing each word.
+ * 🎯 **Formats a Rank String for Display**
  *
- * This function is useful for normalizing rank strings from storage formats to display formats.
+ * Normalizes a rank string by replacing underscores with spaces and capitalizing each word.
+ * This function converts storage format (e.g., "clan_leader") into a display-friendly format (e.g., "Clan Leader").
  *
  * @function formatRank
- * @param {string} rank - The rank string to format. For example, 'clan_leader' will be formatted as 'Clan Leader'.
- * @returns {string} The formatted rank string with spaces and proper capitalization.
+ * @param {string} rank - The rank string to format.
+ * @returns {string} The formatted rank string.
+ *
  * @example
- * // Example: Formatting a rank string
  * const formattedRank = formatRank('clan_leader');
  * console.log(formattedRank); // 'Clan Leader'
  */

@@ -1,24 +1,49 @@
-// src\api\wise_old_man\apiClient.js
 /* eslint-disable node/no-unpublished-require */
+require('dotenv').config();
 const { WOMClient } = require('@wise-old-man/utils');
 const logger = require('../../modules/utils/logger');
 
-// Rate limit settings for WOM API
+/**
+ * @fileoverview 🌍 **Wise Old Man API Client**
+ *
+ * This module provides an interface for interacting with the **Wise Old Man (WOM) API**.
+ * - Implements **rate limiting** to manage API requests efficiently.
+ * - Handles **automatic retries** using **exponential backoff** for resilience.
+ * - Provides easy access to **WOM API endpoints** for retrieving RuneScape player and competition data.
+ *
+ * 🔹 **Core Features:**
+ * - 🚀 **Rate-Limited API Requests** (100/min for active API keys, 20/min for inactive keys).
+ * - 🔄 **Automatic Retries** with **Exponential Backoff** on failures.
+ * - ⚡ **Efficient Data Fetching** for `players`, `groups`, and `competitions`.
+ *
+ * 📌 **Usage Example:**
+ * ```javascript
+ * const WOMApiClient = require('./apiClient');
+ * const playerData = await WOMApiClient.request('players', 'getPlayer', 'Zezima');
+ * console.log(playerData);
+ * ```
+ *
+ * @module WOMApiClient
+ */
+
+// 📊 WOM API Rate Limit Settings
 const RATE_LIMIT_ACTIVE = 100; // 100 requests per 60 seconds for active API keys
 const RATE_LIMIT_INACTIVE = 20; // 20 requests per 60 seconds for inactive API keys
 let requestCount = 0;
 let lastRequestTime = Date.now();
 
 /**
- * A client for interacting with the Wise Old Man (WOM) API.
- * Manages rate-limited requests, handles retries, and provides access to the WOM API endpoints.
+ * 🎯 **Wise Old Man API Client**
+ *
+ * Manages interactions with the WOM API, enforcing rate limits and handling retries.
  */
 class WOMApiClient {
     /**
-     * Initializes the WOM API client with an API key and user agent.
-     * Sets rate limits based on the presence of an API key and validates the WOM group ID.
+     * 🛠️ **Constructor**
      *
-     * @throws {Error} Throws an error if the `WOM_GROUP_ID` is invalid.
+     * Initializes the WOM API client, sets up rate limits, and validates the WOM group ID.
+     *
+     * @throws {Error} If the `WOM_GROUP_ID` is missing or invalid.
      */
     constructor() {
         this.client = new WOMClient({
@@ -41,11 +66,13 @@ class WOMApiClient {
     }
 
     /**
-     * Ensures that the WOM API rate limit is not exceeded.
-     * Throws an error if the request limit is reached within the current 60-second window.
+     * ⏳ **Enforces Rate Limiting**
      *
-     * @throws {Error} If the rate limit is exceeded.
-     * @returns {Promise<void>} Resolves if the rate limit has not been exceeded.
+     * Ensures that API requests do not exceed the allowed **rate limit**.
+     * If the request limit is reached, throws an error.
+     *
+     * @throws {Error} If the **rate limit** is exceeded.
+     * @returns {Promise<void>} Resolves if the rate limit allows the request.
      */
     async handleWOMRateLimit() {
         const currentTime = Date.now();
@@ -58,7 +85,6 @@ class WOMApiClient {
                 throw new Error('WOM rate limit exceeded. Waiting before retrying...');
             }
         } else {
-            // Reset count after 60 seconds
             requestCount = 0;
             lastRequestTime = currentTime;
         }
@@ -67,14 +93,16 @@ class WOMApiClient {
     }
 
     /**
-     * Retries a failed API request with exponential backoff.
+     * 🔄 **Retries API Requests with Exponential Backoff**
      *
-     * @param {string} endpoint - The WOM API endpoint (e.g., 'players', 'groups').
-     * @param {string} methodName - The method name to call on the endpoint.
-     * @param {string|Object} params - The parameters to pass to the API method.
-     * @param {number} [retries=5] - The number of retry attempts before throwing an error.
-     * @returns {Promise<any>} The result of the API call, or `null` if a non-critical error occurs.
-     * @throws {Error} Throws an error if all retries fail and the error is critical.
+     * Retries failed API requests using **exponential backoff** for resilience.
+     *
+     * @param {string} endpoint - The WOM API endpoint (e.g., `'players'`, `'groups'`).
+     * @param {string} methodName - The method to invoke on the API endpoint.
+     * @param {string|Object} params - The parameters for the API request.
+     * @param {number} [retries=15] - Maximum retry attempts.
+     * @returns {Promise<any>} The API response or `null` if the error is non-critical.
+     * @throws {Error} If all retries fail for a **critical** error.
      */
     async retryRequest(endpoint, methodName, params, retries = 15) {
         const nonCriticalErrors = ['has been updated recently', 'Invalid username', 'Failed to load hiscores', 'Competition not found'];
@@ -83,47 +111,40 @@ class WOMApiClient {
             try {
                 await this.handleWOMRateLimit();
                 const result = await this.client[endpoint][methodName](params);
-                return result; // Successfully fetched data
+                return result;
             } catch (error) {
-                const isNonCritical = nonCriticalErrors.some((pattern) => error.message.includes(pattern));
-
+                const isNonCritical = nonCriticalErrors.some((msg) => error.message.includes(msg));
                 if (isNonCritical) {
-                    if (error.message.includes('Invalid username', 'Failed to load hiscores')) {
-                        logger.warn(`[WOMApiClient] Non-existing, Unranked or Banned player found: ${params}`);
-                    } else if (error.message.includes('Competition not found')) {
-                        logger.warn(`[WOMApiClient] Competition not found for request: ${params}`);
-                    } else {
-                        logger.warn(`[WOMApiClient] ${params} has been updated recently. Skipping.`);
-                    }
+                    logger.warn(`[WOMApiClient] Non-critical error encountered: ${error.message}. Skipping.`);
                     return null;
                 }
 
                 if (attempt === retries) {
-                    logger.error(`Failed to call ${endpoint}.${methodName} after ${retries} retries: ${error.message}`);
+                    logger.error(`Failed ${endpoint}.${methodName} after ${retries} retries: ${error.message}`);
                     throw error;
                 }
 
                 logger.warn(`Retrying ${endpoint}.${methodName} in ${Math.pow(2, attempt)}ms`);
-                await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * 100)); // Exponential backoff
+                await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * 100));
             }
         }
     }
 
     /**
-     * Makes a request to the WOM API with rate limiting and retries.
+     * ⚡ **Executes an API Request with Retries**
      *
-     * @param {string} endpoint - The WOM API endpoint (e.g., 'players', 'groups').
-     * @param {string} methodName - The method name to call on the endpoint.
-     * @param {string|Object} [params={}] - The parameters to pass to the API method.
-     * @returns {Promise<any>} The result of the API call.
-     * @throws {Error} Throws an error if the request fails after all retries.
+     * Handles **rate limiting**, **error handling**, and **automatic retries** for API requests.
+     *
+     * @param {string} endpoint - The WOM API endpoint (e.g., `'players'`, `'groups'`).
+     * @param {string} methodName - The method to call on the endpoint.
+     * @param {string|Object} [params={}] - The parameters for the API call.
+     * @returns {Promise<any>} The API response.
+     * @throws {Error} If the request fails after **all retries**.
      */
     async request(endpoint, methodName, params = {}) {
         await this.handleWOMRateLimit();
-
         try {
-            const result = await this.retryRequest(endpoint, methodName, params);
-            return result;
+            return await this.retryRequest(endpoint, methodName, params);
         } catch (error) {
             logger.error(`[WOMApiClient] Error calling ${endpoint}.${methodName}: ${error.message}`);
             throw error;
@@ -131,4 +152,9 @@ class WOMApiClient {
     }
 }
 
+/**
+ * 📦 **Exports an instance of WOMApiClient**
+ *
+ * Provides a singleton API client for interacting with **Wise Old Man**.
+ */
 module.exports = new WOMApiClient();

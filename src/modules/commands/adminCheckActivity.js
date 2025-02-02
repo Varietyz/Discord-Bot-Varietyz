@@ -1,6 +1,9 @@
 // @ts-nocheck
 /**
- * @fileoverview Implements the `/check_activity` command to display active and inactive players.
+ * @fileoverview
+ * **Check_activity Command** ⏱️
+ *
+ * Implements the `/check_activity` command to display active and inactive players.
  * This command provides insights into player activity by fetching data from the database
  * and presenting it with pagination support.
  *
@@ -16,7 +19,7 @@
  * - **Luxon**: For date and time manipulation (calculating progression and inactivity).
  * - **SQLite**: For retrieving player activity data from the database.
  *
- * @module modules/commands/check_activity
+ * @module modules/commands/adminCheckActivity
  */
 
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, PermissionsBitField, ButtonStyle } = require('discord.js');
@@ -24,7 +27,7 @@ const { DateTime } = require('luxon');
 const logger = require('../utils/logger');
 const { calculateProgressCount, calculateInactivity } = require('../utils/calculateActivity');
 const { getAll } = require('../utils/dbUtils');
-const { updateActivityData } = require('../services/active_members');
+const { updateActivityData } = require('../services/activeMembers');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -34,12 +37,26 @@ module.exports = {
         .addStringOption((option) => option.setName('status').setDescription('Choose to view active or inactive players.').setRequired(true).addChoices({ name: 'Active', value: 'active' }, { name: 'Inactive', value: 'inactive' })),
 
     /**
-     * Executes the `/check_activity` command, displaying active or inactive players with pagination.
+     * 🎯 Executes the `/check_activity` command.
+     *
+     * Retrieves active or inactive players based on their last progress and displays the results
+     * in a paginated embed with navigation buttons.
+     *
+     * The command:
+     * - Defers the reply.
+     * - Updates the activity data from the database.
+     * - Retrieves and calculates the total count of active/inactive players.
+     * - Fetches the corresponding player records.
+     * - Paginates the data and sends an embed with interactive navigation.
      *
      * @async
      * @function execute
-     * @param {Discord.CommandInteraction} interaction - The interaction object representing the command.
-     * @returns {Promise<void>} Resolves when the command is executed successfully.
+     * @param {Discord.CommandInteraction} interaction - The command interaction object.
+     * @returns {Promise<void>} Resolves when the command execution is complete.
+     *
+     * @example
+     * // Executed when an admin runs /check_activity status:active
+     * await execute(interaction);
      */
     async execute(interaction) {
         try {

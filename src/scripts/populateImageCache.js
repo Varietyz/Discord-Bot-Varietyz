@@ -3,27 +3,45 @@ const path = require('path');
 const logger = require('../modules/utils/logger');
 const { runQuery } = require('../modules/utils/dbUtils');
 
-// Path to the resources directory
+/**
+ * Path to the resources directory.
+ * @constant {string}
+ */
 const resourcesPath = path.resolve(__dirname, '../resources');
 
-// Base path for the project, specifically starting at "src"
+/**
+ * Base path for the project, starting at "src".
+ * @constant {string}
+ */
 const projectBasePath = path.resolve(__dirname, '../');
 
 /**
- * Recursively get all files from a directory and its subdirectories.
- * @param {string} dir - Directory to scan.
- * @returns {Array<{ fileName: string, filePath: string }>} - Array of file metadata.
+ * Recursively retrieves all files from a directory and its subdirectories along with metadata.
+ *
+ * This function scans the specified directory and all nested subdirectories to produce an array
+ * of objects. Each object contains:
+ * - `fileName`: The lowercase file name without its extension.
+ * - `filePath`: The relative path starting with "src/" to the file, with forward slashes as separators.
+ *
+ * @function getAllFilesWithMetadata
+ * @param {string} dir - The directory to scan.
+ * @returns {Array<{ fileName: string, filePath: string }>} An array of file metadata objects.
+ *
+ * @example
+ * const files = getAllFilesWithMetadata(resourcesPath);
+ * console.log(files);
  */
 function getAllFilesWithMetadata(dir) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     const files = entries
-        .filter((file) => !file.isDirectory())
-        .map((file) => ({
-            fileName: path.basename(file.name, path.extname(file.name)).toLowerCase(), // File name without extension
-            filePath: `src/${path.relative(projectBasePath, path.resolve(dir, file.name)).replace(/\\/g, '/')}`, // Always include "src/"
+        .filter((entry) => !entry.isDirectory())
+        .map((entry) => ({
+            fileName: path.basename(entry.name, path.extname(entry.name)).toLowerCase(), // File name without extension in lowercase.
+            filePath: `src/${path.relative(projectBasePath, path.resolve(dir, entry.name)).replace(/\\/g, '/')}`, // Relative file path starting with "src/".
         }));
 
-    const folders = entries.filter((folder) => folder.isDirectory());
+    // Process subdirectories recursively.
+    const folders = entries.filter((entry) => entry.isDirectory());
     for (const folder of folders) {
         files.push(...getAllFilesWithMetadata(path.resolve(dir, folder.name)));
     }
@@ -32,38 +50,54 @@ function getAllFilesWithMetadata(dir) {
 }
 
 /**
- * Populate the image_cache table with all files in the resources directory.
+ * Populates the image_cache table in the database with file metadata from the resources directory.
+ *
+ * This function performs the following steps:
+ * 1. Retrieves all files from the resources directory using `getAllFilesWithMetadata`.
+ * 2. Drops the existing image_cache table (if it exists) to ensure a fresh setup.
+ * 3. Iterates over each file's metadata and attempts to update an existing database entry.
+ * If no existing entry is updated, it inserts a new record.
+ *
+ * @async
+ * @function populateImageCache
+ * @returns {Promise<void>} A promise that resolves when the image cache has been successfully updated.
+ *
+ * @example
+ * // Run the script to populate the image cache.
+ * populateImageCache()
+ * .then(() => logger.info('Image cache populated.'))
+ * .catch(err => logger.error(err));
  */
 async function populateImageCache() {
-    // Get all files with metadata
+    // Retrieve all file metadata from the resources directory.
     const files = getAllFilesWithMetadata(resourcesPath);
 
-    // Ensure the table exists
+    // Ensure a fresh state by dropping the existing image_cache table.
     await runQuery(`
         DROP TABLE IF EXISTS image_cache
     `);
     logger.info('Ensured image_cache table exists.');
 
-    // Process each file for updates or inserts
+    // Process each file: update if exists; otherwise, insert a new record.
     try {
         for (const { fileName, filePath } of files) {
-            // Try updating the existing entry
+            // Attempt to update an existing entry.
             const updateResult = await runQuery(
                 `
                 UPDATE image_cache
                 SET file_path = ?
                 WHERE file_name = ?
-            `,
+                `,
                 [filePath, fileName],
             );
 
-            // If no rows were updated, insert a new entry
+            // If no rows were updated, insert a new entry.
             if (updateResult.changes === 0) {
                 await runQuery(
                     `
                     INSERT INTO image_cache (file_name, file_path)
                     VALUES (?, ?)
-                `,
+                    `,
                     [fileName, filePath],
                 );
             }
@@ -75,5 +109,5 @@ async function populateImageCache() {
     }
 }
 
-// Run the script
+// Execute the populateImageCache function.
 populateImageCache();

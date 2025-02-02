@@ -1,23 +1,27 @@
 // @ts-nocheck
 /**
- * @fileoverview Utility functions for managing clan members and updating their data in the Varietyz Bot.
- * This module interacts with the WOM API to fetch member information, manages role assignments in Discord based on ranks,
- * and updates the associated Discord channels with the latest clan member data.
+ * @fileoverview
+ * **Member Channel Service Utilities** 🛠️
  *
- * Key Features:
- * - **Role Assignment**: Handles dynamic assignment and removal of roles based on player rank.
- * - **Clan Member Updates**: Fetches and processes player data, updating roles and information in the Discord guild.
- * - **Database Management**: Updates the `clan_members` table in the SQLite database and ensures it reflects the latest member data.
- * - **Discord Notifications**: Sends notifications to a designated Discord channel about rank updates and member changes.
- * - **Data Purging**: Removes outdated information from the `clan_members` table and purges previous channel messages before sending new data.
+ * This module provides utility functions for managing clan members and updating their data in the Varietyz Bot.
+ * It interacts with the WOM API to fetch member information, manages role assignments in Discord based on ranks,
+ * updates the SQLite database (`clan_members` table) with the latest member data, and refreshes the designated Discord
+ * channels with up-to-date clan member information.
  *
- * External Dependencies:
- * - **Wise Old Man (WOM) API**: Fetches player information and updates from the Wise Old Man API.
- * - **Discord.js**: Used for interacting with Discord, including sending messages and managing roles.
- * - **dbUtils**: Handles database interactions to update clan member data.
- * - **rankUtils**: Provides utilities for formatting and retrieving rank information.
+ * **Key Features:**
+ * - **Role Assignment**: Dynamically assigns or removes roles based on player rank.
+ * - **Clan Member Updates**: Fetches and processes player data, updating roles and channel messages.
+ * - **Database Management**: Ensures the `clan_members` table reflects the latest clan member data.
+ * - **Discord Notifications**: Notifies a designated channel about rank updates and member changes.
+ * - **Data Purging**: Clears outdated channel messages before posting new information.
  *
- * @module modules/services/member_channel
+ * **External Dependencies:**
+ * - **Wise Old Man (WOM) API**: Fetches player data.
+ * - **Discord.js**: Manages interactions with Discord (sending messages, role management).
+ * - **dbUtils**: Handles database operations.
+ * - **rankUtils**: Provides utilities for rank formatting and color/emoji retrieval.
+ *
+ * @module modules/services/memberChannel
  */
 
 const { EmbedBuilder } = require('discord.js');
@@ -30,18 +34,22 @@ const { getAll, runQuery } = require('../utils/dbUtils');
 require('dotenv').config();
 
 /**
- * Handles the assignment and removal of roles for a Discord guild member based on their rank.
- * It removes lower-ranked roles and assigns the appropriate role if not already present.
+ * 🎯 **Handles Role Assignment for a Guild Member**
+ *
+ * Assigns the appropriate role to the given Discord guild member based on their rank. It also removes any lower-ranked roles
+ * to ensure that the member has only the most relevant role.
  *
  * @async
  * @function handleMemberRoles
- * @param {Discord.GuildMember} member - The Discord guild member to update roles for.
- * @param {string} roleName - The name of the role to assign to the member.
+ * @param {Discord.GuildMember} member - The guild member whose roles are to be updated.
+ * @param {string} roleName - The name of the role to assign (e.g., `Iron`).
  * @param {Discord.Guild} guild - The Discord guild where the member resides.
- * @param {string} player - The player's RuneScape Name (RSN).
+ * @param {string} player - The player's RuneScape name (RSN).
  * @param {string} rank - The current rank of the player.
- * @returns {Promise<void>} - Resolves when role updates are complete.
+ * @returns {Promise<void>} Resolves when role updates are complete.
+ *
  * @example
+ * // Update roles for a member:
  * await handleMemberRoles(member, 'Iron', guild, 'PlayerOne', 'Iron');
  */
 async function handleMemberRoles(member, roleName, guild, player, rank) {
@@ -83,17 +91,23 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
 }
 
 /**
- * Updates clan member data by fetching the latest information from the WOM API,
- * updating roles, and refreshing the clan channel in Discord.
+ * 🎯 **Updates Clan Member Data**
+ *
+ * Fetches the latest clan member data from the WOM API, processes the data to update roles in the Discord guild,
+ * and refreshes the clan channel with updated information. Optionally forces a channel update.
  *
  * @async
  * @function updateData
  * @param {Discord.Client} client - The Discord client instance.
- * @returns {Promise<void>} - Resolves when the update process is complete.
+ * @param {Object} [options] - Optional configuration.
+ * @param {boolean} [options.forceChannelUpdate=false] - If `true`, forces the clan channel to update even if no changes are detected.
+ * @returns {Promise<void>} Resolves when the update process is complete.
+ *
  * @example
- * await updateData(client);
+ * // Update data and force a channel update:
+ * await updateData(client, { forceChannelUpdate: true });
  */
-async function updateData(client) {
+async function updateData(client, { forceChannelUpdate = false } = {}) {
     try {
         const csvData = await WOMApiClient.request('groups', 'getMembersCSV', process.env.WOM_GROUP_ID);
         const csvRows = csvData.split('\n').slice(1);
@@ -133,7 +147,7 @@ async function updateData(client) {
         }
 
         const changesDetected = await updateDatabase(newData);
-        if (changesDetected) {
+        if (changesDetected || forceChannelUpdate) {
             await updateClanChannel(client, cachedData);
         } else {
             logger.info('No changes detected. Skipping channel purge and update.');
@@ -144,17 +158,20 @@ async function updateData(client) {
 }
 
 /**
- * Updates the 'clan_members' table in the database with new clan member data.
- * It compares the current data with the new data and updates the database if changes are detected.
+ * 🎯 **Updates the Clan Members Database**
+ *
+ * Compares new clan member data with the current data in the `clan_members` table.
+ * If differences are detected, it updates the table accordingly.
  *
  * @async
  * @function updateDatabase
- * @param {Array<Object>} newData - An array of objects containing player names and their ranks.
- * @returns {Promise<boolean>} - Returns `true` if changes were detected and the database was updated, `false` otherwise.
+ * @param {Array<Object>} newData - Array of objects each containing `player` (name) and `rank` properties.
+ * @returns {Promise<boolean>} Returns `true` if changes were detected and the database was updated; otherwise `false`.
+ *
  * @example
  * const changes = await updateDatabase(newData);
  * if (changes) {
- * logger.info('Database updated.');
+ *   logger.info('Database updated.');
  * }
  */
 async function updateDatabase(newData) {
@@ -174,14 +191,70 @@ async function updateDatabase(newData) {
 }
 
 /**
- * Updates the Discord clan channel with the latest clan member data.
- * It purges existing messages and sends updated information as embeds.
+ * 🎯 **Splits an Array into Chunks**
+ *
+ * Divides a given array into smaller arrays (chunks) of a specified maximum size.
+ *
+ * @function chunkArray
+ * @param {Array} array - The array to split.
+ * @param {number} chunkSize - The maximum number of elements per chunk.
+ * @returns {Array<Array>} An array containing the chunked arrays.
+ *
+ * @example
+ * const chunks = chunkArray([1, 2, 3, 4, 5], 2);
+ * // Result: [[1, 2], [3, 4], [5]]
+ */
+function chunkArray(array, chunkSize) {
+    const chunks = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+        chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
+}
+
+/**
+ * 🎯 **Sends Embeds in Batches to a Discord Channel**
+ *
+ * Discord allows a maximum of 10 embeds per message. This function splits the embeds into batches
+ * and sends each batch to the specified channel sequentially to avoid rate limits.
+ *
+ * @async
+ * @function sendEmbedsInBatches
+ * @param {Discord.TextBasedChannel} channel - The channel where embeds should be sent.
+ * @param {Array<EmbedBuilder>} embeds - An array of embed objects to be sent.
+ * @returns {Promise<void>} Resolves when all embed batches have been sent.
+ *
+ * @example
+ * await sendEmbedsInBatches(channel, embeds);
+ */
+async function sendEmbedsInBatches(channel, embeds) {
+    // Discord allows up to 10 embeds per message.
+    const batches = chunkArray(embeds, 10);
+
+    // Process batches sequentially to avoid rate limits.
+    for (const batch of batches) {
+        try {
+            await channel.send({ embeds: batch });
+        } catch (error) {
+            logger.error(`Error sending embed batch: ${error.message}`);
+            // Optionally, implement retry or backoff logic here.
+        }
+    }
+}
+
+/**
+ * 🎯 **Updates the Discord Clan Channel**
+ *
+ * Purges existing messages from the designated clan channel and sends updated clan member data
+ * as formatted embeds.
  *
  * @async
  * @function updateClanChannel
  * @param {Discord.Client} client - The Discord client instance.
- * @param {Array<Object>} cachedData - An array of objects containing player data for the embeds.
- * @returns {Promise<void>} - Resolves when the clan channel is updated.
+ * @param {Array<Object>} cachedData - Array of objects containing player data including `player`, `rank`,
+ * `experience`, and `lastProgressed` values.
+ * @returns {Promise<void>} Resolves when the clan channel has been successfully updated.
+ *
  * @example
  * await updateClanChannel(client, cachedData);
  */
@@ -196,31 +269,20 @@ async function updateClanChannel(client, cachedData) {
         const rankEmoji = getRankEmoji(rank);
         const color = getRankColor(rank);
         const playerNameForLink = encodeURIComponent(player.replace(/ /g, '%20'));
-        const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
 
         const embed = new EmbedBuilder()
             .setTitle(`${index}. ${rankEmoji} **${player}**`)
+            .setURL(`https://wiseoldman.net/players/${playerNameForLink}`)
             .setColor(color)
-            .addFields(
-                { name: '**Rank:**', value: `\`${rank}\``, inline: true },
-                {
-                    name: '**Total Exp:**',
-                    value: `\`${formatExp(experience)}\``,
-                    inline: true,
-                },
-                {
-                    name: '⏳**Last Progressed:**',
-                    value: `\`${lastProgressed}\`\n🔗[Profile Link](${profileLink})`,
-                    inline: false,
-                },
-            );
+            .addFields({ name: '**Rank:**', value: `\`${rank}\``, inline: true }, { name: '**Total Exp:**', value: `\`${formatExp(experience)}\``, inline: true }, { name: '⏳ **Last Progressed:**', value: `\`${lastProgressed}\``, inline: false });
 
         embeds.push(embed);
         index++;
     }
 
-    await Promise.all(embeds.map((embed) => channel.send({ embeds: [embed] })));
+    // Send all embeds in batches (max 10 embeds per message)
+    await sendEmbedsInBatches(channel, embeds);
     logger.info('Clan channel updated with new data.');
 }
 
-module.exports = { updateData };
+module.exports = { updateData, updateClanChannel };

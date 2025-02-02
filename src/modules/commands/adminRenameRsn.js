@@ -1,25 +1,19 @@
 // @ts-nocheck
 /**
- * @fileoverview Defines the `/admin_rename_rsn` slash command for the Varietyz Bot.
- * This command allows administrators to rename a registered RuneScape Name (RSN)
- * of a guild member. It includes validation, database interactions,
- * and an autocomplete feature for RSN suggestions.
+ * @fileoverview
+ * **Admin_rename_rsn Command** 🔄
  *
- * Core Features: (Administrator-only command)
- * - Allows administrators to rename a registered RSN for a guild member.
- * - Validates RSN format and checks for conflicts with existing RSNs.
- * - Verifies the RSN on Wise Old Man API before renaming.
- * - Provides confirmation and cancellation options for the renaming action.
- * - Autocomplete support for `target` and `current_rsn` fields based on registered RSNs.
- * - Handles rate limiting to prevent abuse of the command.
- * - Updates the database with the new RSN upon confirmation.
+ * Defines the `/admin_rename_rsn` slash command for the Varietyz Bot.
+ * This command allows administrators to rename a registered RuneScape Name (RSN) of a guild member.
+ * It handles input validation, database interactions, and verifies RSNs against the Wise Old Man API.
+ * It also provides a confirmation prompt for the renaming action and supports autocomplete for the target and current RSN fields.
  *
- * External Dependencies:
+ * **External Dependencies:**
  * - **Discord.js**: For handling slash commands, creating embeds, and managing interactive buttons.
  * - **Wise Old Man API**: For verifying RSNs and fetching player data.
  * - **SQLite**: For interacting with the registered RSN database.
  *
- * @module modules/commands/admin_rename_rsn
+ * @module modules/commands/adminRenameRsn
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
@@ -40,13 +34,26 @@ module.exports = {
         .addStringOption((option) => option.setName('new_rsn').setDescription('The new RSN to associate with the user.').setRequired(true)),
 
     /**
-     * Executes the `/admin_rename_rsn` command.
-     * Validates inputs, checks for conflicts, verifies RSN existence on Wise Old Man, and provides a confirmation prompt before renaming.
+     * 🎯 Executes the `/admin_rename_rsn` command.
+     *
+     * This function performs the following steps:
+     * 1. Retrieves the target user ID, current RSN, and new RSN from the command options.
+     * 2. Validates that the command is executed in a guild and that the target user exists.
+     * 3. Validates the new RSN format using `validateRsn` and normalizes the RSNs.
+     * 4. Fetches player data from the Wise Old Man API to verify the new RSN.
+     * 5. Checks for conflicts to ensure the new RSN is not already registered by another user.
+     * 6. Verifies that the current RSN exists in the target user's registered RSNs.
+     * 7. Sends a confirmation prompt with interactive buttons (Confirm/Cancel) to proceed with renaming.
+     * 8. Upon confirmation, updates the RSN in the database and notifies the target user via DM.
      *
      * @async
      * @function execute
      * @param {Discord.CommandInteraction} interaction - The interaction object representing the command execution.
-     * @returns {Promise<void>} Resolves when the command is fully executed.
+     * @returns {Promise<void>} Resolves when the command execution is complete.
+     *
+     * @example
+     * // Invoked when an admin runs /admin_rename_rsn with the required options.
+     * await execute(interaction);
      */
     async execute(interaction) {
         try {
@@ -89,9 +96,7 @@ module.exports = {
             if (!playerData) {
                 const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(normalizedNewRsn)}`;
                 return await interaction.reply({
-                    content: `❌ The RSN \`${newRsn}\` could not be verified on Wise Old Man. Ensure the name exists and try again.
-
-🔗 [View Profile](${profileLink})`,
+                    content: `❌ The RSN \`${newRsn}\` could not be verified on Wise Old Man. Ensure the name exists and try again.\n\n🔗 [View Profile](${profileLink})`,
                     flags: 64,
                 });
             }
@@ -114,9 +119,9 @@ module.exports = {
                 });
             }
 
-            const normalizedUserRSNs = userRSNs.map((row) => normalizeRsn(row.rsn));
+            const normalizedUserRSns = userRSNs.map((row) => normalizeRsn(row.rsn));
 
-            if (!normalizedUserRSNs.includes(normalizedCurrentRsn)) {
+            if (!normalizedUserRSns.includes(normalizedCurrentRsn)) {
                 return await interaction.reply({
                     content: `⚠️ The RSN \`${currentRsn}\` was not found in <@${targetUserID}>'s registered RSNs.`,
                     flags: 64,
@@ -157,7 +162,7 @@ Are you sure you want to rename the RSN \`${currentRsn}\` to \`${newRsn}\` for <
 
                     const userEmbed = new EmbedBuilder()
                         .setColor(0x00ffff)
-                        .setTitle('⚠️RSN Renamed')
+                        .setTitle('⚠️ RSN Renamed')
                         .setDescription(
                             `Your RuneScape Name \`${currentRsn}\` has been renamed in our records to \`${newRsn}\`. ⚠️
 
@@ -210,12 +215,21 @@ This action was performed by: <@${interaction.user.id}>`,
     },
 
     /**
-     * Provides autocomplete suggestions for the `target` and `current_rsn` options.
+     * 🎯 Provides autocomplete suggestions for the `target` and `current_rsn` options.
+     *
+     * For the `target` option, it retrieves a list of user IDs from the registered RSNs,
+     * fetches the corresponding guild members, and returns suggestions based on the input.
+     *
+     * For the `current_rsn` option, it filters the target user's registered RSNs based on the input.
      *
      * @async
      * @function autocomplete
-     * @param {Discord.AutocompleteInteraction} interaction - The interaction object for the autocomplete event.
-     * @returns {Promise<void>} Resolves when suggestions are sent.
+     * @param {Discord.AutocompleteInteraction} interaction - The autocomplete interaction object.
+     * @returns {Promise<void>} Resolves when autocomplete suggestions are sent.
+     *
+     * @example
+     * // Invoked when a user types in the `target` or `current_rsn` field.
+     * await autocomplete(interaction);
      */
     async autocomplete(interaction) {
         const focusedOption = interaction.options.getFocused(true);
@@ -225,7 +239,6 @@ This action was performed by: <@${interaction.user.id}>`,
                 const input = focusedOption.value.toLowerCase();
 
                 const rsnUsers = await getAll('SELECT DISTINCT user_id FROM registered_rsn', []);
-
                 const userIds = rsnUsers.map((row) => row.user_id);
                 const guild = interaction.guild;
                 if (!guild) {
@@ -248,7 +261,7 @@ This action was performed by: <@${interaction.user.id}>`,
                             normalized: normalizeRsn(row.rsn),
                         }));
 
-                        // Match against input
+                        // Match against input.
                         const matchingRsns = normalizedRsns.filter((rsn) => rsn.normalized.includes(input));
 
                         const rsnDisplay = matchingRsns.length > 0 ? matchingRsns.map((rsn) => rsn.original).join(', ') : 'No RSN matches';
@@ -280,8 +293,7 @@ This action was performed by: <@${interaction.user.id}>`,
     SELECT rsn 
     FROM registered_rsn 
     WHERE user_id = ? 
-    AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) LIKE LOWER(?)
-    `,
+    AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) LIKE ?`,
                     [targetUserID, `%${normalizedInput}%`],
                 );
 

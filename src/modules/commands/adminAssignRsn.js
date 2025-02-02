@@ -1,25 +1,26 @@
 // @ts-nocheck
 /**
- * @fileoverview Defines the `/admin_assign_rsn` slash command for the Varietyz Bot.
- * This command allows administrators to assign a new RuneScape Name (RSN)
- * to a guild member by adding their RSN to the database.
- * It includes validation, database interactions, and an interactive confirmation feature.
+ * @fileoverview
+ * **Admin_assign_rsn Command** 🔄
  *
- * Core Features:
- * - Allows administrators to assign an RSN to a guild member.
- * - Validates RSN format and checks for conflicts with existing RSNs.
- * - Verifies the RSN on Wise Old Man API before adding it to the database.
- * - Provides confirmation and cancellation options for the action.
- * - Sends an embed message to the assigned user to notify them of the registration.
- * - Handles rate limiting to prevent abuse of the command.
- * - Updates the database with the new RSN upon confirmation.
+ * Defines the `/admin_assign_rsn` slash command for the Varietyz Bot.
+ * This command allows administrators to assign a new RuneScape Name (RSN) to a guild member
+ * by adding the RSN to the database. It performs input validation, conflict checking, and verifies the RSN
+ * against the Wise Old Man API before prompting for confirmation to complete the assignment.
  *
- * External Dependencies:
+ * **Core Features:**
+ * - Assigns an RSN to a specified guild member.
+ * - Validates the new RSN format and checks for conflicts with existing RSNs.
+ * - Verifies the RSN on the Wise Old Man API.
+ * - Provides an interactive confirmation prompt to avoid accidental assignments.
+ * - Notifies the target user via a DM once the RSN is registered.
+ *
+ * **External Dependencies:**
  * - **Discord.js**: For handling slash commands, creating embeds, and managing interactive buttons.
  * - **Wise Old Man API**: For verifying RSNs and fetching player data.
  * - **SQLite**: For interacting with the RSN database.
  *
- * @module modules/commands/admin_assign_rsn
+ * @module modules/commands/adminAssignRsn
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
@@ -39,13 +40,24 @@ module.exports = {
         .addStringOption((option) => option.setName('rsn').setDescription('The RuneScape Name to assign.').setRequired(true)),
 
     /**
-     * Executes the `/admin_assign_rsn` command.
-     * Validates inputs, checks for conflicts, verifies RSN existence on Wise Old Man, and provides a confirmation prompt before assigning.
+     * 🎯 Executes the `/admin_assign_rsn` command.
+     *
+     * This function handles the RSN assignment process by:
+     * 1. Retrieving the target user and the RSN to assign from the command options.
+     * 2. Validating the RSN format using `validateRsn` and normalizing the RSN.
+     * 3. Verifying the existence of the RSN on the Wise Old Man API via `fetchPlayerData`.
+     * 4. Checking for conflicts in the database to ensure the RSN is not already registered.
+     * 5. Sending a confirmation prompt with interactive buttons for the admin to confirm or cancel the action.
+     * 6. Upon confirmation, inserting the RSN into the database and notifying the target user via DM.
      *
      * @async
      * @function execute
      * @param {Discord.CommandInteraction} interaction - The interaction object representing the command execution.
-     * @returns {Promise<void>} Resolves when the command is fully executed.
+     * @returns {Promise<void>} Resolves when the command execution is complete.
+     *
+     * @example
+     * // Invoked when an admin runs /admin_assign_rsn with the required options:
+     * await execute(interaction);
      */
     async execute(interaction) {
         try {
@@ -69,9 +81,7 @@ module.exports = {
             if (!playerData) {
                 const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(normalizedRsn)}`;
                 return await interaction.reply({
-                    content: `❌ The RSN \`${rsn}\` could not be verified on Wise Old Man. Ensure the name exists and try again.
-
-🔗 [View Profile](${profileLink})`,
+                    content: `❌ The RSN \`${rsn}\` could not be verified on Wise Old Man. Ensure the name exists and try again.\n\n🔗 [View Profile](${profileLink})`,
                     flags: 64,
                 });
             }
@@ -112,13 +122,8 @@ Are you sure you want to assign the RSN \`${rsn}\` to <@${targetUser.id}>?`,
 
                     const userEmbed = new EmbedBuilder()
                         .setColor(0x00ff00)
-                        .setTitle('✅RSN Registered')
-                        .setDescription(`Your RuneScape Name \`${rsn}\` has been registered successfully by <@${interaction.user.id}>! 🎉`)
-                        .setDescription(
-                            `\`${rsn}\` was registered to our records. ⚠️
-
-This action was performed by: <@${interaction.user.id}>`,
-                        )
+                        .setTitle('✅ RSN Registered')
+                        .setDescription(`\`${rsn}\` was registered to our records. ⚠️\n\nThis action was performed by: <@${interaction.user.id}>`)
                         .setFooter({ text: 'Varietyz Bot' })
                         .setTimestamp();
 

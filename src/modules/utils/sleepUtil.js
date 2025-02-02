@@ -1,13 +1,18 @@
 /**
- * @fileoverview Utility function for creating delays in execution.
- * Provides a simple mechanism to pause asynchronous operations for a specified duration.
+ * @fileoverview
+ * **Sleep Utility** ⏳
  *
- * Key Features:
- * - **Promise-based Delay**: Returns a promise that resolves after the specified time, enabling pauses in async/await workflows.
- * - **Input Validation**: Ensures the delay duration is a non-negative number, throwing an error for invalid input.
- * - **Ease of Use**: Simplifies the process of adding delays in scripts or workflows.
+ * This module provides a utility function for creating delays in execution.
+ * It offers a simple, promise-based mechanism to pause asynchronous operations
+ * for a specified duration. This is especially useful in async/await workflows to
+ * introduce delays without blocking the event loop.
  *
- * External Dependencies:
+ * **Key Features:**
+ * - **Promise-based Delay**: Returns a promise that resolves after the specified time.
+ * - **Input Validation**: Validates that the delay duration is a non-negative number.
+ * - **Ease of Use**: Simplifies adding delays in asynchronous operations.
+ *
+ * **External Dependencies:**
  * - None.
  *
  * @module utils/sleepUtil
@@ -16,19 +21,20 @@
 /**
  * Pauses execution for a specified number of milliseconds.
  *
- * This function creates a delay by returning a promise that resolves after the specified time.
- * It can be used in asynchronous functions with `await` to pause execution temporarily.
+ * This function returns a promise that resolves after the specified duration,
+ * allowing asynchronous functions to use `await` to introduce a delay.
  *
  * @function sleep
- * @param {number} ms - The number of milliseconds to sleep. Must be a non-negative number.
+ * @param {number} ms - The number of milliseconds to delay. Must be a non-negative number.
  * @returns {Promise<void>} A promise that resolves after the specified duration.
  * @throws {TypeError} If the provided `ms` is not a number or is negative.
+ *
  * @example
- * // Example of pausing execution for 2 seconds
+ * // Example: Pause execution for 2 seconds.
  * async function example() {
  *     console.log('Start');
  *     await sleep(2000);
- *     console.log('End'); // Logs "End" after 2 seconds
+ *     console.log('End'); // "End" will log after approximately 2 seconds.
  * }
  */
 async function sleep(ms) {

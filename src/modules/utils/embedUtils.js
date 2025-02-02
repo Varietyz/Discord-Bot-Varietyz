@@ -9,10 +9,19 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuild
 const path = require('path');
 const logger = require('./logger');
 const db = require('./dbUtils');
+
 /**
- * Normalizes a string for comparison (e.g., trims spaces, converts to lowercase, replaces special characters).
+ * 🎯 **Normalizes a String for Comparison**
+ *
+ * Trims the input string, converts it to lowercase, and replaces spaces, dashes, and underscores
+ * with a single underscore. Useful for standardizing metric names and other identifiers.
+ *
  * @param {string} str - The string to normalize.
- * @returns {string} - The normalized string.
+ * @returns {string} The normalized string.
+ *
+ * @example
+ * const normalized = normalizeString('  My-Example_String  ');
+ * // normalized === 'my_example_string'
  */
 function normalizeString(str) {
     return str
@@ -22,22 +31,31 @@ function normalizeString(str) {
 }
 
 /**
- * Retrieves the file path for a given metric from the database with detailed logging.
+ * 🎯 **Retrieves the Image Path for a Given Metric**
+ *
+ * Looks up the file path for the provided metric name in the image cache database.
+ * Uses normalization to improve matching and logs details for debugging.
+ *
+ * @async
  * @param {string} metric - The metric name to look up.
- * @returns {Promise<string>} - The file path associated with the metric.
- * @throws {Error} - Throws an error if the metric is not found.
+ * @returns {Promise<string>} The file path associated with the metric.
+ * @throws {Error} Throws an error if the metric is not found.
+ *
+ * @example
+ * const imagePath = await getImagePath('Mining');
+ * console.log(imagePath);
  */
 async function getImagePath(metric) {
     try {
-        // Normalize the input metric
+        // Normalize the input metric.
         const normalizedMetric = normalizeString(metric);
         logger.debug(`Looking up file path for normalized metric: "${normalizedMetric}"`);
 
-        // Fetch all entries for debugging purposes
+        // Fetch all entries for debugging purposes.
         const allEntries = await db.getAll('SELECT file_name, file_path FROM image_cache');
         logger.debug(`Current database entries:\n${JSON.stringify(allEntries, null, 2)}`);
 
-        // Query the database with enhanced normalization
+        // Query the database with enhanced normalization.
         const query = `
             SELECT file_path 
             FROM image_cache 
@@ -60,41 +78,49 @@ async function getImagePath(metric) {
 }
 
 /**
- * Creates a competition embed with attached images from the local `resources` folder.
+ * 🎯 **Creates a Competition Embed with Images and Voting Options**
+ *
+ * Builds an embed for a competition, complete with a thumbnail image, title, description,
+ * time fields, and additional styling. The embed includes a clickable title linking to the competition page.
+ *
+ * @async
  * @param {Client} client - The Discord.js client.
- * @param {string} type - Competition type: 'SOTW' or 'BOTW'.
- * @param {string} metric - The metric name.
- * @param {string} startsAt - ISO start date of the competition.
- * @param {string} endsAt - ISO end date of the competition.
- * @param competitionId
- * @param guild
- * @returns {Promise<{ embeds: EmbedBuilder[], files: AttachmentBuilder[] }>} - The embed and its attachments.
+ * @param {string} type - The competition type: 'SOTW' or 'BOTW'.
+ * @param {string} metric - The metric name for the competition.
+ * @param {string} startsAt - ISO-formatted start date of the competition.
+ * @param {string} endsAt - ISO-formatted end date of the competition.
+ * @param {string|number} competitionId - The unique identifier for the competition.
+ * @returns {Promise<{ embeds: EmbedBuilder[], files: AttachmentBuilder[] }>} An object containing the embed and its attachments.
+ *
+ * @example
+ * const { embeds, files } = await createCompetitionEmbed(client, 'SOTW', 'mining', '2023-03-01T12:00:00Z', '2023-03-08T23:59:00Z', 123);
  */
 const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, competitionId) => {
+    // Determine competition title and fallback.
     const competitionTitle = type === 'SOTW' ? '<:Total_Level:1127669463613976636> Skill of the Week' : '<:Slayer:1127658069984288919> Boss of the Week';
+    const titleFallback = type === 'SOTW' ? '⚔️ Skill of the Week' : '🐉 Boss of the Week';
+    const displayedTitle = competitionTitle.includes('<:') ? competitionTitle : titleFallback;
 
     logger.debug(`Creating competition embed for metric: "${metric}"`);
     logger.debug(`Competition type: "${type}", Starts: "${startsAt}", Ends: "${endsAt}"`);
 
-    // Path to the resources folder
+    // Determine the path to the resources folder.
     const resourcesFolder = path.resolve(__dirname, '../../resources');
 
-    // Determine the file path for the thumbnail image
+    // Determine the local image path for the thumbnail.
     const imagePath = path.join(resourcesFolder, 'skills_bosses', `${metric.toLowerCase()}.png`);
     logger.debug(`Resolved local image path: "${imagePath}"`);
 
-    // Check if the file exists
+    // Attempt to create an attachment for the image.
     let imageAttachment;
     try {
         imageAttachment = new AttachmentBuilder(imagePath, { name: `${metric}.png` });
     } catch (err) {
         logger.warn(`No image found for metric "${metric}". Using default.`);
-        imageAttachment = new AttachmentBuilder(
-            path.join(resourcesFolder, 'default.png'), // Fallback image
-            { name: 'default.png' },
-        );
+        imageAttachment = new AttachmentBuilder(path.join(resourcesFolder, 'default.png'), { name: 'default.png' });
     }
 
+    // Attempt to fetch the guild for emoji retrieval.
     let guild;
     try {
         guild = await client.guilds.fetch(process.env.GUILD_ID);
@@ -104,66 +130,117 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
         guild = null;
     }
 
-    // ✅ Fetch metric emoji safely
+    // Fetch the custom emoji for the metric, with a fallback.
     let metricEmoji = '';
     if (guild) {
-        const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_'); // Normalize metric name
+        const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_'); // Normalize metric name.
         const foundEmoji = guild.emojis.cache.find((e) => e.name.toLowerCase() === normalizedMetric);
-        metricEmoji = foundEmoji ? foundEmoji.toString() : ''; // Ensure it's a string
-        logger.debug(`🔍 Found emoji for "${metric}": ${metricEmoji}`);
+
+        if (foundEmoji && foundEmoji.available) {
+            metricEmoji = foundEmoji.toString();
+        } else {
+            metricEmoji = type === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️';
+            logger.warn(`⚠️ Custom emoji "${normalizedMetric}" not found or unavailable. Using fallback ${metricEmoji}`);
+        }
     } else {
         logger.warn(`⚠️ Guild is undefined; cannot fetch emoji for metric: ${metric}`);
+        metricEmoji = type === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️';
     }
 
-    // ✅ Format metric name
+    // Format the metric name to be title-cased.
     const formattedMetric = metric
         .toLowerCase()
         .split('_')
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
+    // Format the start and end timestamps.
+    const start = formatTimestamp(startsAt);
+    const end = formatTimestamp(endsAt);
+
     const embed = new EmbedBuilder()
-        .setTitle(`**${competitionTitle}**`)
+        .setTitle(`**${displayedTitle}**`)
         .setURL(`https://wiseoldman.net/competitions/${competitionId}`)
         .setDescription(`## ${metricEmoji} [${formattedMetric}](https://oldschool.runescape.wiki/w/${metric})`)
-        .addFields({ name: '🕛 Start', value: `<t:${Math.floor(new Date(startsAt).getTime() / 1000)}:F>`, inline: true }, { name: '🕛 Ends', value: `<t:${Math.floor(new Date(endsAt).getTime() / 1000)}:F>`, inline: true })
+        .addFields(
+            { name: 'Start', value: `\`🕛 ${start.dayOfWeek}, ${start.formattedTime}\n📅 ${start.formattedDate}\``, inline: true },
+            { name: 'Ends', value: `\`🕛 ${end.dayOfWeek}, ${end.formattedTime}\n📅 ${end.formattedDate}\``, inline: true },
+        )
         .setColor(type === 'SOTW' ? 0x3498db : 0xe74c3c)
-        .setThumbnail(`attachment://${metric}.png`) // Reference the attachment
+        .setThumbnail(`attachment://${metric}.png`)
         .setImage(type === 'SOTW' ? 'https://i.ibb.co/DP2F5L9/sotw-banner.png' : 'https://i.ibb.co/MGLHPrk/botw-banner.png')
-        .setFooter({ text: type === 'SOTW' ? 'Select a Skill from the dropdown menu to vote.' : 'Select a Boss/Raid from the dropdown menu to vote.' });
+        .setFooter({ text: 'Timezone (GMT/UTC)' });
 
     return { embeds: [embed], files: [imageAttachment] };
 };
 
 /**
+ * 🎯 **Formats a Timestamp for Display**
  *
- * @param participations
- * @param competitionType
- * @param guild
+ * Converts an ISO date string into a human-readable object containing the day of the week,
+ * formatted time, and formatted date in UTC.
+ *
+ * @param {string} dateString - The ISO date string.
+ * @returns {Object} An object with `dayOfWeek`, `formattedTime`, and `formattedDate` properties.
+ *
+ * @example
+ * const timestamp = formatTimestamp('2023-03-15T18:30:00Z');
+ * console.log(timestamp.dayOfWeek); // e.g., "Wednesday"
+ */
+function formatTimestamp(dateString) {
+    const date = new Date(dateString);
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayOfWeek = days[date.getUTCDay()];
+
+    const options = { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC' };
+    const formattedTime = date.toLocaleTimeString('en-US', options);
+
+    const formattedDate = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+
+    return { dayOfWeek, formattedTime, formattedDate };
+}
+
+/**
+ * 🎯 **Builds a Leaderboard Description**
+ *
+ * Constructs a text description for a competition leaderboard by listing the top 10 participants,
+ * including their display names and progress values.
+ *
+ * @param {Array<Object>} participations - Array of participation objects with player and progress data.
+ * @param {string} competitionType - The competition type (unused here, but reserved for future customization).
+ * @param {Discord.Guild} guild - The Discord guild object (can be used to fetch emojis or other info).
+ * @returns {string} The formatted leaderboard description.
+ *
+ * @example
+ * const description = buildLeaderboardDescription(participations, 'SOTW', guild);
  */
 function buildLeaderboardDescription(participations, competitionType, guild) {
     let desc = '';
     participations.slice(0, 10).forEach((p, idx) => {
         const gained = p.progress.gained.toLocaleString();
         const username = p.player.displayName;
-
-        // Possibly do a DB lookup to find a discord mention if you want
-        // let userDisplay = ...
+        // If desired, add a DB lookup to retrieve Discord mentions.
         const userDisplay = username;
-
-        // Add line
         desc += `**${idx + 1}.** ${userDisplay} — \`${gained}\`\n`;
     });
     return desc;
 }
 
 /**
- * Creates a voting dropdown menu with provided options.
- * @param {Array<Object>} options - Array of option objects
- * with shape { label, description, value, voteCount? }.
- * @param competitionType
- * @param type
- * @returns {ActionRowBuilder} - The action row containing the select menu.
+ * 🎯 **Creates a Voting Dropdown Menu**
+ *
+ * Generates an ActionRow containing a StringSelectMenu for voting.
+ * If no options are provided, returns a disabled menu with a placeholder message.
+ *
+ * @param {Array<Object>} options - An array of option objects with keys: label, description, value, and optionally voteCount.
+ * @param {string} type - The competition type, used to customize the placeholder.
+ * @returns {ActionRowBuilder} An action row containing the voting dropdown.
+ *
+ * @example
+ * const dropdown = createVotingDropdown([
+ * { label: 'Mining', description: 'Vote for Mining', value: 'mining', voteCount: 10 },
+ * { label: 'Fishing', description: 'Vote for Fishing', value: 'fishing', voteCount: 5 }
+ * ], 'SOTW');
  */
 const createVotingDropdown = (options, type) => {
     if (!options || options.length === 0) {
@@ -175,9 +252,9 @@ const createVotingDropdown = (options, type) => {
     const dropdownOptions = options.map((opt) => {
         const votesText = opt.voteCount !== undefined ? `Votes: ${opt.voteCount}` : '';
         return {
-            label: opt.label, // e.g. "AGILITY (5 votes)"
-            description: `${opt.description}${votesText}`, // e.g. "Vote for AGILITY"
-            value: opt.value, // e.g. "agility"
+            label: opt.label,
+            description: `${opt.description}${votesText}`,
+            value: opt.value,
         };
     });
 

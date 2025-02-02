@@ -2,17 +2,21 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
 /**
- * @fileoverview Utility functions for interacting with an SQLite database in the Varietyz Bot.
- * This module provides functions to execute SQL queries, manage database connections, and ensure proper
- * handling of the database lifecycle, including graceful closure on process termination.
+ * @fileoverview
+ * **SQLite Database Utility Functions** 💾
  *
- * Key Features:
- * - **SQL Query Execution**: Includes functions for executing INSERT, UPDATE, DELETE, and SELECT queries.
- * - **Data Retrieval**: Provides functions to retrieve all matching rows (`getAll`) or a single row (`getOne`).
- * - **Database Connection Management**: Ensures the SQLite connection is established, and logs its status.
- * - **Graceful Shutdown**: Handles the cleanup and closure of the database connection when the process is terminated.
+ * This module provides utility functions for interacting with the SQLite database in the Varietyz Bot.
+ * It includes functions to execute SQL queries, retrieve data, run transactions, and manage configuration values.
+ * Additionally, it handles graceful database closure on process termination.
  *
- * External Dependencies:
+ * **Key Features:**
+ * - **SQL Query Execution**: Execute INSERT, UPDATE, DELETE, and SELECT queries.
+ * - **Data Retrieval**: Retrieve all matching rows (`getAll`) or a single row (`getOne`).
+ * - **Transaction Support**: Run multiple queries in a transaction.
+ * - **Configuration Management**: Get and set configuration values in the database.
+ * - **Graceful Shutdown**: Closes the database connection on SIGINT.
+ *
+ * **External Dependencies:**
  * - **sqlite3**: For interacting with the SQLite database.
  * - **logger**: For logging database operations and errors.
  *
@@ -45,22 +49,21 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 /**
  * Executes a SQL query that modifies data (e.g., INSERT, UPDATE, DELETE).
- * Returns the result object containing metadata about the operation.
  *
  * @function runQuery
  * @param {string} query - The SQL query to execute.
  * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
  * @returns {Promise<sqlite3.RunResult>} A promise that resolves to the result of the query.
- * @throws {Error} If the query execution fails.
+ *
  * @example
- * // Example usage:
+ * // Insert a new user:
  * runQuery('INSERT INTO users (name, age) VALUES (?, ?)', ['Alice', 30])
- * .then(result => {
+ *   .then(result => {
  *     logger.info(`Rows affected: ${result.changes}`);
- * })
- * .catch(err => {
+ *   })
+ *   .catch(err => {
  *     logger.error(err);
- * });
+ *   });
  */
 const runQuery = (query, params = []) =>
     new Promise((resolve, reject) => {
@@ -77,16 +80,16 @@ const runQuery = (query, params = []) =>
  * @param {string} query - The SQL SELECT query to execute.
  * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of rows.
- * @throws {Error} If the query execution fails.
+ *
  * @example
- * // Example usage:
+ * // Retrieve users older than 25:
  * getAll('SELECT * FROM users WHERE age > ?', [25])
- * .then(rows => {
+ *   .then(rows => {
  *     logger.info(rows);
- * })
- * .catch(err => {
+ *   })
+ *   .catch(err => {
  *     logger.error(err);
- * });
+ *   });
  */
 const getAll = (query, params = []) =>
     new Promise((resolve, reject) => {
@@ -103,16 +106,16 @@ const getAll = (query, params = []) =>
  * @param {string} query - The SQL SELECT query to execute.
  * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
  * @returns {Promise<Object|null>} A promise that resolves to a single row object or `null` if no row matches.
- * @throws {Error} If the query execution fails.
+ *
  * @example
- * // Example usage:
+ * // Retrieve a user with id 1:
  * getOne('SELECT * FROM users WHERE id = ?', [1])
- * .then(row => {
+ *   .then(row => {
  *     logger.info(row);
- * })
- * .catch(err => {
+ *   })
+ *   .catch(err => {
  *     logger.error(err);
- * });
+ *   });
  */
 const getOne = (query, params = []) =>
     new Promise((resolve, reject) => {
@@ -124,18 +127,33 @@ const getOne = (query, params = []) =>
 
 /**
  * Executes a SQL transaction with multiple queries.
- * @param {Array<{query: string, params: Array}>} queries - An array of queries with their parameters.
- * @returns {Promise<void>}
+ *
+ * @function runTransaction
+ * @param {Array<{query: string, params: Array<any>}>} queries - An array of query objects with their parameters.
+ * @returns {Promise<void>} A promise that resolves when the transaction is complete.
+ *
+ * @example
+ * // Execute multiple queries as a transaction:
+ * await runTransaction([
+ *   { query: 'INSERT INTO users (name) VALUES (?)', params: ['Alice'] },
+ *   { query: 'INSERT INTO users (name) VALUES (?)', params: ['Bob'] }
+ * ]);
  */
 const runTransaction = async (queries) => {
     try {
         await db.exec('BEGIN TRANSACTION');
         for (const { query, params } of queries) {
-            await db.run(query, params);
+            // Using runQuery to execute each query.
+            await new Promise((resolve, reject) => {
+                db.run(query, params, (err) => {
+                    if (err) return reject(err);
+                    resolve();
+                });
+            });
         }
         await db.exec('COMMIT');
     } catch (error) {
-        await dbInstance.exec('ROLLBACK');
+        await db.exec('ROLLBACK');
         logger.error(`Error running transaction: ${error.message}`);
         throw error;
     }
@@ -143,7 +161,7 @@ const runTransaction = async (queries) => {
 
 /**
  * Gracefully closes the SQLite database connection upon receiving a SIGINT signal.
- * Logs the closure status using the logger and exits the process.
+ * Logs the closure status and exits the process.
  *
  * @listens process#SIGINT
  * @returns {void}
@@ -161,9 +179,16 @@ process.on('SIGINT', () => {
 });
 
 /**
- * Fetch a config key from the database (or return a default if not found).
- * @param {string} key
- * @param {any} defaultValue
+ * Fetches a configuration value from the database.
+ * If the key is not found, returns a default value.
+ *
+ * @function getConfigValue
+ * @param {string} key - The configuration key.
+ * @param {any} [defaultValue=null] - The default value to return if key is not found.
+ * @returns {Promise<any>} A promise that resolves to the configuration value or the default.
+ *
+ * @example
+ * const prefix = await getConfigValue('bot_prefix', '!');
  */
 async function getConfigValue(key, defaultValue = null) {
     const row = await getOne(
@@ -176,20 +201,25 @@ async function getConfigValue(key, defaultValue = null) {
     );
 
     if (!row) return defaultValue;
-    return row.value; // It's stored as text, so parse if needed.
+    return row.value; // Note: Stored as text; convert if necessary.
 }
 
 /**
- * Set a config key's value in the database.
- * If the key does not exist, insert it. Otherwise, update it.
- * @param {string} key
- * @param {any} value
+ * Sets a configuration key's value in the database.
+ * Inserts a new record if the key does not exist, or updates it otherwise.
+ *
+ * @function setConfigValue
+ * @param {string} key - The configuration key.
+ * @param {any} value - The value to set for the key.
+ *
+ * @example
+ * await setConfigValue('bot_prefix', '!');
  */
 async function setConfigValue(key, value) {
-    // Convert to string if needed
+    // Ensure the value is a string.
     const valStr = String(value);
 
-    // Using "INSERT OR REPLACE" to handle upsert:
+    // Upsert using "INSERT OR REPLACE".
     await runQuery(
         `
     INSERT OR REPLACE INTO config (key, value)
