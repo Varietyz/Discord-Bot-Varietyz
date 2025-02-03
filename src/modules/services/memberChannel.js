@@ -53,6 +53,7 @@ require('dotenv').config();
  * await handleMemberRoles(member, 'Iron', guild, 'PlayerOne', 'Iron');
  */
 async function handleMemberRoles(member, roleName, guild, player, rank) {
+    if (!player || rank.toLowerCase() === 'private') return;
     const targetRole = guild.roles.cache.find((r) => r.name.toLowerCase() === roleName.toLowerCase());
 
     if (!targetRole) {
@@ -118,7 +119,6 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
 
         for (const row of csvRows) {
             const [player, rank, experience, lastProgressed, lastUpdated] = row.split(',');
-            if (!player || rank.toLowerCase() === 'private') continue;
 
             const formattedRank = formatRank(rank);
             newData.push({ player, rank: formattedRank });
@@ -175,21 +175,29 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
  * }
  */
 async function updateDatabase(newData) {
-    const currentData = await getAll('SELECT name, rank FROM clan_members');
-    const currentDataSet = new Set(currentData.map(({ name, rank }) => `${name},${rank}`));
-    const newDataSet = new Set(newData.map(({ player, rank }) => `${player},${rank}`));
+    try {
+        const currentData = await getAll('SELECT name, rank FROM clan_members');
+        const currentDataSet = new Set(currentData.map(({ name, rank }) => `${name},${rank}`));
+        const newDataSet = new Set(newData.map(({ player, rank }) => `${player},${rank}`));
 
-    if (currentDataSet.size !== newDataSet.size || ![...newDataSet].every((entry) => currentDataSet.has(entry))) {
-        await runQuery('DELETE FROM clan_members');
-        const insertQuery = 'INSERT INTO clan_members (name, rank) VALUES (?, ?)';
-        await Promise.all(newData.map(({ player, rank }) => runQuery(insertQuery, [player, rank])));
-        logger.info('Database updated with new clan member data.');
-        return true;
+        if (currentDataSet.size !== newDataSet.size || ![...newDataSet].every((entry) => currentDataSet.has(entry))) {
+            const insertQuery = `
+                INSERT INTO clan_members (name, rank)
+                VALUES (?, ?)
+                ON CONFLICT(name) DO UPDATE SET rank = excluded.rank
+            `;
+
+            await Promise.all(newData.map(({ player, rank }) => runQuery(insertQuery, [player, rank])));
+            logger.info('Database updated with new clan member data.');
+            return true;
+        }
+
+        return false;
+    } catch (error) {
+        logger.error(`Failed to update database: ${error.message}`);
+        return false;
     }
-
-    return false;
 }
-
 /**
  * 🎯 **Splits an Array into Chunks**
  *
@@ -266,6 +274,7 @@ async function updateClanChannel(client, cachedData) {
     let index = 1;
 
     for (const { player, rank, experience, lastProgressed } of cachedData) {
+        if (!player || rank.toLowerCase() === 'private') continue;
         const rankEmoji = getRankEmoji(rank);
         const color = getRankColor(rank);
         const playerNameForLink = encodeURIComponent(player.replace(/ /g, '%20'));

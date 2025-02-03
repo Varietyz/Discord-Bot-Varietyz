@@ -27,6 +27,9 @@ replay_pid*
 .env
 *.sqlite
 *.sqlite3
+*.db
+*-shm
+*-wal
 logs/2025
 logs/handler
 node_modules

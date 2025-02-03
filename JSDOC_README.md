@@ -428,22 +428,27 @@ channels with up-to-date clan member information.</p>
 <dt><a href="#module_modules/services/nameChanges">modules/services/nameChanges</a></dt>
 <dd><p><strong>Name Change Processor Utilities</strong> 🔄</p>
 <p>This module provides utility functions for processing player name changes in the Varietyz Bot.
-It interacts with the Wise Old Man (WOM) API to fetch recent name changes, updates the database
-with the new RSNs, and handles conflict resolution between users. It also manages sending
-notifications to Discord channels for both successful updates and conflict resolutions.</p>
+It interacts with the Wise Old Man (WOM) API to fetch recent name changes, updates the databases
+with the new RSNs, and handles conflict resolution between users. It now extends name changes
+to all occurrences across multiple databases and tables.</p>
 <p><strong>Key Features:</strong></p>
 <ul>
 <li><strong>Name Change Fetching</strong>: Retrieves recent name changes from the WOM API.</li>
 <li><strong>Database Management</strong>: Saves name change records to the <code>recent_name_changes</code> table and updates the <code>registered_rsn</code> table.</li>
-<li><strong>Conflict Resolution</strong>: Handles cases where a new RSN already exists for another user and resolves conflicts.</li>
-<li><strong>Discord Notifications</strong>: Sends messages to a specified channel notifying users of successful name updates or conflict resolutions.</li>
+<li><strong>Global Update</strong>: Propagates name changes in all applicable tables in both <code>database.sqlite</code> and <code>messages.db</code>.</li>
+<li>In <code>database.sqlite</code>: updates columns matching <strong>username</strong>, <strong>name</strong>, <strong>player_id</strong>, or <strong>rsn</strong>
+(excluding the <code>recent_name_changes</code> and <code>skills_bosses</code> tables).</li>
+<li>In <code>messages.db</code>: updates columns named <strong>user</strong>.</li>
+<li><strong>Conflict Resolution</strong>: Handles cases where the new RSN already exists for another user and resolves conflicts.</li>
+<li><strong>Discord Notifications</strong>: Sends messages to a specified channel notifying users of successful updates and conflict resolutions.</li>
 <li><strong>Rate-Limiting and Dependencies</strong>: Ensures rate-limited API requests and processes name changes in the correct order.</li>
 </ul>
 <p><strong>External Dependencies:</strong></p>
 <ul>
 <li><strong>Wise Old Man (WOM) API</strong>: Fetches player name changes.</li>
 <li><strong>Discord.js</strong>: Sends notifications and updates to Discord channels.</li>
-<li><strong>dbUtils</strong>: Manages database operations for name change records.</li>
+<li><strong>dbUtils</strong>: Manages database operations for the main database (<code>database.sqlite</code>).</li>
+<li><strong>messagesDbUtils</strong>: Manages database operations for <code>messages.db</code>.</li>
 </ul>
 </dd>
 <dt><a href="#module_modules/services/playerDataExtractor">modules/services/playerDataExtractor</a></dt>
@@ -484,20 +489,24 @@ based on their last recorded progress.</p>
 </dd>
 <dt><a href="#module_utils/dbUtils">utils/dbUtils</a></dt>
 <dd><p><strong>SQLite Database Utility Functions</strong> 💾</p>
-<p>This module provides utility functions for interacting with the SQLite database in the Varietyz Bot.
-It includes functions to execute SQL queries, retrieve data, run transactions, and manage configuration values.
+<p>This module provides utility functions for interacting with two SQLite databases in the Varietyz Bot:</p>
+<ul>
+<li>The main database (<code>database.sqlite</code>)</li>
+<li>The messages database (<code>messages.db</code>)</li>
+</ul>
+<p>It includes functions to execute SQL queries, retrieve data, run transactions, and manage configuration values.
 Additionally, it handles graceful database closure on process termination.</p>
 <p><strong>Key Features:</strong></p>
 <ul>
-<li><strong>SQL Query Execution</strong>: Execute INSERT, UPDATE, DELETE, and SELECT queries.</li>
+<li><strong>SQL Query Execution</strong>: Execute INSERT, UPDATE, DELETE, and SELECT queries on either database.</li>
 <li><strong>Data Retrieval</strong>: Retrieve all matching rows (<code>getAll</code>) or a single row (<code>getOne</code>).</li>
 <li><strong>Transaction Support</strong>: Run multiple queries in a transaction.</li>
-<li><strong>Configuration Management</strong>: Get and set configuration values in the database.</li>
-<li><strong>Graceful Shutdown</strong>: Closes the database connection on SIGINT.</li>
+<li><strong>Configuration Management</strong>: Get and set configuration values in the main database.</li>
+<li><strong>Graceful Shutdown</strong>: Closes the database connections on SIGINT.</li>
 </ul>
 <p><strong>External Dependencies:</strong></p>
 <ul>
-<li><strong>sqlite3</strong>: For interacting with the SQLite database.</li>
+<li><strong>sqlite3</strong>: For interacting with the SQLite databases.</li>
 <li><strong>logger</strong>: For logging database operations and errors.</li>
 </ul>
 </dd>
@@ -653,6 +662,28 @@ gracefully upon completion.</p>
 <li><strong>logger</strong>: For logging operations and errors.</li>
 </ul>
 </dd>
+<dt><a href="#module_scripts/create_db">scripts/create_db</a></dt>
+<dd><p><strong>Database Initialization Script</strong> 🛠️</p>
+<p>This script initializes and sets up the SQLite database for the Varietyz Bot.
+It deletes any existing database file to ensure a clean setup and then creates all necessary tables:</p>
+<ul>
+<li><code>registered_rsn</code>: Stores registered RuneScape names.</li>
+<li><code>clan_members</code>: Stores information about clan members.</li>
+<li><code>recent_name_changes</code>: Tracks recent name changes.</li>
+<li><code>player_data</code>: Stores various player-specific data points.</li>
+<li><code>player_fetch_times</code>: Tracks the last time player data was fetched.</li>
+<li><code>active_inactive</code>: Tracks active and inactive player progression.</li>
+</ul>
+<p>The script logs the success or failure of each table creation process and closes the database connection
+gracefully upon completion.</p>
+<p><strong>External Dependencies:</strong></p>
+<ul>
+<li><strong>SQLite3</strong>: For interacting with the SQLite database.</li>
+<li><strong>fs</strong>: For file system operations (deleting existing database, creating directories).</li>
+<li><strong>path</strong>: For constructing file paths.</li>
+<li><strong>logger</strong>: For logging operations and errors.</li>
+</ul>
+</dd>
 <dt><a href="#module_tasks">tasks</a></dt>
 <dd><p><strong>Scheduled Tasks for the Varietyz Bot</strong> ⏰</p>
 <p>This module defines and manages scheduled tasks for the Varietyz Bot. Each task is represented as an object that includes
@@ -675,14 +706,6 @@ handling hiscores, and updating voice channels.</li>
 </dd>
 </dl>
 
-## Classes
-
-<dl>
-<dt><a href="#CompetitionService">CompetitionService</a></dt>
-<dd><p>CompetitionService handles creation, management, and conclusion of competitions.</p>
-</dd>
-</dl>
-
 ## Constants
 
 <dl>
@@ -697,6 +720,24 @@ handling hiscores, and updating voice channels.</li>
 ## Functions
 
 <dl>
+<dt><a href="#openDatabase">openDatabase()</a> ⇒ <code>Promise.&lt;sqlite3.Database&gt;</code></dt>
+<dd><p>openDatabase:
+Opens a connection to the SQLite database.</p>
+</dd>
+<dt><a href="#reorderTable">reorderTable(db, tableName)</a></dt>
+<dd><p>reorderTable:
+Permanently reorders the rows of a table by:</p>
+<ol>
+<li>Creating a temporary table with the same schema.</li>
+<li>Inserting rows sorted by timestamp (ascending) into the temporary table.</li>
+<li>Dropping the original table.</li>
+<li>Renaming the temporary table to the original table name.</li>
+</ol>
+</dd>
+<dt><a href="#reorderAllTables">reorderAllTables()</a></dt>
+<dd><p>reorderAllTables:
+Opens the database and permanently reorders all system tables defined in systemTables.</p>
+</dd>
 <dt><a href="#execute">execute(interaction)</a> ⇒ <code>Promise.&lt;void&gt;</code></dt>
 <dd><p>🎯 Executes the <code>/help</code> command.</p>
 </dd>
@@ -724,14 +765,81 @@ handling hiscores, and updating voice channels.</li>
 <dt><a href="#checkAdminPermissions">checkAdminPermissions(interaction)</a> ⇒ <code>boolean</code></dt>
 <dd><p>🎯 Checks if a user has administrator permissions.</p>
 </dd>
+<dt><a href="#isChatMessage">isChatMessage(message)</a> ⇒ <code>boolean</code></dt>
+<dd><p>isChatMessage:
+Determines if the message is a chat message by checking for a username pattern like <strong>Name</strong>:.</p>
+</dd>
+<dt><a href="#detectSystemMessage">detectSystemMessage(message)</a> ⇒ <code>string</code> | <code>null</code></dt>
+<dd><p>detectSystemMessage:
+For non‑chat messages, checks if the message qualifies as a system message based on key phrases.</p>
+</dd>
+<dt><a href="#reformatText">reformatText(text)</a> ⇒ <code>string</code></dt>
+<dd><p>reformatText:
+Trims extra whitespace and removes all backslashes.</p>
+</dd>
+<dt><a href="#combineExtraName">combineExtraName(user, message)</a> ⇒ <code>Object</code></dt>
+<dd><p>combineExtraName:
+For system messages, if the message does not start with &quot;has&quot; or &quot;received&quot;,
+assume that tokens before that keyword belong to the username.
+Append those tokens to the user field and remove them from the message.</p>
+</dd>
+<dt><a href="#cleanupChatRow">cleanupChatRow(message)</a> ⇒ <code>Object</code></dt>
+<dd><p>cleanupChatRow:
+Cleans up chat messages (which follow the <strong>Name</strong>: format).</p>
+</dd>
+<dt><a href="#cleanupTasksRow">cleanupTasksRow(message)</a> ⇒ <code>Object</code></dt>
+<dd><p>cleanupTasksRow:
+Cleans up combat tasks messages by removing the CA_ID prefix and extracting the proper username.
+It accepts any text starting with &quot;CA_ID&quot; (with any separator) and then uses the first &quot;|&quot; as delimiter.</p>
+<p>Expected examples:
+&quot;CA_ID:537|roofs4life has completed a hard combat task: Fat of the Land.&quot;
+&quot;CA_ID.73.Collector 30 has completed a medium combat task: I&#39;d Rather Not Learn.&quot;</p>
+</dd>
+<dt><a href="#cleanupKeysRow">cleanupKeysRow(message)</a> ⇒ <code>Object</code></dt>
+<dd><p>cleanupKeysRow:
+Cleans up keys messages.</p>
+</dd>
+<dt><a href="#cleanupEmojiSystemMessage">cleanupEmojiSystemMessage(message)</a> ⇒ <code>Object</code></dt>
+<dd><p>cleanupEmojiSystemMessage:
+Cleans up system messages that start with one or more emoji definitions.
+It removes any leading channel indicator (like &quot;💬OSRS | Clan Chat&quot;)
+and then extracts the username by searching for a known keyword.</p>
+<p>Example:
+Input: &quot;💬OSRS | Clan Chat &lt;:Guideprices:1147702301298016349&gt; DankGoldList received a drop: …&quot;
+Output: { username: &quot;DankGoldList&quot;, cleanedMessage: &quot;received a drop: …&quot; }</p>
+</dd>
+<dt><a href="#saveSystemMessage">saveSystemMessage(type, user, message, messageId, timestamp)</a></dt>
+<dd><p>saveSystemMessage:
+Saves a system message into its designated system table.</p>
+</dd>
+<dt><a href="#saveMessage">saveMessage(user, message, messageId, timestamp)</a></dt>
+<dd><p>saveMessage:
+Immediately cleans up and saves a message.</p>
+<ul>
+<li>Chat messages are handled by cleanupChatRow.</li>
+<li>For system messages, specialized functions are applied (for TASKS, KEYS, emoji-based types).
+Then, combineExtraName centralizes formatting so that the message begins with &quot;has&quot; or &quot;received&quot;.
+If no system type is detected, falls back to chat message storage.</li>
+</ul>
+</dd>
+<dt><a href="#getRecentMessages">getRecentMessages(limit)</a> ⇒ <code>Promise.&lt;Array&gt;</code></dt>
+<dd><p>getRecentMessages:
+Retrieves recent chat messages.</p>
+</dd>
+<dt><a href="#fetchAndStoreChannelHistory">fetchAndStoreChannelHistory(client, channelId)</a></dt>
+<dd><p>fetchAndStoreChannelHistory:
+Fetches the full message history from a Discord channel, cleans each message, and saves it.</p>
+</dd>
+<dt><a href="#initDatabase">initDatabase()</a></dt>
+<dd><p>initDatabase:
+Initializes the database and creates necessary tables.</p>
+</dd>
 <dt><a href="#createCompetition">createCompetition(womclient, db, type, metric, startsAt, endsAt, constants)</a> ⇒ <code>Promise.&lt;Object&gt;</code></dt>
 <dd><p>🎯 <strong>Creates a New Competition on WOM and Inserts it into the Database</strong></p>
 <p>This function creates a new competition via the WOM API using the provided parameters.
 It then inserts the new competition details into the database. For BOTW competitions,
 a rotation index is calculated based on the most recent BOTW competition.</p>
 </dd>
-<dt><a href="#chunkArray">chunkArray(array, size)</a></dt>
-<dd></dd>
 <dt><a href="#recordCompetitionWinner">recordCompetitionWinner(competition)</a></dt>
 <dd><p>🎯 <strong>Records the Competition Winner</strong></p>
 <p>Determines the real winner of a competition based on in-game performance (not votes)
@@ -830,6 +938,12 @@ including their display names and progress values.</p>
 <p>Generates an ActionRow containing a StringSelectMenu for voting.
 If no options are provided, returns a disabled menu with a placeholder message.</p>
 </dd>
+<dt><a href="#handleSlashCommand">handleSlashCommand(commands, interaction)</a> ⇒ <code>Promise.&lt;void&gt;</code></dt>
+<dd><p>Executes the appropriate slash command based on the interaction.</p>
+</dd>
+<dt><a href="#handleAutocomplete">handleAutocomplete(commands, interaction)</a> ⇒ <code>Promise.&lt;void&gt;</code></dt>
+<dd><p>Handles autocomplete interactions by delegating to the appropriate command&#39;s autocomplete handler.</p>
+</dd>
 <dt><a href="#tallyVotesAndRecordWinner">tallyVotesAndRecordWinner(competition)</a> ⇒ <code>Promise.&lt;(string|null)&gt;</code></dt>
 <dd><p>🎯 <strong>Tallies Votes and Determines the Winning Metric for a Competition</strong></p>
 <p>This function tallies votes for a completed competition by querying the database for votes
@@ -856,6 +970,8 @@ of objects. Each object contains:</p>
 If no existing entry is updated, it inserts a new record.</li>
 </ol>
 </dd>
+<dt><a href="#testOpenAI">testOpenAI()</a></dt>
+<dd></dd>
 </dl>
 
 <a name="module_WOMApiClient"></a>
@@ -1106,8 +1222,6 @@ handles interactions (slash commands, autocomplete, and select menus), and sched
     * [~functions](#module_main..functions) : <code>Array.&lt;Object&gt;</code>
     * [~loadModules(type)](#module_main..loadModules) ⇒ <code>Array.&lt;Object&gt;</code>
     * [~initializeBot()](#module_main..initializeBot) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~handleSlashCommand(interaction)](#module_main..handleSlashCommand) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [~handleAutocomplete(interaction)](#module_main..handleAutocomplete) ⇒ <code>Promise.&lt;void&gt;</code>
 
 <a name="module_main..client"></a>
 
@@ -1165,38 +1279,6 @@ This function performs the following steps:
 **Example**  
 ```js
 await initializeBot();
-```
-<a name="module_main..handleSlashCommand"></a>
-
-### main~handleSlashCommand(interaction) ⇒ <code>Promise.&lt;void&gt;</code>
-Executes the appropriate slash command based on the interaction.
-
-**Kind**: inner method of [<code>main</code>](#module_main)  
-**Returns**: <code>Promise.&lt;void&gt;</code> - Resolves when the command has been executed.  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| interaction | <code>CommandInteraction</code> | The command interaction to handle. |
-
-**Example**  
-```js
-// This function is invoked internally when a slash command is triggered.
-```
-<a name="module_main..handleAutocomplete"></a>
-
-### main~handleAutocomplete(interaction) ⇒ <code>Promise.&lt;void&gt;</code>
-Handles autocomplete interactions by delegating to the appropriate command's autocomplete handler.
-
-**Kind**: inner method of [<code>main</code>](#module_main)  
-**Returns**: <code>Promise.&lt;void&gt;</code> - Resolves when the autocomplete interaction is processed.  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| interaction | <code>AutocompleteInteraction</code> | The autocomplete interaction to handle. |
-
-**Example**  
-```js
-// This function is invoked internally when an autocomplete interaction is triggered.
 ```
 <a name="module_src/migrations/initializeCompetitionsTables"></a>
 
@@ -2896,21 +2978,26 @@ await updateClanChannel(client, cachedData);
 **Name Change Processor Utilities** 🔄
 
 This module provides utility functions for processing player name changes in the Varietyz Bot.
-It interacts with the Wise Old Man (WOM) API to fetch recent name changes, updates the database
-with the new RSNs, and handles conflict resolution between users. It also manages sending
-notifications to Discord channels for both successful updates and conflict resolutions.
+It interacts with the Wise Old Man (WOM) API to fetch recent name changes, updates the databases
+with the new RSNs, and handles conflict resolution between users. It now extends name changes
+to all occurrences across multiple databases and tables.
 
 **Key Features:**
 - **Name Change Fetching**: Retrieves recent name changes from the WOM API.
 - **Database Management**: Saves name change records to the `recent_name_changes` table and updates the `registered_rsn` table.
-- **Conflict Resolution**: Handles cases where a new RSN already exists for another user and resolves conflicts.
-- **Discord Notifications**: Sends messages to a specified channel notifying users of successful name updates or conflict resolutions.
+- **Global Update**: Propagates name changes in all applicable tables in both `database.sqlite` and `messages.db`.
+- In `database.sqlite`: updates columns matching **username**, **name**, **player_id**, or **rsn**
+(excluding the `recent_name_changes` and `skills_bosses` tables).
+- In `messages.db`: updates columns named **user**.
+- **Conflict Resolution**: Handles cases where the new RSN already exists for another user and resolves conflicts.
+- **Discord Notifications**: Sends messages to a specified channel notifying users of successful updates and conflict resolutions.
 - **Rate-Limiting and Dependencies**: Ensures rate-limited API requests and processes name changes in the correct order.
 
 **External Dependencies:**
 - **Wise Old Man (WOM) API**: Fetches player name changes.
 - **Discord.js**: Sends notifications and updates to Discord channels.
-- **dbUtils**: Manages database operations for name change records.
+- **dbUtils**: Manages database operations for the main database (`database.sqlite`).
+- **messagesDbUtils**: Manages database operations for `messages.db`.
 
 
 * [modules/services/nameChanges](#module_modules/services/nameChanges)
@@ -2918,6 +3005,9 @@ notifications to Discord channels for both successful updates and conflict resol
     * [~saveToDatabase(nameChanges)](#module_modules/services/nameChanges..saveToDatabase) ⇒ <code>Promise.&lt;void&gt;</code>
     * [~updateRegisteredRSN(oldName, newName, channelManager)](#module_modules/services/nameChanges..updateRegisteredRSN) ⇒ <code>Promise.&lt;boolean&gt;</code>
     * [~processNameChanges(client)](#module_modules/services/nameChanges..processNameChanges) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~updateNameInMessagesDB(oldName, newName)](#module_modules/services/nameChanges..updateNameInMessagesDB) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~updateNameInMainDB(oldName, newName)](#module_modules/services/nameChanges..updateNameInMainDB) ⇒ <code>Promise.&lt;void&gt;</code>
+    * [~updateNameEverywhere(oldName, newName)](#module_modules/services/nameChanges..updateNameEverywhere) ⇒ <code>Promise.&lt;void&gt;</code>
     * [~NameChange](#module_modules/services/nameChanges..NameChange) : <code>Object</code>
 
 <a name="module_modules/services/nameChanges..fetchNameChanges"></a>
@@ -2959,7 +3049,8 @@ await saveToDatabase(nameChanges);
 
 Updates the `registered_rsn` table with new RSN mappings based on a name change.
 Handles conflicts where the new RSN already exists for the same or a different user,
-and sends Discord notifications for successful updates and conflict resolutions.
+sends Discord notifications for successful updates/conflict resolutions, and then propagates
+the change across all databases.
 
 **Kind**: inner method of [<code>modules/services/nameChanges</code>](#module_modules/services/nameChanges)  
 **Returns**: <code>Promise.&lt;boolean&gt;</code> - Resolves to true if the RSN was updated, false otherwise.  
@@ -2996,6 +3087,50 @@ Handles dependency ordering and conflict resolution based on the timestamp of ch
 ```js
 await processNameChanges(client);
 ```
+<a name="module_modules/services/nameChanges..updateNameInMessagesDB"></a>
+
+### modules/services/nameChanges~updateNameInMessagesDB(oldName, newName) ⇒ <code>Promise.&lt;void&gt;</code>
+Updates Name in the Messages Database (messages.db)
+
+Scans every table in messages.db for a column named "user" (case-insensitive) and updates
+any occurrence of the old name with the new name. It collects and logs a summary of effective changes.
+
+**Kind**: inner method of [<code>modules/services/nameChanges</code>](#module_modules/services/nameChanges)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| oldName | <code>string</code> | The old name value. |
+| newName | <code>string</code> | The new name value. |
+
+<a name="module_modules/services/nameChanges..updateNameInMainDB"></a>
+
+### modules/services/nameChanges~updateNameInMainDB(oldName, newName) ⇒ <code>Promise.&lt;void&gt;</code>
+Updates Name in the Main Database (database.sqlite)
+
+Scans every table (excluding `recent_name_changes` and `skills_bosses`) in the main database for columns
+named "username", "name", "player_id", or "rsn" (case-insensitive) and updates any occurrence of the old name.
+It collects and logs a summary of effective changes.
+
+**Kind**: inner method of [<code>modules/services/nameChanges</code>](#module_modules/services/nameChanges)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| oldName | <code>string</code> | The old name value. |
+| newName | <code>string</code> | The new name value. |
+
+<a name="module_modules/services/nameChanges..updateNameEverywhere"></a>
+
+### modules/services/nameChanges~updateNameEverywhere(oldName, newName) ⇒ <code>Promise.&lt;void&gt;</code>
+Updates the name everywhere across both messages and main databases,
+then logs a summary of effective changes.
+
+**Kind**: inner method of [<code>modules/services/nameChanges</code>](#module_modules/services/nameChanges)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| oldName | <code>string</code> | The old name value to replace. |
+| newName | <code>string</code> | The new name value. |
+
 <a name="module_modules/services/nameChanges..NameChange"></a>
 
 ### modules/services/nameChanges~NameChange : <code>Object</code>
@@ -3265,49 +3400,40 @@ console.log(`Inactive players: ${inactiveCount}`);
 ## utils/dbUtils
 **SQLite Database Utility Functions** 💾
 
-This module provides utility functions for interacting with the SQLite database in the Varietyz Bot.
+This module provides utility functions for interacting with two SQLite databases in the Varietyz Bot:
+- The main database (`database.sqlite`)
+- The messages database (`messages.db`)
+
 It includes functions to execute SQL queries, retrieve data, run transactions, and manage configuration values.
 Additionally, it handles graceful database closure on process termination.
 
 **Key Features:**
-- **SQL Query Execution**: Execute INSERT, UPDATE, DELETE, and SELECT queries.
+- **SQL Query Execution**: Execute INSERT, UPDATE, DELETE, and SELECT queries on either database.
 - **Data Retrieval**: Retrieve all matching rows (`getAll`) or a single row (`getOne`).
 - **Transaction Support**: Run multiple queries in a transaction.
-- **Configuration Management**: Get and set configuration values in the database.
-- **Graceful Shutdown**: Closes the database connection on SIGINT.
+- **Configuration Management**: Get and set configuration values in the main database.
+- **Graceful Shutdown**: Closes the database connections on SIGINT.
 
 **External Dependencies:**
-- **sqlite3**: For interacting with the SQLite database.
+- **sqlite3**: For interacting with the SQLite databases.
 - **logger**: For logging database operations and errors.
 
 
 * [utils/dbUtils](#module_utils/dbUtils)
-    * [~dbPath](#module_utils/dbUtils..dbPath) : <code>string</code>
-    * [~db](#module_utils/dbUtils..db) : <code>sqlite3.Database</code>
     * [~runQuery(query, [params])](#module_utils/dbUtils..runQuery) ⇒ <code>Promise.&lt;sqlite3.RunResult&gt;</code>
     * [~getAll(query, [params])](#module_utils/dbUtils..getAll) ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code>
     * [~getOne(query, [params])](#module_utils/dbUtils..getOne) ⇒ <code>Promise.&lt;(Object\|null)&gt;</code>
+    * [~messagesRunQuery(query, [params])](#module_utils/dbUtils..messagesRunQuery) ⇒ <code>Promise.&lt;sqlite3.RunResult&gt;</code>
+    * [~messagesGetAll(query, [params])](#module_utils/dbUtils..messagesGetAll) ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code>
+    * [~messagesGetOne(query, [params])](#module_utils/dbUtils..messagesGetOne) ⇒ <code>Promise.&lt;(Object\|null)&gt;</code>
     * [~runTransaction(queries)](#module_utils/dbUtils..runTransaction) ⇒ <code>Promise.&lt;void&gt;</code>
     * [~getConfigValue(key, [defaultValue])](#module_utils/dbUtils..getConfigValue) ⇒ <code>Promise.&lt;any&gt;</code>
     * [~setConfigValue(key, value)](#module_utils/dbUtils..setConfigValue)
 
-<a name="module_utils/dbUtils..dbPath"></a>
-
-### utils/dbUtils~dbPath : <code>string</code>
-Path to the SQLite database file.
-
-**Kind**: inner constant of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
-<a name="module_utils/dbUtils..db"></a>
-
-### utils/dbUtils~db : <code>sqlite3.Database</code>
-Initializes and maintains the SQLite database connection.
-Logs the connection status using the logger.
-
-**Kind**: inner constant of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
 <a name="module_utils/dbUtils..runQuery"></a>
 
 ### utils/dbUtils~runQuery(query, [params]) ⇒ <code>Promise.&lt;sqlite3.RunResult&gt;</code>
-Executes a SQL query that modifies data (e.g., INSERT, UPDATE, DELETE).
+Executes a SQL query that modifies data (e.g., INSERT, UPDATE, DELETE) on the main database.
 
 **Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
 **Returns**: <code>Promise.&lt;sqlite3.RunResult&gt;</code> - A promise that resolves to the result of the query.  
@@ -3317,21 +3443,10 @@ Executes a SQL query that modifies data (e.g., INSERT, UPDATE, DELETE).
 | query | <code>string</code> |  | The SQL query to execute. |
 | [params] | <code>Array.&lt;any&gt;</code> | <code>[]</code> | The parameters to bind to the SQL query. |
 
-**Example**  
-```js
-// Insert a new user:
-runQuery('INSERT INTO users (name, age) VALUES (?, ?)', ['Alice', 30])
-  .then(result => {
-    logger.info(`Rows affected: ${result.changes}`);
-  })
-  .catch(err => {
-    logger.error(err);
-  });
-```
 <a name="module_utils/dbUtils..getAll"></a>
 
 ### utils/dbUtils~getAll(query, [params]) ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code>
-Executes a SQL SELECT query and retrieves all matching rows.
+Executes a SQL SELECT query and retrieves all matching rows from the main database.
 
 **Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
 **Returns**: <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code> - A promise that resolves to an array of rows.  
@@ -3341,21 +3456,10 @@ Executes a SQL SELECT query and retrieves all matching rows.
 | query | <code>string</code> |  | The SQL SELECT query to execute. |
 | [params] | <code>Array.&lt;any&gt;</code> | <code>[]</code> | The parameters to bind to the SQL query. |
 
-**Example**  
-```js
-// Retrieve users older than 25:
-getAll('SELECT * FROM users WHERE age > ?', [25])
-  .then(rows => {
-    logger.info(rows);
-  })
-  .catch(err => {
-    logger.error(err);
-  });
-```
 <a name="module_utils/dbUtils..getOne"></a>
 
 ### utils/dbUtils~getOne(query, [params]) ⇒ <code>Promise.&lt;(Object\|null)&gt;</code>
-Executes a SQL SELECT query and retrieves a single matching row.
+Executes a SQL SELECT query and retrieves a single matching row from the main database.
 
 **Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
 **Returns**: <code>Promise.&lt;(Object\|null)&gt;</code> - A promise that resolves to a single row object or `null` if no row matches.  
@@ -3365,21 +3469,49 @@ Executes a SQL SELECT query and retrieves a single matching row.
 | query | <code>string</code> |  | The SQL SELECT query to execute. |
 | [params] | <code>Array.&lt;any&gt;</code> | <code>[]</code> | The parameters to bind to the SQL query. |
 
-**Example**  
-```js
-// Retrieve a user with id 1:
-getOne('SELECT * FROM users WHERE id = ?', [1])
-  .then(row => {
-    logger.info(row);
-  })
-  .catch(err => {
-    logger.error(err);
-  });
-```
+<a name="module_utils/dbUtils..messagesRunQuery"></a>
+
+### utils/dbUtils~messagesRunQuery(query, [params]) ⇒ <code>Promise.&lt;sqlite3.RunResult&gt;</code>
+Executes a SQL query that modifies data on the messages database.
+
+**Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
+**Returns**: <code>Promise.&lt;sqlite3.RunResult&gt;</code> - A promise that resolves to the result of the query.  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| query | <code>string</code> |  | The SQL query to execute. |
+| [params] | <code>Array.&lt;any&gt;</code> | <code>[]</code> | The parameters to bind to the SQL query. |
+
+<a name="module_utils/dbUtils..messagesGetAll"></a>
+
+### utils/dbUtils~messagesGetAll(query, [params]) ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code>
+Executes a SQL SELECT query and retrieves all matching rows from the messages database.
+
+**Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
+**Returns**: <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code> - A promise that resolves to an array of rows.  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| query | <code>string</code> |  | The SQL SELECT query to execute. |
+| [params] | <code>Array.&lt;any&gt;</code> | <code>[]</code> | The parameters to bind to the SQL query. |
+
+<a name="module_utils/dbUtils..messagesGetOne"></a>
+
+### utils/dbUtils~messagesGetOne(query, [params]) ⇒ <code>Promise.&lt;(Object\|null)&gt;</code>
+Executes a SQL SELECT query and retrieves a single matching row from the messages database.
+
+**Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
+**Returns**: <code>Promise.&lt;(Object\|null)&gt;</code> - A promise that resolves to a single row object or `null` if no row matches.  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| query | <code>string</code> |  | The SQL SELECT query to execute. |
+| [params] | <code>Array.&lt;any&gt;</code> | <code>[]</code> | The parameters to bind to the SQL query. |
+
 <a name="module_utils/dbUtils..runTransaction"></a>
 
 ### utils/dbUtils~runTransaction(queries) ⇒ <code>Promise.&lt;void&gt;</code>
-Executes a SQL transaction with multiple queries.
+Executes a SQL transaction with multiple queries on the main database.
 
 **Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
 **Returns**: <code>Promise.&lt;void&gt;</code> - A promise that resolves when the transaction is complete.  
@@ -3388,19 +3520,10 @@ Executes a SQL transaction with multiple queries.
 | --- | --- | --- |
 | queries | <code>Array.&lt;{query: string, params: Array.&lt;any&gt;}&gt;</code> | An array of query objects with their parameters. |
 
-**Example**  
-```js
-// Execute multiple queries as a transaction:
-await runTransaction([
-  { query: 'INSERT INTO users (name) VALUES (?)', params: ['Alice'] },
-  { query: 'INSERT INTO users (name) VALUES (?)', params: ['Bob'] }
-]);
-```
 <a name="module_utils/dbUtils..getConfigValue"></a>
 
 ### utils/dbUtils~getConfigValue(key, [defaultValue]) ⇒ <code>Promise.&lt;any&gt;</code>
-Fetches a configuration value from the database.
-If the key is not found, returns a default value.
+Fetches a configuration value from the main database.
 
 **Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
 **Returns**: <code>Promise.&lt;any&gt;</code> - A promise that resolves to the configuration value or the default.  
@@ -3410,15 +3533,10 @@ If the key is not found, returns a default value.
 | key | <code>string</code> |  | The configuration key. |
 | [defaultValue] | <code>any</code> | <code></code> | The default value to return if key is not found. |
 
-**Example**  
-```js
-const prefix = await getConfigValue('bot_prefix', '!');
-```
 <a name="module_utils/dbUtils..setConfigValue"></a>
 
 ### utils/dbUtils~setConfigValue(key, value)
-Sets a configuration key's value in the database.
-Inserts a new record if the key does not exist, or updates it otherwise.
+Sets a configuration key's value in the main database.
 
 **Kind**: inner method of [<code>utils/dbUtils</code>](#module_utils/dbUtils)  
 
@@ -3427,10 +3545,6 @@ Inserts a new record if the key does not exist, or updates it otherwise.
 | key | <code>string</code> | The configuration key. |
 | value | <code>any</code> | The value to set for the key. |
 
-**Example**  
-```js
-await setConfigValue('bot_prefix', '!');
-```
 <a name="module_utils/fetchPlayerData"></a>
 
 ## utils/fetchPlayerData
@@ -3949,6 +4063,7 @@ gracefully upon completion.
 
 * [scripts/create_db](#module_scripts/create_db)
     * [~dbPath](#module_scripts/create_db..dbPath) : <code>string</code>
+    * [~dbPath](#module_scripts/create_db..dbPath) : <code>string</code>
     * [~initializeDatabase()](#module_scripts/create_db..initializeDatabase) ⇒ <code>sqlite3.Database</code>
     * [~createRegisteredRsnTable(db)](#module_scripts/create_db..createRegisteredRsnTable)
     * [~createClanMembersTable(db)](#module_scripts/create_db..createClanMembersTable)
@@ -3956,7 +4071,19 @@ gracefully upon completion.
     * [~createPlayerDataTable(db)](#module_scripts/create_db..createPlayerDataTable)
     * [~createFetchTimeTable(db)](#module_scripts/create_db..createFetchTimeTable)
     * [~createActiveInactiveTable(db)](#module_scripts/create_db..createActiveInactiveTable)
+    * [~initializeDatabase()](#module_scripts/create_db..initializeDatabase) ⇒ <code>sqlite3.Database</code>
+    * [~createClanMembersTable(db)](#module_scripts/create_db..createClanMembersTable)
+    * [~createRecentNameChangesTable(db)](#module_scripts/create_db..createRecentNameChangesTable)
+    * [~createPlayerDataTable(db)](#module_scripts/create_db..createPlayerDataTable)
+    * [~createFetchTimeTable(db)](#module_scripts/create_db..createFetchTimeTable)
+    * [~createActiveInactiveTable(db)](#module_scripts/create_db..createActiveInactiveTable)
 
+<a name="module_scripts/create_db..dbPath"></a>
+
+### scripts/create_db~dbPath : <code>string</code>
+Path to the SQLite database file.
+
+**Kind**: inner constant of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
 <a name="module_scripts/create_db..dbPath"></a>
 
 ### scripts/create_db~dbPath : <code>string</code>
@@ -3986,6 +4113,271 @@ Creates the 'registered_rsn' table to store registered RuneScape names.
 | --- | --- | --- |
 | db | <code>sqlite3.Database</code> | The SQLite database instance. |
 
+<a name="module_scripts/create_db..createClanMembersTable"></a>
+
+### scripts/create_db~createClanMembersTable(db)
+Creates the 'clan_members' table to store clan member information.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createRecentNameChangesTable"></a>
+
+### scripts/create_db~createRecentNameChangesTable(db)
+Creates the 'recent_name_changes' table to track recent player name changes.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createPlayerDataTable"></a>
+
+### scripts/create_db~createPlayerDataTable(db)
+Creates the 'player_data' table to store various player-specific data points.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createFetchTimeTable"></a>
+
+### scripts/create_db~createFetchTimeTable(db)
+Creates the 'player_fetch_times' table to track when player data was last fetched.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createActiveInactiveTable"></a>
+
+### scripts/create_db~createActiveInactiveTable(db)
+Creates the 'active_inactive' table to track player activity status.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..initializeDatabase"></a>
+
+### scripts/create_db~initializeDatabase() ⇒ <code>sqlite3.Database</code>
+Initializes the SQLite database by deleting any existing database file,
+creating the necessary directories, and establishing a new database connection.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+**Returns**: <code>sqlite3.Database</code> - The new SQLite database instance.  
+**Example**  
+```js
+const db = initializeDatabase();
+```
+<a name="module_scripts/create_db..createClanMembersTable"></a>
+
+### scripts/create_db~createClanMembersTable(db)
+Creates the 'clan_members' table to store clan member information.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createRecentNameChangesTable"></a>
+
+### scripts/create_db~createRecentNameChangesTable(db)
+Creates the 'recent_name_changes' table to track recent player name changes.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createPlayerDataTable"></a>
+
+### scripts/create_db~createPlayerDataTable(db)
+Creates the 'player_data' table to store various player-specific data points.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createFetchTimeTable"></a>
+
+### scripts/create_db~createFetchTimeTable(db)
+Creates the 'player_fetch_times' table to track when player data was last fetched.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createActiveInactiveTable"></a>
+
+### scripts/create_db~createActiveInactiveTable(db)
+Creates the 'active_inactive' table to track player activity status.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db"></a>
+
+## scripts/create\_db
+**Database Initialization Script** 🛠️
+
+This script initializes and sets up the SQLite database for the Varietyz Bot.
+It deletes any existing database file to ensure a clean setup and then creates all necessary tables:
+- `registered_rsn`: Stores registered RuneScape names.
+- `clan_members`: Stores information about clan members.
+- `recent_name_changes`: Tracks recent name changes.
+- `player_data`: Stores various player-specific data points.
+- `player_fetch_times`: Tracks the last time player data was fetched.
+- `active_inactive`: Tracks active and inactive player progression.
+
+The script logs the success or failure of each table creation process and closes the database connection
+gracefully upon completion.
+
+**External Dependencies:**
+- **SQLite3**: For interacting with the SQLite database.
+- **fs**: For file system operations (deleting existing database, creating directories).
+- **path**: For constructing file paths.
+- **logger**: For logging operations and errors.
+
+
+* [scripts/create_db](#module_scripts/create_db)
+    * [~dbPath](#module_scripts/create_db..dbPath) : <code>string</code>
+    * [~dbPath](#module_scripts/create_db..dbPath) : <code>string</code>
+    * [~initializeDatabase()](#module_scripts/create_db..initializeDatabase) ⇒ <code>sqlite3.Database</code>
+    * [~createRegisteredRsnTable(db)](#module_scripts/create_db..createRegisteredRsnTable)
+    * [~createClanMembersTable(db)](#module_scripts/create_db..createClanMembersTable)
+    * [~createRecentNameChangesTable(db)](#module_scripts/create_db..createRecentNameChangesTable)
+    * [~createPlayerDataTable(db)](#module_scripts/create_db..createPlayerDataTable)
+    * [~createFetchTimeTable(db)](#module_scripts/create_db..createFetchTimeTable)
+    * [~createActiveInactiveTable(db)](#module_scripts/create_db..createActiveInactiveTable)
+    * [~initializeDatabase()](#module_scripts/create_db..initializeDatabase) ⇒ <code>sqlite3.Database</code>
+    * [~createClanMembersTable(db)](#module_scripts/create_db..createClanMembersTable)
+    * [~createRecentNameChangesTable(db)](#module_scripts/create_db..createRecentNameChangesTable)
+    * [~createPlayerDataTable(db)](#module_scripts/create_db..createPlayerDataTable)
+    * [~createFetchTimeTable(db)](#module_scripts/create_db..createFetchTimeTable)
+    * [~createActiveInactiveTable(db)](#module_scripts/create_db..createActiveInactiveTable)
+
+<a name="module_scripts/create_db..dbPath"></a>
+
+### scripts/create_db~dbPath : <code>string</code>
+Path to the SQLite database file.
+
+**Kind**: inner constant of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+<a name="module_scripts/create_db..dbPath"></a>
+
+### scripts/create_db~dbPath : <code>string</code>
+Path to the SQLite database file.
+
+**Kind**: inner constant of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+<a name="module_scripts/create_db..initializeDatabase"></a>
+
+### scripts/create_db~initializeDatabase() ⇒ <code>sqlite3.Database</code>
+Initializes the SQLite database by deleting any existing database file,
+creating the necessary directories, and establishing a new database connection.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+**Returns**: <code>sqlite3.Database</code> - The new SQLite database instance.  
+**Example**  
+```js
+const db = initializeDatabase();
+```
+<a name="module_scripts/create_db..createRegisteredRsnTable"></a>
+
+### scripts/create_db~createRegisteredRsnTable(db)
+Creates the 'registered_rsn' table to store registered RuneScape names.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createClanMembersTable"></a>
+
+### scripts/create_db~createClanMembersTable(db)
+Creates the 'clan_members' table to store clan member information.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createRecentNameChangesTable"></a>
+
+### scripts/create_db~createRecentNameChangesTable(db)
+Creates the 'recent_name_changes' table to track recent player name changes.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createPlayerDataTable"></a>
+
+### scripts/create_db~createPlayerDataTable(db)
+Creates the 'player_data' table to store various player-specific data points.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createFetchTimeTable"></a>
+
+### scripts/create_db~createFetchTimeTable(db)
+Creates the 'player_fetch_times' table to track when player data was last fetched.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..createActiveInactiveTable"></a>
+
+### scripts/create_db~createActiveInactiveTable(db)
+Creates the 'active_inactive' table to track player activity status.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>sqlite3.Database</code> | The SQLite database instance. |
+
+<a name="module_scripts/create_db..initializeDatabase"></a>
+
+### scripts/create_db~initializeDatabase() ⇒ <code>sqlite3.Database</code>
+Initializes the SQLite database by deleting any existing database file,
+creating the necessary directories, and establishing a new database connection.
+
+**Kind**: inner method of [<code>scripts/create\_db</code>](#module_scripts/create_db)  
+**Returns**: <code>sqlite3.Database</code> - The new SQLite database instance.  
+**Example**  
+```js
+const db = initializeDatabase();
+```
 <a name="module_scripts/create_db..createClanMembersTable"></a>
 
 ### scripts/create_db~createClanMembersTable(db)
@@ -4071,216 +4463,6 @@ An array of scheduled tasks for the Varietyz Bot.Each task adheres to the [Task
 | runOnStart | <code>boolean</code> | Indicates whether the task should run immediately upon bot startup. |
 | runAsTask | <code>boolean</code> | Indicates whether the task should be scheduled to run at regular intervals. |
 
-<a name="CompetitionService"></a>
-
-## CompetitionService
-CompetitionService handles creation, management, and conclusion of competitions.
-
-**Kind**: global class  
-
-* [CompetitionService](#CompetitionService)
-    * [new CompetitionService(client)](#new_CompetitionService_new)
-    * [.startNextCompetitionCycle()](#CompetitionService+startNextCompetitionCycle)
-    * [.updateCompetitionData()](#CompetitionService+updateCompetitionData)
-    * [.scheduleRotation(endTime)](#CompetitionService+scheduleRotation)
-    * [.scheduleRotationsOnStartup()](#CompetitionService+scheduleRotationsOnStartup)
-    * [.removeInvalidCompetitions()](#CompetitionService+removeInvalidCompetitions)
-    * [.createDefaultCompetitions()](#CompetitionService+createDefaultCompetitions)
-    * [.createCompetitionFromQueue(competition)](#CompetitionService+createCompetitionFromQueue)
-    * [.createCompetition(type, metric, startsAt, endsAt)](#CompetitionService+createCompetition)
-    * [.updateActiveCompetitionEmbed(competitionType, [forceRefresh])](#CompetitionService+updateActiveCompetitionEmbed)
-    * [.buildPollDropdown(compType)](#CompetitionService+buildPollDropdown)
-    * [.getRandomMetric(type)](#CompetitionService+getRandomMetric)
-    * [.handleVote(interaction)](#CompetitionService+handleVote)
-    * [.updateLeaderboard(competitionType)](#CompetitionService+updateLeaderboard)
-    * [.getActiveCompetition(competitionType)](#CompetitionService+getActiveCompetition) ⇒ <code>Object</code> \| <code>null</code>
-    * [.getSortedParticipants(competitionId)](#CompetitionService+getSortedParticipants) ⇒ <code>Array</code>
-    * [.formatLeaderboardDescription(participants)](#CompetitionService+formatLeaderboardDescription) ⇒ <code>string</code>
-    * [.buildLeaderboardEmbed(competitionType, description)](#CompetitionService+buildLeaderboardEmbed) ⇒ <code>EmbedBuilder</code>
-    * [.sendOrUpdateEmbed(channel, competition, embed)](#CompetitionService+sendOrUpdateEmbed)
-
-<a name="new_CompetitionService_new"></a>
-
-### new CompetitionService(client)
-
-| Param |
-| --- |
-| client | 
-
-<a name="CompetitionService+startNextCompetitionCycle"></a>
-
-### competitionService.startNextCompetitionCycle()
-Starts the next competition cycle and schedules the subsequent rotation.
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-<a name="CompetitionService+updateCompetitionData"></a>
-
-### competitionService.updateCompetitionData()
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-<a name="CompetitionService+scheduleRotation"></a>
-
-### competitionService.scheduleRotation(endTime)
-Schedules the rotation using node-schedule.
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| endTime | <code>Date</code> | The time when the competition ends. |
-
-<a name="CompetitionService+scheduleRotationsOnStartup"></a>
-
-### competitionService.scheduleRotationsOnStartup()
-On bot startup, schedule rotations based on active competitions.
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-<a name="CompetitionService+removeInvalidCompetitions"></a>
-
-### competitionService.removeInvalidCompetitions()
-Removes any competitions from the DB that do not exist on WOM(i.e., WOM returns a 404 or otherwise invalid data).
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-<a name="CompetitionService+createDefaultCompetitions"></a>
-
-### competitionService.createDefaultCompetitions()
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-<a name="CompetitionService+createCompetitionFromQueue"></a>
-
-### competitionService.createCompetitionFromQueue(competition)
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param |
-| --- |
-| competition | 
-
-<a name="CompetitionService+createCompetition"></a>
-
-### competitionService.createCompetition(type, metric, startsAt, endsAt)
-Creates a new competition on WOM, inserts in DB, and posts an embed + dropdown poll
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param |
-| --- |
-| type | 
-| metric | 
-| startsAt | 
-| endsAt | 
-
-<a name="CompetitionService+updateActiveCompetitionEmbed"></a>
-
-### competitionService.updateActiveCompetitionEmbed(competitionType, [forceRefresh])
-Attempts to ensure there's a single "Active Competition" embed in the channelthat matches the current competition's metric/times.If the existing embed is missing or outdated, it is replaced or edited.
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param | Type | Default | Description |
-| --- | --- | --- | --- |
-| competitionType | <code>string</code> |  | 'SOTW' or 'BOTW' |
-| [forceRefresh] | <code>boolean</code> | <code>false</code> | If true, always edit or replace the embed even if it matches |
-
-<a name="CompetitionService+buildPollDropdown"></a>
-
-### competitionService.buildPollDropdown(compType)
-Builds a dropdown of all skill/boss options, plus their current vote counts (if any)for an active competition of the given type (SOTW/BOTW).
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param |
-| --- |
-| compType | 
-
-<a name="CompetitionService+getRandomMetric"></a>
-
-### competitionService.getRandomMetric(type)
-Returns a random skill or boss name
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param |
-| --- |
-| type | 
-
-<a name="CompetitionService+handleVote"></a>
-
-### competitionService.handleVote(interaction)
-The main vote handler for the dropdown menu
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param |
-| --- |
-| interaction | 
-
-<a name="CompetitionService+updateLeaderboard"></a>
-
-### competitionService.updateLeaderboard(competitionType)
-Update the WOM-based leaderboard
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param | Type | Description |
-| --- | --- | --- |
-| competitionType | <code>string</code> | 'SOTW' or 'BOTW' |
-
-<a name="CompetitionService+getActiveCompetition"></a>
-
-### competitionService.getActiveCompetition(competitionType) ⇒ <code>Object</code> \| <code>null</code>
-Fetch the active competition from the database
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param | Type |
-| --- | --- |
-| competitionType | <code>string</code> | 
-
-<a name="CompetitionService+getSortedParticipants"></a>
-
-### competitionService.getSortedParticipants(competitionId) ⇒ <code>Array</code>
-Fetch and sort participants based on progress gained
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param | Type |
-| --- | --- |
-| competitionId | <code>string</code> | 
-
-<a name="CompetitionService+formatLeaderboardDescription"></a>
-
-### competitionService.formatLeaderboardDescription(participants) ⇒ <code>string</code>
-Format the leaderboard description
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param | Type |
-| --- | --- |
-| participants | <code>Array</code> | 
-
-<a name="CompetitionService+buildLeaderboardEmbed"></a>
-
-### competitionService.buildLeaderboardEmbed(competitionType, description) ⇒ <code>EmbedBuilder</code>
-Build the leaderboard embed
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param | Type |
-| --- | --- |
-| competitionType | <code>string</code> | 
-| description | <code>string</code> | 
-
-<a name="CompetitionService+sendOrUpdateEmbed"></a>
-
-### competitionService.sendOrUpdateEmbed(channel, competition, embed)
-Send a new embed or update the existing one
-
-**Kind**: instance method of [<code>CompetitionService</code>](#CompetitionService)  
-
-| Param | Type |
-| --- | --- |
-| channel | <code>Channel</code> | 
-| competition | <code>Object</code> | 
-| embed | <code>EmbedBuilder</code> | 
-
 <a name="resourcesPath"></a>
 
 ## resourcesPath : <code>string</code>
@@ -4293,6 +4475,31 @@ Path to the resources directory.
 Base path for the project, starting at "src".
 
 **Kind**: global constant  
+<a name="openDatabase"></a>
+
+## openDatabase() ⇒ <code>Promise.&lt;sqlite3.Database&gt;</code>
+openDatabase:Opens a connection to the SQLite database.
+
+**Kind**: global function  
+**Returns**: <code>Promise.&lt;sqlite3.Database&gt;</code> - The open database connection.  
+<a name="reorderTable"></a>
+
+## reorderTable(db, tableName)
+reorderTable:Permanently reorders the rows of a table by:1. Creating a temporary table with the same schema.2. Inserting rows sorted by timestamp (ascending) into the temporary table.3. Dropping the original table.4. Renaming the temporary table to the original table name.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| db | <code>object</code> | The open database connection. |
+| tableName | <code>string</code> | The name of the table to reorder. |
+
+<a name="reorderAllTables"></a>
+
+## reorderAllTables()
+reorderAllTables:Opens the database and permanently reorders all system tables defined in systemTables.
+
+**Kind**: global function  
 <a name="execute"></a>
 
 ## execute(interaction) ⇒ <code>Promise.&lt;void&gt;</code>
@@ -4382,6 +4589,153 @@ Base path for the project, starting at "src".
 | --- | --- | --- |
 | interaction | <code>Discord.CommandInteraction</code> | The interaction object. |
 
+<a name="isChatMessage"></a>
+
+## isChatMessage(message) ⇒ <code>boolean</code>
+isChatMessage:Determines if the message is a chat message by checking for a username pattern like **Name**:.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| message | <code>string</code> | The raw message text. |
+
+<a name="detectSystemMessage"></a>
+
+## detectSystemMessage(message) ⇒ <code>string</code> \| <code>null</code>
+detectSystemMessage:For non‑chat messages, checks if the message qualifies as a system message based on key phrases.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| message | <code>string</code> | The raw message content. |
+
+<a name="reformatText"></a>
+
+## reformatText(text) ⇒ <code>string</code>
+reformatText:Trims extra whitespace and removes all backslashes.
+
+**Kind**: global function  
+
+| Param | Type |
+| --- | --- |
+| text | <code>string</code> | 
+
+<a name="combineExtraName"></a>
+
+## combineExtraName(user, message) ⇒ <code>Object</code>
+combineExtraName:For system messages, if the message does not start with "has" or "received",assume that tokens before that keyword belong to the username.Append those tokens to the user field and remove them from the message.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| user | <code>string</code> | The stored user. |
+| message | <code>string</code> | The system message. |
+
+<a name="cleanupChatRow"></a>
+
+## cleanupChatRow(message) ⇒ <code>Object</code>
+cleanupChatRow:Cleans up chat messages (which follow the **Name**: format).
+
+**Kind**: global function  
+
+| Param | Type |
+| --- | --- |
+| message | <code>string</code> | 
+
+<a name="cleanupTasksRow"></a>
+
+## cleanupTasksRow(message) ⇒ <code>Object</code>
+cleanupTasksRow:Cleans up combat tasks messages by removing the CA_ID prefix and extracting the proper username.It accepts any text starting with "CA_ID" (with any separator) and then uses the first "|" as delimiter.Expected examples:"CA_ID:537|roofs4life has completed a hard combat task: Fat of the Land.""CA_ID.73.Collector 30 has completed a medium combat task: I'd Rather Not Learn."
+
+**Kind**: global function  
+
+| Param | Type |
+| --- | --- |
+| message | <code>string</code> | 
+
+<a name="cleanupKeysRow"></a>
+
+## cleanupKeysRow(message) ⇒ <code>Object</code>
+cleanupKeysRow:Cleans up keys messages.
+
+**Kind**: global function  
+
+| Param | Type |
+| --- | --- |
+| message | <code>string</code> | 
+
+<a name="cleanupEmojiSystemMessage"></a>
+
+## cleanupEmojiSystemMessage(message) ⇒ <code>Object</code>
+cleanupEmojiSystemMessage:Cleans up system messages that start with one or more emoji definitions.It removes any leading channel indicator (like "💬OSRS | Clan Chat")and then extracts the username by searching for a known keyword.Example:Input: "💬OSRS | Clan Chat <:Guideprices:1147702301298016349> DankGoldList received a drop: …"Output: { username: "DankGoldList", cleanedMessage: "received a drop: …" }
+
+**Kind**: global function  
+
+| Param | Type |
+| --- | --- |
+| message | <code>string</code> | 
+
+<a name="saveSystemMessage"></a>
+
+## saveSystemMessage(type, user, message, messageId, timestamp)
+saveSystemMessage:Saves a system message into its designated system table.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| type | <code>string</code> | The detected system message type. |
+| user | <code>string</code> | The cleaned sender. |
+| message | <code>string</code> | The cleaned message. |
+| messageId | <code>string</code> | The Discord message ID. |
+| timestamp | <code>number</code> | The message timestamp. |
+
+<a name="saveMessage"></a>
+
+## saveMessage(user, message, messageId, timestamp)
+saveMessage:Immediately cleans up and saves a message.- Chat messages are handled by cleanupChatRow.- For system messages, specialized functions are applied (for TASKS, KEYS, emoji-based types).Then, combineExtraName centralizes formatting so that the message begins with "has" or "received".If no system type is detected, falls back to chat message storage.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| user | <code>string</code> | The raw sender. |
+| message | <code>string</code> | The raw message. |
+| messageId | <code>string</code> | The Discord message ID. |
+| timestamp | <code>number</code> | The message timestamp. |
+
+<a name="getRecentMessages"></a>
+
+## getRecentMessages(limit) ⇒ <code>Promise.&lt;Array&gt;</code>
+getRecentMessages:Retrieves recent chat messages.
+
+**Kind**: global function  
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| limit | <code>number</code> | <code>50</code> | Number of messages to retrieve. |
+
+<a name="fetchAndStoreChannelHistory"></a>
+
+## fetchAndStoreChannelHistory(client, channelId)
+fetchAndStoreChannelHistory:Fetches the full message history from a Discord channel, cleans each message, and saves it.
+
+**Kind**: global function  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| client | <code>Client</code> | The Discord.js Client instance. |
+| channelId | <code>string</code> | The ID of the Discord channel. |
+
+<a name="initDatabase"></a>
+
+## initDatabase()
+initDatabase:Initializes the database and creates necessary tables.
+
+**Kind**: global function  
 <a name="createCompetition"></a>
 
 ## createCompetition(womclient, db, type, metric, startsAt, endsAt, constants) ⇒ <code>Promise.&lt;Object&gt;</code>
@@ -4408,16 +4762,6 @@ Base path for the project, starting at "src".
 ```js
 // Example usage:const newCompetition = await createCompetition(womclient, db, 'SOTW', 'mining', new Date(), new Date(Date.now() + 604800000), constants);console.log('Created Competition:', newCompetition);
 ```
-<a name="chunkArray"></a>
-
-## chunkArray(array, size)
-**Kind**: global function  
-
-| Param | Default |
-| --- | --- |
-| array |  | 
-| size | <code>25</code> | 
-
 <a name="recordCompetitionWinner"></a>
 
 ## recordCompetitionWinner(competition)
@@ -4736,6 +5080,40 @@ const description = buildLeaderboardDescription(participations, 'SOTW', guild);
 ```js
 const dropdown = createVotingDropdown([{ label: 'Mining', description: 'Vote for Mining', value: 'mining', voteCount: 10 },{ label: 'Fishing', description: 'Vote for Fishing', value: 'fishing', voteCount: 5 }], 'SOTW');
 ```
+<a name="handleSlashCommand"></a>
+
+## handleSlashCommand(commands, interaction) ⇒ <code>Promise.&lt;void&gt;</code>
+Executes the appropriate slash command based on the interaction.
+
+**Kind**: global function  
+**Returns**: <code>Promise.&lt;void&gt;</code> - Resolves when the command has been executed.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| commands |  |  |
+| interaction | <code>CommandInteraction</code> | The command interaction to handle. |
+
+**Example**  
+```js
+// This function is invoked internally when a slash command is triggered.
+```
+<a name="handleAutocomplete"></a>
+
+## handleAutocomplete(commands, interaction) ⇒ <code>Promise.&lt;void&gt;</code>
+Handles autocomplete interactions by delegating to the appropriate command's autocomplete handler.
+
+**Kind**: global function  
+**Returns**: <code>Promise.&lt;void&gt;</code> - Resolves when the autocomplete interaction is processed.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| commands |  |  |
+| interaction | <code>AutocompleteInteraction</code> | The autocomplete interaction to handle. |
+
+**Example**  
+```js
+// This function is invoked internally when an autocomplete interaction is triggered.
+```
 <a name="tallyVotesAndRecordWinner"></a>
 
 ## tallyVotesAndRecordWinner(competition) ⇒ <code>Promise.&lt;(string\|null)&gt;</code>
@@ -4779,3 +5157,7 @@ Populates the image_cache table in the database with file metadata from the reso
 ```js
 // Run the script to populate the image cache.populateImageCache().then(() => logger.info('Image cache populated.')).catch(err => logger.error(err));
 ```
+<a name="testOpenAI"></a>
+
+## testOpenAI()
+**Kind**: global function  

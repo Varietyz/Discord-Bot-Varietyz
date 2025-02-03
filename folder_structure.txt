@@ -15,13 +15,18 @@
 ├─ 📄 README.md
 ├─ 📂 src
 │   ├─ 📂 api
+│   │   ├─ 📂 openai
+│   │   │   ├─ 📄 aiChat.js
+│   │   │   ├─ 📄 aiUtils.js
+│   │   │   └─ 📄 openaiClient.js
 │   │   └─ 📂 wise_old_man
 │   │       └─ 📄 apiClient.js
 │   ├─ 📂 config
 │   │   ├─ 📄 constants.js
 │   │   └─ 📄 easterEggs.js
 │   ├─ 📂 data
-│   │   └─ 📄 database.sqlite
+│   │   ├─ 📄 database.sqlite
+│   │   └─ 📄 database.sqlite-journal
 │   ├─ 📄 main.js
 │   ├─ 📂 migrations
 │   │   ├─ 📄 initializeCompetitionTables.js

@@ -32,6 +32,10 @@ const tasks = require('./tasks');
 const initializeCompetitionsTables = require('./migrations/initializeCompetitionTables');
 const populateSkillsBosses = require('./migrations/populateSkillsBosses');
 const CompetitionService = require('./modules/services/competitionServices/competitionService');
+const { handleAutocomplete, handleSlashCommand } = require('./modules/utils/slashCommandHandler');
+
+const { CLAN_CHAT_CHANNEL_ID } = require('./config/constants');
+const { initDatabase, saveMessage } = require('./modules/events/clanchatDatabase');
 
 /**
  * Creates a new Discord client instance with the necessary intents.
@@ -115,6 +119,7 @@ const competitionService = new CompetitionService(client);
  */
 const initializeBot = async () => {
     try {
+        await initDatabase(); // Initialize Clanchat database
         await initializeCompetitionsTables(); // Initialize competitions-related tables.
         await populateSkillsBosses(); // Populate skills_bosses table.
 
@@ -139,6 +144,8 @@ const initializeBot = async () => {
 
         // Log the bot into Discord.
         await client.login(process.env.DISCORD_TOKEN);
+
+        //await cleanupDatabase();
         logger.info('Bot logged in successfully.');
     } catch (error) {
         logger.error('Bot initialization failed: ' + error.message);
@@ -198,10 +205,10 @@ client.once('ready', async () => {
 client.on('interactionCreate', async (interaction) => {
     if (interaction.isCommand()) {
         // Handle slash command interactions.
-        await handleSlashCommand(interaction);
+        await handleSlashCommand(interaction, commands);
     } else if (interaction.isAutocomplete()) {
         // Handle autocomplete interactions.
-        await handleAutocomplete(interaction);
+        await handleAutocomplete(interaction, commands);
     } else if (interaction.isStringSelectMenu()) {
         // Handle select menu interactions (voting).
         if (interaction.customId === 'vote_dropdown') {
@@ -210,84 +217,15 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-/**
- * Executes the appropriate slash command based on the interaction.
- *
- * @async
- * @function handleSlashCommand
- * @param {CommandInteraction} interaction - The command interaction to handle.
- * @returns {Promise<void>} Resolves when the command has been executed.
- *
- * @example
- * // This function is invoked internally when a slash command is triggered.
- */
-async function handleSlashCommand(interaction) {
+client.on('messageCreate', async (message) => {
+    if (![CLAN_CHAT_CHANNEL_ID].includes(message.channel.id)) return;
+    console.log(`💬 Chat logged: ${message.author.username}: ${message.content}`);
     try {
-        // Find the appropriate command based on the interaction's name.
-        const command = commands.find((cmd) => cmd.data.name === interaction.commandName);
-
-        if (!command) {
-            logger.warn(`Unknown command: ${interaction.commandName}`);
-            return;
-        }
-
-        // Execute the command.
-        await command.execute(interaction);
-        logger.info(`${interaction.commandName} command executed successfully.`);
-    } catch (err) {
-        logger.error(`Error executing ${interaction.commandName}: ${err.message}`);
-        await interaction.reply({
-            content: 'Something went wrong while processing your command.',
-            flags: 64, // EPHEMERAL flag.
-        });
+        await saveMessage(message.author.username, message.content, message.id, message.createdTimestamp);
+        console.log(`Saved message ${message.id} from ${message.author.username}`);
+    } catch (error) {
+        console.error(`Error saving message ${message.id}:`, error);
     }
-}
-
-/**
- * Handles autocomplete interactions by delegating to the appropriate command's autocomplete handler.
- *
- * @async
- * @function handleAutocomplete
- * @param {AutocompleteInteraction} interaction - The autocomplete interaction to handle.
- * @returns {Promise<void>} Resolves when the autocomplete interaction is processed.
- *
- * @example
- * // This function is invoked internally when an autocomplete interaction is triggered.
- */
-async function handleAutocomplete(interaction) {
-    try {
-        // Find the appropriate command based on the interaction's name.
-        const command = commands.find((cmd) => cmd.data.name === interaction.commandName);
-
-        if (!command) {
-            logger.warn(`Autocomplete trigger failed: Unknown command ${interaction.commandName}`);
-            return;
-        }
-
-        if (!command.autocomplete) {
-            logger.warn(`Autocomplete handler not implemented for command: ${interaction.commandName}`);
-            return;
-        }
-
-        // Execute the autocomplete handler.
-        await command.autocomplete(interaction);
-        logger.info(`Autocomplete triggered for command ${interaction.commandName}`);
-    } catch (err) {
-        logger.error(`Error processing autocomplete for ${interaction.commandName}: ${err.message}`);
-        await interaction.respond([]); // Send an empty array if there is an error.
-    }
-}
-
-// Handle unhandled promise rejections.
-process.on('unhandledRejection', (reason, promise) => {
-    logger.error(`Unhandled Rejection at: ${promise} | Reason: ${reason}`);
-});
-
-// Handle uncaught exceptions.
-process.on('uncaughtException', (error) => {
-    logger.error(`Uncaught Exception: ${error.message}`);
-    logger.error(error.stack);
-    process.exit(1); // Exit the process to prevent unknown states.
 });
 
 // Run bot initialization.
