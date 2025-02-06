@@ -7,7 +7,7 @@ const { runQuery } = require('../modules/utils/dbUtils');
  * Path to the resources directory.
  * @constant {string}
  */
-const resourcesPath = path.resolve(__dirname, '../resources');
+const resourcesPath = path.resolve(__dirname, '../resources/skills_bosses');
 
 /**
  * Base path for the project, starting at "src".
@@ -36,11 +36,10 @@ function getAllFilesWithMetadata(dir) {
     const files = entries
         .filter((entry) => !entry.isDirectory())
         .map((entry) => ({
-            fileName: path.basename(entry.name, path.extname(entry.name)).toLowerCase(), // File name without extension in lowercase.
-            filePath: `src/${path.relative(projectBasePath, path.resolve(dir, entry.name)).replace(/\\/g, '/')}`, // Relative file path starting with "src/".
+            fileName: path.basename(entry.name, path.extname(entry.name)).toLowerCase(),
+            filePath: `src/${path.relative(projectBasePath, path.resolve(dir, entry.name)).replace(/\\/g, '/')}`,
         }));
 
-    // Process subdirectories recursively.
     const folders = entries.filter((entry) => entry.isDirectory());
     for (const folder of folders) {
         files.push(...getAllFilesWithMetadata(path.resolve(dir, folder.name)));
@@ -69,19 +68,15 @@ function getAllFilesWithMetadata(dir) {
  * .catch(err => logger.error(err));
  */
 async function populateImageCache() {
-    // Retrieve all file metadata from the resources directory.
     const files = getAllFilesWithMetadata(resourcesPath);
 
-    // Ensure a fresh state by dropping the existing image_cache table.
     await runQuery(`
         DROP TABLE IF EXISTS image_cache
     `);
     logger.info('Ensured image_cache table exists.');
 
-    // Process each file: update if exists; otherwise, insert a new record.
     try {
         for (const { fileName, filePath } of files) {
-            // Attempt to update an existing entry.
             const updateResult = await runQuery(
                 `
                 UPDATE image_cache
@@ -91,7 +86,6 @@ async function populateImageCache() {
                 [filePath, fileName],
             );
 
-            // If no rows were updated, insert a new entry.
             if (updateResult.changes === 0) {
                 await runQuery(
                     `
@@ -109,5 +103,4 @@ async function populateImageCache() {
     }
 }
 
-// Execute the populateImageCache function.
 populateImageCache();

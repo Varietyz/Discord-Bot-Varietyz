@@ -8,16 +8,16 @@
  * uncaught exceptions and unhandled promise rejections.
  *
  * **Key Features:**
- * - **Console Logging**: Provides colorized output for easy readability.
- * - **Daily Log Rotation**: Organizes log files into directories by year and month, rotates files daily, limits file size, and retains logs for 7 days.
- * - **Error Handling**: Captures uncaught exceptions and unhandled promise rejections, logs them, and exits the process.
- * - **Log Directory Management**: Ensures required directories exist for storing log files and audit information.
+ * - **Console Logging:** Provides colorized output for easy readability.
+ * - **Daily Log Rotation:** Organizes log files into directories by year and month, rotates files daily, limits file size, and retains logs for 7 days.
+ * - **Error Handling:** Captures uncaught exceptions and unhandled promise rejections, logs them, and exits the process.
+ * - **Log Directory Management:** Ensures required directories exist for storing log files and audit information.
  *
  * **External Dependencies:**
- * - **winston**: Core logging library.
- * - **winston-daily-rotate-file**: Transport for daily rotating log files.
- * - **path**: For handling file paths.
- * - **fs**: For file system operations.
+ * - **winston:** Core logging library.
+ * - **winston-daily-rotate-file:** Transport for daily rotating log files.
+ * - **path:** For handling file paths.
+ * - **fs:** For file system operations.
  *
  * @module utils/logger
  */
@@ -27,7 +27,6 @@ require('winston-daily-rotate-file');
 const path = require('path');
 const fs = require('fs');
 
-// Define a custom log format combining timestamp, level, and message.
 const logFormat = winston.format.printf(({ timestamp, level, message }) => {
     return `${timestamp} [${level}] ${message}`;
 });
@@ -61,10 +60,9 @@ const getYearMonthPath = () => {
 const createLogDirectories = () => {
     const dirPath = getYearMonthPath();
     if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true }); // Create year/month folder if it doesn't exist
+        fs.mkdirSync(dirPath, { recursive: true });
     }
 
-    // Ensure the 'logs/handler' directory exists for audit files.
     const auditDir = path.join('logs', 'handler');
     if (!fs.existsSync(auditDir)) {
         fs.mkdirSync(auditDir, { recursive: true });
@@ -86,13 +84,11 @@ const logger = winston.createLogger({
     level: 'debug',
     format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
     transports: [
-        // Console transport for colorized terminal output.
         new winston.transports.Console({
             format: winston.format.combine(winston.format.colorize(), logFormat),
         }),
-        // DailyRotateFile transport for logging to files with daily rotation.
         new winston.transports.DailyRotateFile({
-            filename: path.join(getYearMonthPath(), '%DATE%.log'),
+            filename: path.join(getYearMonthPath(), '%DATE%.md'),
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: '7d',
@@ -116,7 +112,6 @@ const initializeLogger = () => {
     createLogDirectories();
 };
 
-// Initialize logger directories.
 initializeLogger();
 
 /**
@@ -127,8 +122,8 @@ initializeLogger();
  * @returns {void}
  */
 process.on('uncaughtException', (error) => {
-    logger.error(`Uncaught Exception: ${error.message}`);
-    process.exit(1); // Exit the process to prevent unpredictable behavior.
+    logger.error(`🚨 **Uncaught Exception:** ${error.message}`);
+    process.exit(1);
 });
 
 /**
@@ -140,8 +135,7 @@ process.on('uncaughtException', (error) => {
  * @returns {void}
  */
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+    logger.error(`🚨 **Unhandled Rejection:** at ${promise}, reason: ${reason}`);
 });
 
-// Export the logger instance for use in other modules.
 module.exports = logger;

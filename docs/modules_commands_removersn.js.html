@@ -178,7 +178,7 @@ module.exports = {
       const userRSNs = await getAll(
         `
         SELECT rsn FROM registered_rsn
-        WHERE user_id = ?
+        WHERE discord_id = ?
         `,
         [userID],
       );
@@ -207,7 +207,7 @@ module.exports = {
         await runQuery(
           `
           DELETE FROM registered_rsn
-          WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
+          WHERE discord_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
           `,
           [userID, normalizedRsn],
         );
@@ -266,7 +266,7 @@ module.exports = {
       const rsnsResult = await getAll(
         `
         SELECT rsn FROM registered_rsn
-        WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) LIKE ?
+        WHERE discord_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) LIKE ?
         `,
         [userID, `%${normalizedInput}%`],
       );

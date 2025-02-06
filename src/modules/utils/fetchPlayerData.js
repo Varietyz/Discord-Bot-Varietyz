@@ -6,13 +6,13 @@
  * It handles common error scenarios such as non-existent players (404), rate limiting (429), and unexpected issues.
  *
  * **Key Features:**
- * - **Player Data Retrieval**: Fetches player data from the WOM API for a given RSN.
- * - **Error Handling**: Manages common API errors including 404 (player not found) and 429 (rate limiting).
- * - **Rate Limiting**: Throws an error if the WOM API returns a rate limit response.
+ * - **Player Data Retrieval:** Fetches player data from the WOM API for a given RSN.
+ * - **Error Handling:** Manages common API errors including 404 (player not found) and 429 (rate limiting).
+ * - **Rate Limiting:** Throws an error if the WOM API returns a rate limit response.
  *
  * **External Dependencies:**
- * - **axios**: For making HTTP requests to the WOM API.
- * - **logger**: For logging warnings and errors during the fetch process.
+ * - **axios:** For making HTTP requests to the WOM API.
+ * - **logger:** For logging warnings and errors during the fetch process.
  *
  * @module utils/fetchPlayerData
  */
@@ -52,14 +52,14 @@ async function fetchPlayerData(rsn) {
         return response.data;
     } catch (error) {
         if (error.response && error.response.status === 404) {
-            logger.warn(`[fetchPlayerData] RSN '${rsn}' not found on Wise Old Man.`);
-            return null; // Gracefully handle 404 errors.
+            logger.warn(`❌ **Not Found:** RSN \`${rsn}\` was not found on Wise Old Man.`);
+            return null;
         } else if (error.response && error.response.status === 429) {
-            logger.warn('[fetchPlayerData] Rate limited by WOM API. Please try again later.');
+            logger.warn('⚠️ **Rate Limit:** You have been rate limited by the WOM API. Please try again later.');
             throw new Error('Rate limited by WOM API.');
         } else {
-            logger.error(`[fetchPlayerData] Unexpected error fetching RSN '${rsn}': ${error.message}`);
-            throw error; // Rethrow unexpected errors.
+            logger.error(`🚨 **Unexpected Error:** Error fetching RSN \`${rsn}\`: ${error.message}`);
+            throw error;
         }
     }
 }

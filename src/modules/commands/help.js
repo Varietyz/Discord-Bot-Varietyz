@@ -30,29 +30,24 @@ module.exports = {
     async execute(interaction) {
         const commandName = interaction.options.getString('command');
 
-        // Load all commands
         const { allCommands } = loadAndCategorizeCommands();
         const hasAdminPermissions = checkAdminPermissions(interaction);
 
-        // Hide admin commands if user lacks permissions
         if (!hasAdminPermissions) {
             allCommands = allCommands.filter((cmd) => !cmd.category.includes('Admin'));
         }
 
-        // Fetch specific command details
         if (commandName) {
             const command = allCommands.find((cmd) => cmd.name === commandName);
             if (!command) {
                 return interaction.reply({ content: `❌ No command found with the name **${commandName}**.`, flags: 64 });
             }
 
-            // 🔹 Create JSDoc-styled embed
             const embed = createCommandEmbed(command);
 
             return interaction.reply({ embeds: [embed], flags: 64 });
         }
 
-        // Generate general help embed
         const embed = new EmbedBuilder().setTitle('📜 Varietyz Bot Help Menu').setColor(0x3498db).setDescription('🔹 Use `/help command:<name>` for details about a specific command.').setTimestamp();
 
         return interaction.reply({ embeds: [embed], flags: 64 });
@@ -91,13 +86,10 @@ module.exports = {
 function createCommandEmbed(command) {
     const embed = new EmbedBuilder().setTitle(`📖 Command Help: \`/${command.name}\``).setColor(0x3498db).setTimestamp();
 
-    // 📝 **Description**
     embed.addFields({ name: '📝 **Description:**', value: command.description });
 
-    // 📌 **Usage**
     embed.addFields({ name: '📌 **Usage:**', value: `\`/${command.name}\` ${formatCommandUsage(command)}` });
 
-    // 🔹 **Options**
     if (command.options.length > 0) {
         const optionsText = command.options
             .map((opt) => {
@@ -107,7 +99,6 @@ function createCommandEmbed(command) {
         embed.addFields({ name: '🔹 **Options:**', value: optionsText });
     }
 
-    // 💡 **Example**
     embed.addFields({ name: '💡 **Example:**', value: `\`/${command.name} ${generateExample(command)}\`` });
 
     return embed;

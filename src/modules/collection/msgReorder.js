@@ -1,37 +1,26 @@
+/* eslint-disable no-process-exit */
 // @ts-nocheck
-/* eslint-disable jsdoc/require-returns */
-/* reorderAllTablesWithSchema.js
+/**
+ * @fileoverview
+ * **Reorder All Tables with Schema** 🔄
  *
  * This script connects to the SQLite database and permanently reorders rows in all your system tables
  * by recreating each table with the same schema (including uniques, primary keys, and defaults)
- * and inserting the rows sorted by the timestamp column.
+ * and inserting the rows sorted by the `timestamp` column.
  *
- * WARNING: This process re-creates tables, which may remove additional indexes, triggers, and constraints.
+ * ⚠️ **Warning:** This process re-creates tables, which may remove additional indexes, triggers, and constraints.
  * Ensure you have backups or run this on a test copy of your database before using it in production.
  *
- * Usage:
- *   node reorderAllTablesWithSchema.js
- */
-
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
-require('dotenv').config();
-
-/**
- * openDatabase:
- * Opens a connection to the SQLite database.
+ * **Usage:**
+ * `node reorderAllTablesWithSchema.js`
  *
- * @returns {Promise<sqlite3.Database>} The open database connection.
+ * @module reorderAllTablesWithSchema
  */
-async function openDatabase() {
-    return open({
-        filename: 'src/data/messages.db',
-        driver: sqlite3.Database,
-    });
-}
 
-// Define the names and schema for all system tables.
-// Adjust the schema definition if any table has a custom structure.
+require('dotenv').config();
+const { dbPromise } = require('./msgDbConstants');
+const logger = require('../utils/logger');
+
 const systemTables = {
     DROP: 'drops',
     RAID_DROP: 'raid_drops',
@@ -51,25 +40,28 @@ const systemTables = {
 };
 
 /**
- * reorderTable:
+ * 🎯 **Reorders a Table with Schema Preservation**
+ *
  * Permanently reorders the rows of a table by:
  * 1. Creating a temporary table with the same schema.
- * 2. Inserting rows sorted by timestamp (ascending) into the temporary table.
+ * 2. Inserting rows sorted by `timestamp` (ascending) into the temporary table.
  * 3. Dropping the original table.
  * 4. Renaming the temporary table to the original table name.
  *
+ * ⚙️ **Note:** The temporary table is created with a fixed schema for demonstration purposes.
+ * In a real scenario, you may need to dynamically recreate the original schema.
+ *
+ * @async
+ * @function reorderTable
  * @param {object} db - The open database connection.
  * @param {string} tableName - The name of the table to reorder.
  */
 async function reorderTable(db, tableName) {
     try {
-        // Start a transaction to ensure atomicity.
         await db.exec('BEGIN TRANSACTION;');
 
-        // Define the temporary table name.
         const tempTable = `${tableName}_temp`;
 
-        // Create the temporary table with the same schema as the original.
         await db.exec(`
             CREATE TABLE ${tempTable} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,8 +72,6 @@ async function reorderTable(db, tableName) {
             );
         `);
 
-        // Insert data into the temporary table, sorted by timestamp.
-        // Adjust "ASC" to "DESC" if you prefer descending order.
         await db.exec(`
             INSERT INTO ${tempTable} (rsn, message, message_id, timestamp)
             SELECT rsn, message, message_id, timestamp
@@ -89,40 +79,41 @@ async function reorderTable(db, tableName) {
             ORDER BY timestamp ASC;
         `);
 
-        // Drop the original table.
         await db.exec(`DROP TABLE ${tableName};`);
 
-        // Rename the temporary table to the original table name.
         await db.exec(`ALTER TABLE ${tempTable} RENAME TO ${tableName};`);
 
-        // Commit the transaction.
         await db.exec('COMMIT;');
 
-        console.log(`Table "${tableName}" has been permanently reordered with its schema preserved.`);
+        logger.info(`✅ Table "\`${tableName}\`" has been permanently reordered and schema preserved.`);
     } catch (error) {
-        // Rollback the transaction if an error occurs.
         await db.exec('ROLLBACK;');
-        console.error(`Error reordering table "${tableName}":`, error);
+        logger.error(`❌ Error reordering table "\`${tableName}\`": ${error.message}`);
     }
 }
 
 /**
- * reorderAllTables:
- * Opens the database and permanently reorders all system tables defined in systemTables.
+ * 🎯 **Reorders All System Tables**
+ *
+ * Opens the database and permanently reorders all system tables defined in the `systemTables` object.
+ *
+ * @async
+ * @function reorderAllTables
  */
 async function reorderAllTables() {
     try {
-        const db = await openDatabase();
+        const db = await dbPromise;
         for (const tableName of Object.values(systemTables)) {
-            console.log(`\nReordering table: ${tableName}`);
+            logger.info(`\n🔄 Reordering table: \`${tableName}\``);
             await reorderTable(db, tableName);
         }
         await db.close();
-        console.log('\nAll tables have been processed.');
+        logger.info('\n✅ All tables have been processed successfully.');
     } catch (error) {
-        console.error('Error reordering all tables:', error);
+        logger.error('❌ Error reordering all tables:', error);
     }
 }
 
-// Run the script.
-reorderAllTables();
+module.exports = {
+    reorderAllTables,
+};

@@ -1,24 +1,29 @@
 /* eslint-disable no-unused-vars */
 // @ts-nocheck
+
 /**
  * @fileoverview
- * **Active/Inactive Clan Member Activity Utilities** ⚡
+ * 🎯 **Active/Inactive Clan Member Activity Utilities** ⚡
  *
- * This module provides utility functions for managing active and inactive clan members within the Varietyz Bot.
- * It interacts with the WOM API to fetch player data, calculates member activity based on progress within specified
- * intervals, and dynamically updates a Discord voice channel name to reflect the number of active clan members.
+ * This module provides utility functions for tracking **active** and **inactive** clan members within Varietyz Bot.
+ * It integrates with the **Wise Old Man API** to fetch OSRS player data, calculates **member activity** over time,
+ * and dynamically updates a **Discord voice channel** to reflect the number of active members.
  *
- * **Key Features:**
- * - **Activity Data Update**: Fetches player data from the WOM API and updates the `active_inactive` table in the database.
- * - **Activity Calculation**: Determines the number of active players (last 7 days) and inactive players (last 21 days) using Luxon.
- * - **Voice Channel Update**: Dynamically updates the Discord voice channel name with the current active member count.
- * - **Retry Mechanism**: Implements exponential backoff for retrying failed data fetch attempts from the WOM API.
+ * ---
  *
- * **External Dependencies:**
- * - **Luxon**: For date and time manipulation.
- * - **Wise Old Man (WOM) API**: To fetch player and group details.
- * - **Discord.js**: For interacting with the Discord guild and channels.
- * - **dbUtils**: For database interactions.
+ * 🔹 **Key Features:**
+ * - 📡 **Activity Data Update:** Fetches player data from the WOM API and updates the `active_inactive` database table.
+ * - 📊 **Activity Calculation:** Determines active players (last **7 days**) and inactive players (last **21 days**) using **Luxon**.
+ * - 🔄 **Voice Channel Sync:** Dynamically updates a **Discord voice channel name** with the number of active members.
+ * - 🔁 **Retry Mechanism:** Implements **exponential backoff** to handle failed API requests efficiently.
+ *
+ * ---
+ *
+ * 🔹 **External Dependencies:**
+ * - 📅 **Luxon:** For handling time calculations.
+ * - 📡 **Wise Old Man API:** To fetch player and group details.
+ * - 💬 **Discord.js:** For updating Discord channels.
+ * - 🗄️ **SQLite (dbUtils):** For database interactions.
  *
  * @module modules/services/activeMembers
  */
@@ -28,99 +33,99 @@ const logger = require('../utils/logger');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const { VOICE_CHANNEL_ID } = require('../../config/constants');
 const { getAll, runQuery } = require('../utils/dbUtils');
-const { calculateInactivity, calculateProgressCount, ensureActiveInactiveTable } = require('../utils/calculateActivity');
+const { calculateInactivity, calculateProgressCount } = require('../utils/calculateActivity');
 
 /**
- * Object to store player progress data.
- * Keys are player names (RSNs), and values are Luxon DateTime objects representing the last progression date.
+ * 🗂️ **Player Progress Tracker**
+ *
+ * Stores player progress data mapped by **RSN (RuneScape Name)**.
+ * Each player's last progress date is stored as a **Luxon DateTime object**.
  *
  * @type {Object.<string, DateTime>}
  */
 const playerProgress = {};
 
 /**
- * 🎯 **Fetches and Updates Player Activity Data**
+ * 🎯 **Fetches & Updates Clan Member Activity**
  *
- * Retrieves player data from the WOM API and updates the `active_inactive` database table with each player's last progress date.
- * The function implements a retry mechanism with exponential backoff to handle intermittent failures.
+ * - Retrieves **clan member data** from the WOM API.
+ * - Updates the `active_inactive` table with **each player's last progress date**.
+ * - Implements **exponential backoff** for handling failed requests.
  *
  * @async
  * @function updateActivityData
- * @param {number} [maxRetries=3] - The maximum number of retry attempts if fetching data fails.
- * @param {number} [baseDelay=5000] - The base delay (in milliseconds) before retrying.
- * @returns {Promise<void>} Resolves when the activity data has been successfully fetched and processed.
+ * @param {number} [maxRetries=3] - 🔁 Maximum number of retry attempts if fetching data fails.
+ * @param {number} [baseDelay=5000] - ⏳ Base delay (in milliseconds) before retrying.
+ * @returns {Promise<void>} Resolves when the activity data has been successfully processed.
  *
- * @throws {Error} Throws an error if all retry attempts fail.
+ * @throws {Error} ❌ Throws an error if **all retries fail**.
  *
  * @example
- * // Update activity data with up to 5 retries and a 10-second base delay:
+ * // Update activity data with up to 5 retries and a 10-second delay:
  * await updateActivityData(5, 10000);
  */
 async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
     let retryCount = 0;
-    logger.info(`Using WOM_GROUP_ID: ${WOMApiClient.groupId}`);
+    logger.info(`📡 Using WOM Group ID: ${WOMApiClient.groupId}`);
 
     while (retryCount < maxRetries) {
         try {
             const groupDetails = await WOMApiClient.request('groups', 'getGroupDetails', WOMApiClient.groupId);
 
             if (groupDetails?.memberships) {
-                await ensureActiveInactiveTable();
-
                 for (const membership of groupDetails.memberships) {
                     const { player } = membership;
 
                     if (player?.lastChangedAt) {
                         const lastProgressed = DateTime.fromJSDate(player.lastChangedAt);
                         if (lastProgressed.isValid) {
-                            // Save to the database (insert or update on conflict)
                             await runQuery(
-                                `INSERT INTO active_inactive (username, last_progressed)
+                                `INSERT INTO active_inactive (player_id, last_progressed)
                                  VALUES (?, ?)
-                                 ON CONFLICT(username) DO UPDATE SET last_progressed = excluded.last_progressed`,
-                                [player.username, lastProgressed.toISO()],
+                                 ON CONFLICT(player_id) DO UPDATE SET last_progressed = excluded.last_progressed`,
+                                [player.id, lastProgressed.toISO()],
                             );
                         } else {
-                            logger.warn(`Invalid date format for player: ${player.username}, Last Progress: ${player.lastChangedAt}`);
+                            logger.warn(`⚠️ Invalid date format for **${player.username}**. Last Progress: \`${player.lastChangedAt}\``);
                         }
                     } else {
-                        logger.info(`No progress data for player: ${player.username}`);
+                        logger.info(`📛 No progress data available for **${player.username}**.`);
                     }
                 }
 
-                logger.info('Successfully fetched and processed player data.');
-                return; // Success - exit function
+                logger.info('✅ Successfully fetched and processed player activity data.');
+                return;
             }
 
-            throw new Error('Failed to fetch group details or memberships data.');
+            throw new Error('❌ Failed to retrieve **group details or memberships data**.');
         } catch (error) {
             retryCount++;
 
             if (retryCount === maxRetries) {
-                logger.error(`Failed to fetch data after ${maxRetries} attempts: ${error.message}`);
+                logger.error(`🚨 **Data fetch failed** after \`${maxRetries}\` attempts: ${error.message}`);
                 throw error;
             }
 
             const delay = baseDelay * Math.pow(2, retryCount - 1);
-            logger.warn(`Attempt ${retryCount}/${maxRetries} failed. Retrying in ${delay}ms...`);
+            logger.warn(`⚠️ **Retry ${retryCount}/${maxRetries}**: Trying again in \`${delay}ms\`... ⏳`);
             await new Promise((resolve) => setTimeout(resolve, delay));
         }
     }
 }
 
 /**
- * 🎯 **Updates the Discord Voice Channel Name Based on Active Members**
+ * 🔄 **Updates Discord Voice Channel with Active Members Count**
  *
- * Retrieves the current active member count (calculated from player progress data),
- * and updates the name of the designated Discord voice channel to display the number of active clan members.
+ * - Fetches **current active members** from the database.
+ * - Updates the **Discord voice channel name** with the count.
  *
  * @async
  * @function updateVoiceChannel
- * @param {Discord.Client} client - The Discord client instance.
- * @returns {Promise<void>} Resolves when the voice channel name has been updated.
+ * @param {Discord.Client} client - 🤖 The **Discord bot client** instance.
+ * @returns {Promise<void>} Resolves when the voice channel is successfully updated.
  *
  * @example
- * // Update the voice channel with the current active member count:
+ * // Sync the active members count with the voice channel:
  * await updateVoiceChannel(client);
  */
 async function updateVoiceChannel(client) {
@@ -129,22 +134,21 @@ async function updateVoiceChannel(client) {
         if (guild) {
             const voiceChannel = guild.channels.cache.get(VOICE_CHANNEL_ID);
             if (voiceChannel) {
-                // Update activity data before calculating the count.
                 await updateActivityData(3, 5000);
                 const emoji = '🟢';
                 const count = await calculateProgressCount();
-                const newChannelName = `${emoji}Active Clannies: ${count}`;
+                const newChannelName = `${emoji} Active Clannies: ${count}`;
 
                 await voiceChannel.setName(newChannelName);
-                logger.info(`Voice channel name updated to ${newChannelName}`);
+                logger.info(`✅ **Voice channel updated** → \`${newChannelName}\``);
             } else {
-                logger.error('Voice channel not found');
+                logger.error('🚫 **Voice channel not found.**');
             }
         } else {
-            logger.error('Guild not found');
+            logger.error('🚨 **Guild not found.** Unable to update channel.');
         }
     } catch (error) {
-        logger.error(`Error updating voice channel name: ${error.message}`);
+        logger.error(`❌ **Error updating voice channel:** ${error.message}`);
     }
 }
 

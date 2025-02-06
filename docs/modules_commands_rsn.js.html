@@ -541,7 +541,7 @@ module.exports.execute = async (interaction) => {
     // Step 2: Check if RSN already exists under another user's account
     const existingUser = await getOne(
       `
-  SELECT user_id FROM registered_rsn
+  SELECT discord_id FROM registered_rsn
   WHERE LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
   LIMIT 1
   `,
@@ -559,7 +559,7 @@ module.exports.execute = async (interaction) => {
     const isRegistered = await getOne(
       `
   SELECT 1 FROM registered_rsn
-  WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
+  WHERE discord_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
   LIMIT 1
   `,
       [userId, normalizedRsn],
@@ -576,7 +576,7 @@ module.exports.execute = async (interaction) => {
     try {
       await runQuery(
         `
-    INSERT INTO registered_rsn (user_id, rsn, registered_at)
+    INSERT INTO registered_rsn (discord_id, rsn, registered_at)
     VALUES (?, ?, ?)
     `,
         [userId, rsn, new Date().toISOString()],

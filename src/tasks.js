@@ -48,13 +48,12 @@ require('dotenv').config();
  */
 module.exports = [
     {
-        // TODO: HAVE THIS DETERMINED BY COMPETITION START AND END TIMES FOR ACCURACY
         name: 'rotationTask',
         func: async (client) => {
             const competitionService = new CompetitionService(client);
             await competitionService.startNextCompetitionCycle();
         },
-        interval: 600 * 3, // Runs every 30 minutes (600*3 seconds)
+        interval: 600 * 3, // Runs every 30 minutes
         runOnStart: true,
         runAsTask: true,
     },
@@ -87,12 +86,9 @@ module.exports = [
                 logger.error('Guild not found');
                 return;
             }
-
-            // Fetch all distinct user IDs from registered RSNs.
-            const userIds = await getAll('SELECT DISTINCT user_id FROM registered_rsn');
-
-            for (const { user_id: userId } of userIds) {
-                await fetchAndProcessMember(guild, userId); // Process each member dynamically.
+            const userIds = await getAll('SELECT DISTINCT discord_id FROM registered_rsn');
+            for (const { discord_id: userId } of userIds) {
+                await fetchAndProcessMember(guild, userId);
             }
         },
         interval: 3600 * 1, // Runs every 1 hour

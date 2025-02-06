@@ -7,11 +7,8 @@
  *
  * **Key Features:**
  * - **Format Validation**: Ensures RSNs are between 1 and 12 characters long and contain only letters, numbers, and single spaces (no hyphens or underscores).
- * - **Forbidden Phrase Detection**: Rejects RSNs containing prohibited phrases like "Java", "Mod", or "Jagex".
+ * - **Forbidden Phrase Detection**: Rejects RSNs containing prohibited phrases like `Java`, `Mod`, or `Jagex`.
  * - **Feedback Messages**: Returns detailed validation messages indicating any issues with the RSN.
- *
- * External Dependencies:
- * - None.
  *
  * @module utils/validateRsn
  */
@@ -23,7 +20,7 @@
  * - Is a string.
  * - Has a length between 1 and 12 characters after trimming.
  * - Contains only letters, numbers, and single spaces between words (hyphens and underscores are not allowed).
- * - Does not contain forbidden phrases like "Java", "Mod", or "Jagex".
+ * - Does not contain forbidden phrases like `Java`, `Mod`, or `Jagex`.
  *
  * @function validateRsn
  * @param {string} rsn - The RSN to validate.
@@ -36,13 +33,13 @@
  * // Expected output: { valid: true, message: '' }
  *
  * const invalid = validateRsn('Player_One');
- * // Expected output: { valid: false, message: 'RSN can only contain letters, numbers, and single spaces between words. (If your RSN includes a hyphen or underscore, replace it with a space)' }
+ * // Expected output: { valid: false, message: '❌ **Invalid Format:** RSN can only contain letters, numbers, and single spaces between words. (Replace hyphens/underscores with spaces.)' }
  */
 const validateRsn = (rsn) => {
     if (typeof rsn !== 'string') {
         return {
             valid: false,
-            message: 'RSN must be a string.',
+            message: '❌ **Invalid RSN:** RSN must be a string.',
         };
     }
 
@@ -51,15 +48,14 @@ const validateRsn = (rsn) => {
     if (trimmedRsn.length < 1 || trimmedRsn.length > 12) {
         return {
             valid: false,
-            message: 'RSN must be between 1 and 12 characters long.',
+            message: '❌ **Invalid Length:** RSN must be between 1 and 12 characters long.',
         };
     }
 
-    // Allow letters, numbers, and single spaces between words. Disallow hyphens and underscores.
     if (!/^[a-zA-Z0-9]+(?: [a-zA-Z0-9]+)*$/.test(trimmedRsn)) {
         return {
             valid: false,
-            message: 'RSN can only contain letters, numbers, and single spaces between words. (If your RSN includes a hyphen or underscore, replace it with a space)',
+            message: '❌ **Invalid Format:** RSN can only contain letters, numbers, and single spaces between words. (Replace hyphens/underscores with spaces.)',
         };
     }
 
@@ -67,7 +63,7 @@ const validateRsn = (rsn) => {
     if (forbiddenPhrases.some((phrase) => trimmedRsn.toLowerCase().includes(phrase.toLowerCase()))) {
         return {
             valid: false,
-            message: 'RSN cannot contain forbidden phrases like "Java", "Mod", or "Jagex".',
+            message: '❌ **Forbidden Phrase Detected:** RSN cannot contain phrases like `Java`, `Mod`, or `Jagex`.',
         };
     }
 

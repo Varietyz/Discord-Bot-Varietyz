@@ -8,9 +8,9 @@
  * triggering Discord's rate limits.
  *
  * **Key Features:**
- * - **Efficient Message Deletion**: Deletes messages in batches of up to 100.
- * - **Rate Limit Management**: Introduces delays between deletions to prevent hitting Discord's rate limits.
- * - **Error Handling**: Logs and handles errors that occur during the deletion process.
+ * - **Efficient Message Deletion:** Deletes messages in batches of up to 100.
+ * - **Rate Limit Management:** Introduces delays between deletions to prevent hitting Discord's rate limits.
+ * - **Error Handling:** Logs and handles errors that occur during the deletion process.
  *
  * **External Dependencies:**
  * - `sleep` from `./sleepUtil`: Introduces delays between deletion batches.
@@ -42,23 +42,19 @@ const { sleep } = require('./sleepUtil');
 async function purgeChannel(channel) {
     let messagesToDelete = [];
     try {
-        // Continuously fetch and delete messages in batches of up to 100.
         do {
             const fetchedMessages = await channel.messages.fetch({ limit: 100 });
             if (fetchedMessages.size === 0) {
                 break;
             }
             messagesToDelete = fetchedMessages;
-            // Bulk delete fetched messages. The "true" flag ignores messages older than 14 days.
             await channel.bulkDelete(messagesToDelete, true);
-            logger.info(`[Util] Deleted ${messagesToDelete.size} messages.`);
+            logger.info(`✅ **Deleted:** \`${messagesToDelete.size}\` messages successfully.`);
 
-            // Delay 1 second between batches to avoid hitting rate limits.
             await sleep(1000);
         } while (messagesToDelete.size > 0);
     } catch (error) {
-        logger.error(`[Util] Error deleting messages: ${error}`);
-        // On error, delay slightly before exiting or retrying.
+        logger.error(`🚨 **Error:** Failed to delete messages: ${error}`);
         await sleep(2000);
     }
 }

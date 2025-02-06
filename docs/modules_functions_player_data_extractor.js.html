@@ -193,7 +193,7 @@ async function savePlayerDataToDb(playerName, rawData) {
 
   // 3) Delete old data for this player
   const playerId = playerName.toLowerCase().trim();
-  await runQuery(`DELETE FROM player_data WHERE player_id = ?`, [playerId]);
+  await runQuery(`DELETE FROM player_data WHERE rsn = ?`, [playerId]);
 
   // 4) Insert each key->value
   const now = new Date().toISOString();
@@ -246,7 +246,7 @@ async function fetchWithRetry(url, headers, retries = 10, delay = 10000) {
 async function loadRegisteredRsnData() {
   try {
     const query = `
-      SELECT user_id, rsn
+      SELECT discord_id, rsn
       FROM registered_rsn
     `;
     const rows = await getAll(query);
@@ -336,11 +336,11 @@ async function fetchAndSaveRegisteredPlayerData() {
  */
 async function removeNonMatchingPlayers(currentClanUsers) {
   // gather all distinct player_ids in 'player_data'
-  const allPlayers = await getAll("SELECT DISTINCT player_id FROM player_data");
+  const allPlayers = await getAll("SELECT DISTINCT rsn FROM player_data");
 
   for (const { player_id } of allPlayers) {
     if (!currentClanUsers.has(player_id)) {
-      await runQuery("DELETE FROM player_data WHERE player_id = ?", [
+      await runQuery("DELETE FROM player_data WHERE rsn = ?", [
         player_id,
       ]);
       logger.info(`Removed data from DB for player: ${player_id}`);

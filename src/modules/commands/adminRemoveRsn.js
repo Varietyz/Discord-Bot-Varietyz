@@ -3,15 +3,22 @@
  * @fileoverview
  * **Admin_remove_rsn Command** 🔥
  *
- * Defines the `/admin_remove_rsn` slash command for the Varietyz Bot.
- * This administrator-only command allows administrators to remove a registered RuneScape Name (RSN)
- * from a specified guild member's account. The command validates inputs, checks for the RSN's existence,
- * and provides a confirmation prompt before executing the removal. It also supports autocomplete for the
- * `target` and `rsn` options.
+ * This command defines the `/admin_remove_rsn` slash command for the Varietyz Bot.
+ * It allows administrators to remove a registered RuneScape Name (RSN) from a specified guild member's account.
+ * The command validates inputs, verifies that the RSN exists in the target user's registrations, and provides
+ * a confirmation prompt before executing the removal. It also supports autocomplete for both the `target` and `rsn` options.
  *
- * **External Dependencies:**
- * - **Discord.js**: For handling slash commands, creating embeds, and managing interactive buttons.
- * - **SQLite**: For interacting with the registered RSN database.
+ * ---
+ *
+ * 🔹 **Key Features:**
+ * - **Input Validation:** Ensures the command is used in a guild and the target user exists.
+ * - **RSN Verification:** Checks that the provided RSN is registered for the target user.
+ * - **Interactive Confirmation:** Uses interactive buttons for confirming or canceling the removal.
+ * - **User Notification:** Sends a DM to the target user after successful removal.
+ *
+ * 🔗 **External Dependencies:**
+ * - **Discord.js:** For handling slash commands, embeds, and interactive buttons.
+ * - **SQLite:** For interacting with the registered RSN database.
  *
  * @module modules/commands/adminRemoveRsn
  */
@@ -31,24 +38,25 @@ module.exports = {
         .addStringOption((option) => option.setName('rsn').setDescription('The RSN to remove.').setRequired(true).setAutocomplete(true)),
 
     /**
-     * 🎯 Executes the `/admin_remove_rsn` command.
+     * 🎯 **Executes the /admin_remove_rsn Command**
      *
-     * This function handles the removal of a registered RSN from a specified guild member.
+     * This function removes a registered RSN from a specified guild member's account.
      * It performs the following steps:
      * 1. Retrieves the target user and the RSN to remove from the command options.
-     * 2. Validates that the command is used in a guild and that the target user exists.
+     * 2. Validates that the command is executed in a guild and that the target user exists.
      * 3. Fetches the target user's registered RSNs and normalizes them.
-     * 4. Checks whether the provided RSN exists in the target user's registered RSNs.
+     * 4. Checks whether the provided RSN exists in the target user's registrations.
      * 5. Sends a confirmation prompt with interactive buttons (Confirm/Cancel).
-     * 6. If confirmed, removes the RSN from the database and sends a DM to the target user.
+     * 6. Upon confirmation, removes the RSN from the database and sends a DM to the target user.
      *
      * @async
      * @function execute
-     * @param {Discord.CommandInteraction} interaction - The interaction object representing the command.
+     * @param {Discord.CommandInteraction} interaction - The interaction object representing the command execution.
      * @returns {Promise<void>} Resolves when the command execution is complete.
      *
      * @example
-     * // When an administrator runs /admin_remove_rsn, this function is invoked.
+     * // 📌 When an admin runs:
+     * // /admin_remove_rsn target:<UserID> rsn:"OldRSN"
      * await execute(interaction);
      */
     async execute(interaction) {
@@ -59,7 +67,7 @@ module.exports = {
             const guild = interaction.guild;
             if (!guild) {
                 return await interaction.reply({
-                    content: '❌ This command can only be used within a guild.',
+                    content: '❌ **Error:** This command can only be used within a guild.',
                     flags: 64,
                 });
             }
@@ -68,36 +76,34 @@ module.exports = {
 
             if (!targetUser) {
                 return await interaction.reply({
-                    content: '❌ The specified target user could not be found. Please check the input.',
+                    content: '❌ **Error:** The specified target user could not be found. Please check the input.',
                     flags: 64,
                 });
             }
 
             const targetUserID = targetUser.id;
 
-            // Log the administrator's action
-            logger.info(`Admin ${interaction.user.id} initiated RSN removal for user ${targetUserID}: "${rsnInput}"`);
+            logger.info(`👮 Admin \`${interaction.user.id}\` initiated RSN removal for user \`${targetUserID}\`: "\`${rsnInput}\`"`);
 
-            const userRSNs = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [targetUserID]);
+            const userRSns = await getAll('SELECT rsn FROM registered_rsn WHERE discord_id = ?', [targetUserID]);
 
-            if (!userRSNs.length) {
+            if (!userRSns.length) {
                 return await interaction.reply({
                     content: `⚠️ <@${targetUserID}> has no registered RSNs.`,
                     flags: 64,
                 });
             }
 
-            const normalizedUserRSNs = userRSNs.map((row) => normalizeRsn(row.rsn));
+            const normalizedUserRSns = userRSns.map((row) => normalizeRsn(row.rsn));
             const normalizedRsnInput = normalizeRsn(rsnInput);
 
-            if (!normalizedUserRSNs.includes(normalizedRsnInput)) {
+            if (!normalizedUserRSns.includes(normalizedRsnInput)) {
                 return await interaction.reply({
-                    content: `⚠️ The RSN \`${rsnInput}\` is not registered for <@${targetUserID}>.`,
+                    content: `⚠️ **Notice:** The RSN \`${rsnInput}\` is not registered for <@${targetUserID}>.`,
                     flags: 64,
                 });
             }
 
-            // Prompt for confirmation before removal.
             const confirmationRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('confirm_remove_rsn').setLabel('Confirm').setStyle(ButtonStyle.Danger),
                 new ButtonBuilder().setCustomId('cancel_remove_rsn').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
@@ -121,12 +127,12 @@ module.exports = {
                     await runQuery(
                         `
                         DELETE FROM registered_rsn
-                        WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
+                        WHERE discord_id = ? AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) = ?
                         `,
                         [targetUserID, normalizedRsnInput],
                     );
 
-                    logger.info(`RSN "${rsnInput}" removed from user ${targetUserID} by admin ${interaction.user.id}.`);
+                    logger.info(`✅ RSN "\`${rsnInput}\`" removed from user \`${targetUserID}\` by admin \`${interaction.user.id}\`.`);
 
                     const removalEmbed = new EmbedBuilder()
                         .setColor(0xff0000)
@@ -136,17 +142,17 @@ module.exports = {
                         .setTimestamp();
 
                     await targetUser.send({ embeds: [removalEmbed] }).catch(() => {
-                        logger.warn(`Failed to send RSN removal DM to user ${targetUserID}`);
+                        logger.warn(`⚠️ Failed to send RSN removal DM to user \`${targetUserID}\`.`);
                     });
 
                     await i.update({
-                        content: `✅ The RSN \`${rsnInput}\` has been successfully removed from <@${targetUserID}>.`,
+                        content: `✅ **Success:** The RSN \`${rsnInput}\` has been successfully removed from <@${targetUserID}>.`,
                         components: [],
                         flags: 64,
                     });
                 } else {
                     await i.update({
-                        content: '❌ RSN removal has been canceled.',
+                        content: '❌ **Canceled:** RSN removal has been canceled.',
                         components: [],
                         flags: 64,
                     });
@@ -156,22 +162,22 @@ module.exports = {
             collector.on('end', async (collected, reason) => {
                 if (reason === 'time' && collected.size === 0) {
                     await interaction.editReply({
-                        content: '⌛ Confirmation timed out. RSN removal has been canceled.',
+                        content: '⌛ **Timeout:** Confirmation timed out. RSN removal has been canceled.',
                         components: [],
                         flags: 64,
                     });
                 }
             });
         } catch (error) {
-            logger.error(`Error executing /admin_remove_rsn command: ${error.message}`);
+            logger.error(`❌ Error executing /admin_remove_rsn command: ${error.message}`);
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp({
-                    content: '❌ An error occurred while processing the command.',
+                    content: '❌ **Error:** An error occurred while processing the command. Please try again later.',
                     flags: 64,
                 });
             } else {
                 await interaction.reply({
-                    content: '❌ An error occurred while processing the command.',
+                    content: '❌ **Error:** An error occurred while processing the command. Please try again later.',
                     flags: 64,
                 });
             }
@@ -179,20 +185,21 @@ module.exports = {
     },
 
     /**
-     * 🎯 Provides autocomplete suggestions for the `/admin_remove_rsn` command.
+     * 🎯 **Handles Autocomplete for the /admin_remove_rsn Command**
      *
-     * For the `target` option, it retrieves a list of unique user IDs from the registered RSNs,
-     * fetches the corresponding guild members, and returns suggestions based on the input.
+     * Provides autocomplete suggestions for the `target` and `rsn` options.
      *
-     * For the `rsn` option, it filters the target user's registered RSNs based on the input.
+     * - For the `target` option: Retrieves a list of unique user IDs from registered RSNs,
+     * fetches the corresponding guild members, and returns suggestions based on input.
+     * - For the `rsn` option: Filters the target user's registered RSNs based on the input.
      *
      * @async
      * @function autocomplete
      * @param {Discord.AutocompleteInteraction} interaction - The autocomplete interaction object.
-     * @returns {Promise<void>} Resolves when autocomplete suggestions have been sent.
+     * @returns {Promise<void>} Resolves when autocomplete suggestions are sent.
      *
      * @example
-     * // Invoked when a user types in the `target` or `rsn` field.
+     * // When a user types in the `target` or `rsn` field:
      * await autocomplete(interaction);
      */
     async autocomplete(interaction) {
@@ -202,37 +209,34 @@ module.exports = {
             if (focusedOption.name === 'target') {
                 const input = focusedOption.value.toLowerCase();
 
-                // Fetch all unique user IDs from the registered RSN table.
-                const rsnUsers = await getAll('SELECT DISTINCT user_id FROM registered_rsn', []);
-                const userIds = rsnUsers.map((row) => row.user_id);
+                const rsnUsers = await getAll('SELECT DISTINCT discord_id FROM registered_rsn', []);
+                const userIds = rsnUsers.map((row) => row.discord_id);
 
                 const guild = interaction.guild;
                 if (!guild) return await interaction.respond([]);
 
-                // Fetch guild members corresponding to the user IDs.
                 const members = await guild.members.fetch({ user: userIds }).catch(() => new Map());
 
                 const choices = await Promise.all(
                     Array.from(members.values()).map(async (member) => {
-                        const userId = member.user.id;
+                        const discordId = member.user.id;
                         const username = member.user.username.toLowerCase();
                         const discriminator = member.user.discriminator.toLowerCase();
                         const tag = `${member.user.username}#${member.user.discriminator}`.toLowerCase();
 
-                        const rsns = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userId]);
+                        const rsns = await getAll('SELECT rsn FROM registered_rsn WHERE discord_id = ?', [discordId]);
                         const normalizedRsns = rsns.map((row) => ({
                             original: row.rsn,
                             normalized: normalizeRsn(row.rsn),
                         }));
 
-                        // Match the input against the normalized RSNs.
                         const matchingRsns = normalizedRsns.filter((rsn) => rsn.normalized.includes(input));
                         const rsnDisplay = matchingRsns.length > 0 ? matchingRsns.map((rsn) => rsn.original).join(', ') : 'No RSN matches';
 
-                        if (username.includes(input) || discriminator.includes(input) || tag.includes(input) || userId.includes(input) || matchingRsns.length > 0) {
+                        if (username.includes(input) || discriminator.includes(input) || tag.includes(input) || discordId.includes(input) || matchingRsns.length > 0) {
                             return {
-                                name: `${rsnDisplay} (${userId}) - ${member.user.username}`,
-                                value: userId,
+                                name: `${rsnDisplay} (${discordId}) - ${member.user.username}`,
+                                value: discordId,
                             };
                         }
 
@@ -255,7 +259,7 @@ module.exports = {
                     `
                     SELECT rsn 
                     FROM registered_rsn 
-                    WHERE user_id = ? 
+                    WHERE discord_id = ? 
                     AND LOWER(REPLACE(REPLACE(rsn, '-', ' '), '_', ' ')) LIKE ?`,
                     [targetUserID, `%${normalizedInput}%`],
                 );
@@ -268,7 +272,7 @@ module.exports = {
                 await interaction.respond(choices.slice(0, 25));
             }
         } catch (error) {
-            logger.error(`Error in autocomplete for /admin_remove_rsn: ${error.message}`);
+            logger.error(`❌ Error in autocomplete for /admin_remove_rsn: ${error.message}`);
             await interaction.respond([]);
         }
     },

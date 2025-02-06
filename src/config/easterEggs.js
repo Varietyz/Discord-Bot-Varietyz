@@ -27,7 +27,6 @@
  */
 
 module.exports = {
-    // Easter egg RSNs and their respective responses
     easterEggs: {
         zezima: {
             title: '🌟 Zezima',

@@ -27,7 +27,7 @@ function normalizeString(str) {
     return str
         .toLowerCase()
         .trim()
-        .replace(/[\s_-]+/g, '_'); // Replace spaces, dashes, and underscores with a single underscore
+        .replace(/[\s_-]+/g, '_');
 }
 
 /**
@@ -47,32 +47,29 @@ function normalizeString(str) {
  */
 async function getImagePath(metric) {
     try {
-        // Normalize the input metric.
         const normalizedMetric = normalizeString(metric);
-        logger.debug(`Looking up file path for normalized metric: "${normalizedMetric}"`);
+        //logger.debug(`🔍 Looking up file path for normalized metric: "${normalizedMetric}"`);
 
-        // Fetch all entries for debugging purposes.
         const allEntries = await db.getAll('SELECT file_name, file_path FROM image_cache');
-        logger.debug(`Current database entries:\n${JSON.stringify(allEntries, null, 2)}`);
+        //logger.debug(`📊 Current database entries:\n${JSON.stringify(allEntries, null, 2)}`);
 
-        // Query the database with enhanced normalization.
         const query = `
             SELECT file_path 
             FROM image_cache 
             WHERE REPLACE(TRIM(LOWER(file_name)), '-', '_') = ?
         `;
-        logger.debug(`Executing query: ${query}, with parameter: "${normalizedMetric}"`);
+        //logger.debug(`🔗 Executing query: ${query}, with parameter: "${normalizedMetric}"`);
         const result = await db.getOne(query, [normalizedMetric]);
 
         if (!result) {
-            logger.warn(`No matching file_path found for metric: "${normalizedMetric}"`);
+            logger.warn(`⚠️ No matching file path found for metric: "${normalizedMetric}"`);
             throw new Error(`No file path found for metric: "${metric}"`);
         }
 
-        logger.debug(`Found file path: "${result.file_path}" for metric: "${normalizedMetric}"`);
+        //logger.debug(`✅ Found file path: "${result.file_path}" for metric: "${normalizedMetric}"`);
         return result.file_path;
     } catch (err) {
-        logger.error(`Error retrieving file path for metric "${metric}": ${err.message}`);
+        logger.error(`🚨 Error retrieving file path for metric "${metric}": ${err.message}`);
         throw err;
     }
 }
@@ -96,44 +93,38 @@ async function getImagePath(metric) {
  * const { embeds, files } = await createCompetitionEmbed(client, 'SOTW', 'mining', '2023-03-01T12:00:00Z', '2023-03-08T23:59:00Z', 123);
  */
 const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, competitionId) => {
-    // Determine competition title and fallback.
     const competitionTitle = type === 'SOTW' ? '<:Total_Level:1127669463613976636> Skill of the Week' : '<:Slayer:1127658069984288919> Boss of the Week';
     const titleFallback = type === 'SOTW' ? '⚔️ Skill of the Week' : '🐉 Boss of the Week';
     const displayedTitle = competitionTitle.includes('<:') ? competitionTitle : titleFallback;
 
-    logger.debug(`Creating competition embed for metric: "${metric}"`);
-    logger.debug(`Competition type: "${type}", Starts: "${startsAt}", Ends: "${endsAt}"`);
+    //logger.debug(`🔍 Creating competition embed for metric: "${metric}"`);
+    //logger.debug(`ℹ️ Competition type: "${type}", Starts: "${startsAt}", Ends: "${endsAt}"`);
 
-    // Determine the path to the resources folder.
     const resourcesFolder = path.resolve(__dirname, '../../resources');
 
-    // Determine the local image path for the thumbnail.
     const imagePath = path.join(resourcesFolder, 'skills_bosses', `${metric.toLowerCase()}.png`);
-    logger.debug(`Resolved local image path: "${imagePath}"`);
+    //logger.debug(`📁 Resolved local image path: "${imagePath}"`);
 
-    // Attempt to create an attachment for the image.
     let imageAttachment;
     try {
         imageAttachment = new AttachmentBuilder(imagePath, { name: `${metric}.png` });
     } catch (err) {
-        logger.warn(`No image found for metric "${metric}". Using default.`);
+        logger.warn(`⚠️ No image found for metric "${metric}". Using default image.`);
         imageAttachment = new AttachmentBuilder(path.join(resourcesFolder, 'default.png'), { name: 'default.png' });
     }
 
-    // Attempt to fetch the guild for emoji retrieval.
     let guild;
     try {
         guild = await client.guilds.fetch(process.env.GUILD_ID);
-        logger.debug(`✅ Successfully fetched guild: ${guild.name}`);
+        //logger.debug(`✅ Successfully fetched guild: ${guild.name}`);
     } catch (err) {
         logger.warn(`⚠️ Failed to fetch guild. Reason: ${err.message}`);
         guild = null;
     }
 
-    // Fetch the custom emoji for the metric, with a fallback.
     let metricEmoji = '';
     if (guild) {
-        const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_'); // Normalize metric name.
+        const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_');
         const foundEmoji = guild.emojis.cache.find((e) => e.name.toLowerCase() === normalizedMetric);
 
         if (foundEmoji && foundEmoji.available) {
@@ -147,14 +138,12 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
         metricEmoji = type === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️';
     }
 
-    // Format the metric name to be title-cased.
     const formattedMetric = metric
         .toLowerCase()
         .split('_')
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
-    // Format the start and end timestamps.
     const start = formatTimestamp(startsAt);
     const end = formatTimestamp(endsAt);
 
@@ -219,7 +208,6 @@ function buildLeaderboardDescription(participations, competitionType, guild) {
     participations.slice(0, 10).forEach((p, idx) => {
         const gained = p.progress.gained.toLocaleString();
         const username = p.player.displayName;
-        // If desired, add a DB lookup to retrieve Discord mentions.
         const userDisplay = username;
         desc += `**${idx + 1}.** ${userDisplay} — \`${gained}\`\n`;
     });
@@ -262,7 +250,7 @@ const createVotingDropdown = (options, type) => {
         .setCustomId('vote_dropdown')
         .setPlaceholder(type === 'SOTW' ? '☝️ Select a skill to vote' : '☝️ Select a boss to vote')
         .addOptions(dropdownOptions);
-    logger.debug(type);
+    //logger.debug(`🎯 Competition type: ${type}`);
     return new ActionRowBuilder().addComponents(selectMenu);
 };
 

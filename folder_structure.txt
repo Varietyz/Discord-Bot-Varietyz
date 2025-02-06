@@ -15,18 +15,19 @@
 ├─ 📄 README.md
 ├─ 📂 src
 │   ├─ 📂 api
-│   │   ├─ 📂 openai
-│   │   │   ├─ 📄 aiChat.js
-│   │   │   ├─ 📄 aiUtils.js
-│   │   │   └─ 📄 openaiClient.js
 │   │   └─ 📂 wise_old_man
 │   │       └─ 📄 apiClient.js
 │   ├─ 📂 config
 │   │   ├─ 📄 constants.js
 │   │   └─ 📄 easterEggs.js
 │   ├─ 📂 data
+│   │   ├─ 📄 data.rar
 │   │   ├─ 📄 database.sqlite
-│   │   └─ 📄 database.sqlite-journal
+│   │   ├─ 📄 messages.db
+│   │   ├─ 📄 messages.db-shm
+│   │   ├─ 📄 messages.db-wal
+│   │   └─ 📂 tools
+│   │       └─ 📄 sortDatabase.js
 │   ├─ 📄 main.js
 │   ├─ 📂 migrations
 │   │   ├─ 📄 initializeCompetitionTables.js
@@ -49,13 +50,13 @@
 │   │   │   ├─ 📄 removeRsn.js
 │   │   │   └─ 📄 rsn.js
 │   │   ├─ 📂 events
+│   │   │   └─ 📄 clanchatDatabase.js
 │   │   ├─ 📂 services
 │   │   │   ├─ 📄 activeMembers.js
 │   │   │   ├─ 📄 autoRoles.js
 │   │   │   ├─ 📂 competitionServices
 │   │   │   │   ├─ 📄 alltimeCompetitionWinners.js
 │   │   │   │   ├─ 📄 competitionCreator.js
-│   │   │   │   ├─ 📄 competitionService copy.js
 │   │   │   │   ├─ 📄 competitionService.js
 │   │   │   │   ├─ 📄 competitionValidator.js
 │   │   │   │   ├─ 📄 competitionWinners.js
@@ -77,12 +78,14 @@
 │   │       ├─ 📄 normalizeRsn.js
 │   │       ├─ 📄 purgeChannel.js
 │   │       ├─ 📄 rankUtils.js
+│   │       ├─ 📄 slashCommandHandler.js
 │   │       ├─ 📄 sleepUtil.js
 │   │       ├─ 📄 tallyVotes.js
 │   │       └─ 📄 validateRsn.js
 │   ├─ 📂 resources
 │   ├─ 📂 scripts
 │   │   ├─ 📄 create_db.js
+│   │   ├─ 📄 drop_db.js
 │   │   └─ 📄 populateImageCache.js
 │   └─ 📄 tasks.js
 ├─ 📄 src.rar

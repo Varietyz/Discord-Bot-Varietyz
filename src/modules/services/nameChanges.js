@@ -1,374 +1,370 @@
+/* eslint-disable jsdoc/require-returns */
 // @ts-nocheck
+
 /**
- * @fileoverview
- * **Name Change Processor Utilities** 🔄
+ * # Name Changes Service (Optimized with getPlayerNames)
  *
- * This module provides utility functions for processing player name changes in the Varietyz Bot.
- * It interacts with the Wise Old Man (WOM) API to fetch recent name changes, updates the databases
- * with the new RSNs, and handles conflict resolution between users. It now extends name changes
- * to all occurrences across multiple databases and tables.
+ * This module:
+ * 1. Fetches newly "approved" name changes from WOM (by group).
+ * 2. Stores them in SQLite.
+ * 3. Determines final RSNs.
+ * 4. Updates the `registered_rsn` table in one pass, with conflict resolution
+ * leveraging WOM's getPlayerNames for ownership checks.
+ * 5. Updates references across `database.sqlite` and `messages.db`.
  *
- * **Key Features:**
- * - **Name Change Fetching**: Retrieves recent name changes from the WOM API.
- * - **Database Management**: Saves name change records to the `recent_name_changes` table and updates the `registered_rsn` table.
- * - **Global Update**: Propagates name changes in all applicable tables in both `database.sqlite` and `messages.db`.
- * - In `database.sqlite`: updates columns matching **username**, **name**, **player_id**, or **rsn**
- * (excluding the `recent_name_changes` and `skills_bosses` tables).
- * - In `messages.db`: updates columns named **user**.
- * - **Conflict Resolution**: Handles cases where the new RSN already exists for another user and resolves conflicts.
- * - **Discord Notifications**: Sends messages to a specified channel notifying users of successful updates and conflict resolutions.
- * - **Rate-Limiting and Dependencies**: Ensures rate-limited API requests and processes name changes in the correct order.
- *
- * **External Dependencies:**
- * - **Wise Old Man (WOM) API**: Fetches player name changes.
- * - **Discord.js**: Sends notifications and updates to Discord channels.
- * - **dbUtils**: Manages database operations for the main database (`database.sqlite`).
- * - **messagesDbUtils**: Manages database operations for `messages.db`.
- *
- * @module modules/services/nameChanges
+ * Key functions:
+ * - processNameChanges(client): main entry point
+ * - resolveConflictByNameHistory(playerId, finalRsn): checks if finalRsn is in the user's chain
  */
 
-const WOMApiClient = require('../../api/wise_old_man/apiClient');
-const logger = require('../utils/logger');
+const WOMApiClient = require('../../api/wise_old_man/apiClient'); // from @wise-old-man/utils or custom
 const { EmbedBuilder } = require('discord.js');
+const logger = require('../utils/logger');
 const { NAME_CHANGE_CHANNEL_ID } = require('../../config/constants');
-const { getAll, runQuery } = require('../utils/dbUtils'); // For main database (database.sqlite)
+const { globalHistoricalRenameFromRecentChanges } = require('../utils/forceDbNameChange'); // Force messages.db Name Changes
+
+const { getAll, runQuery, getOne } = require('../utils/dbUtils');
 const {
     messages: { getAll: getAllMessages, runQuery: runMessagesQuery },
-} = require('../utils/dbUtils'); // For messages.db
+} = require('../utils/dbUtils');
 
 /**
- * Represents a name change record.
- *
- * @typedef {Object} NameChange
- * @property {string} oldName - The original RuneScape Name (RSN) before the change.
- * @property {string} newName - The new RSN after the change.
- * @property {number} resolvedAt - The timestamp when the name change was resolved.
- */
-
-/**
- * 🎯 **Fetches Recent Name Changes from the WOM API**
- *
- * Retrieves recent name changes from the WOM API for a specific group.
- *
- * @async
- * @function fetchNameChanges
- * @returns {Promise<NameChange[]>} A promise that resolves to an array of name change records.
- *
- * @example
- * const nameChanges = await fetchNameChanges();
- * logger.info(nameChanges);
+ * ### fetchNameChanges
+ * Get all "approved" name changes from WOM's group endpoint.
+ * Merges them into an array of:
+ * { player_id, oldRsn, newRsn, resolvedAt }
  */
 async function fetchNameChanges() {
     try {
-        const nameChanges = await WOMApiClient.request('groups', 'getGroupNameChanges', WOMApiClient.groupId);
-        return nameChanges.map((change) => ({
-            oldName: change.oldName,
-            newName: change.newName,
-            resolvedAt: change.resolvedAt,
-        }));
+        const response = await WOMApiClient.request('groups', 'getGroupNameChanges', WOMApiClient.groupId);
+        return response
+            .filter((change) => change.status === 'approved')
+            .map((change) => ({
+                player_id: change.playerId,
+                oldRsn: change.oldName,
+                newRsn: change.newName,
+                resolvedAt: change.resolvedAt,
+            }));
     } catch (error) {
-        logger.error(`[fetchNameChanges] Failed to fetch data: ${error.message}`);
+        logger.error(`❌ [fetchNameChanges] Error: ${error.message}`);
         return [];
     }
 }
 
 /**
- * 🎯 **Saves Name Changes to the Database**
- *
- * Clears the `recent_name_changes` table and inserts new name change records.
- *
- * @async
- * @function saveToDatabase
- * @param {NameChange[]} nameChanges - Array of name change objects to be saved.
- * @returns {Promise<void>} Resolves when the operation is complete.
- *
- * @example
- * await saveToDatabase(nameChanges);
+ * ### appendNameChangesToDb
+ * Appends the new name changes to `recent_name_changes` if they're not already there.
+ * @param nameChanges
  */
-async function saveToDatabase(nameChanges) {
-    const deleteAllQuery = 'DELETE FROM recent_name_changes';
+async function appendNameChangesToDb(nameChanges) {
+    if (!nameChanges || !nameChanges.length) return;
+    await runQuery(`
+        DROP TABLE IF EXISTS recent_name_changes
+        `);
+
+    await runQuery(`
+        CREATE TABLE recent_name_changes (
+  idx INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id INTEGER NOT NULL,
+  old_rsn TEXT NOT NULL,
+  new_rsn TEXT NOT NULL,
+  resolved_at INTEGER NOT NULL
+);
+ `);
+    logger.info('🔄 Refreshed recent_name_changes & collecting data..');
+    const insertSQL = `
+    INSERT OR IGNORE INTO recent_name_changes (player_id, old_rsn, new_rsn, resolved_at)
+    VALUES (?, ?, ?, ?)
+  `;
+
     try {
-        await runQuery(deleteAllQuery);
-        logger.info('[saveToDatabase] Cleared existing rows from recent_name_changes.');
-    } catch (error) {
-        logger.error(`[saveToDatabase] Error clearing table: ${error.message}`);
-        return;
-    }
-
-    const insertQuery = `
-        INSERT INTO recent_name_changes (old_name, new_name, resolved_at)
-        VALUES (?, ?, ?)
-    `;
-
-    for (const { oldName, newName, resolvedAt } of nameChanges) {
-        try {
-            await runQuery(insertQuery, [oldName, newName, resolvedAt]);
-        } catch (error) {
-            logger.error(`[saveToDatabase] Error saving name change: ${oldName} -> ${newName} | ${error.message}`);
+        let insertedCount = 0;
+        for (const { player_id, oldRsn, newRsn, resolvedAt } of nameChanges) {
+            const result = await runQuery(insertSQL, [player_id, oldRsn, newRsn, resolvedAt]);
+            if (result.changes === 1) {
+                insertedCount++;
+            }
         }
+        logger.info(`✅ [appendNameChangesToDb] Inserted ${insertedCount} new name changes (out of ${nameChanges.length}).`);
+    } catch (err) {
+        logger.error(`❌ [appendNameChangesToDb] Failed: ${err.message}`);
     }
 }
 
 /**
- * 🎯 **Updates the Registered RSN Based on Name Changes**
- *
- * Updates the `registered_rsn` table with new RSN mappings based on a name change.
- * Handles conflicts where the new RSN already exists for the same or a different user,
- * sends Discord notifications for successful updates/conflict resolutions, and then propagates
- * the change across all databases.
- *
- * @async
- * @function updateRegisteredRSN
- * @param {string} oldName - The old RuneScape Name (RSN) to be updated.
- * @param {string} newName - The new RSN to replace the old one.
- * @param {Discord.GuildChannelManager} channelManager - Discord channel manager for sending messages.
- * @returns {Promise<boolean>} Resolves to true if the RSN was updated, false otherwise.
- *
- * @example
- * const updated = await updateRegisteredRSN('OldName', 'NewName', client.channels);
- * if (updated) {
- *   logger.info('RSN updated successfully.');
- * }
+ * ### getFinalNamesMap
+ * Returns a mapping:  { [player_id]: { finalRsn, resolvedAt } },
+ * picking the row with the largest resolvedAt from recent_name_changes
  */
-async function updateRegisteredRSN(oldName, newName, channelManager) {
-    if (oldName.toLowerCase() === newName.toLowerCase()) {
-        return false; // Skip identical names (case-insensitive)
-    }
+async function getFinalNamesMap() {
+    const rows = await getAll(`
+    SELECT player_id, old_rsn, new_rsn, resolved_at
+    FROM recent_name_changes
+  `);
 
-    try {
-        // Fetch the `user_id` associated with the `oldName`
-        const oldNameQuery = `
-            SELECT user_id, rsn
-            FROM registered_rsn
-            WHERE LOWER(rsn) = LOWER(?)
-        `;
-        const oldNameEntry = await getAll(oldNameQuery, [oldName]);
+    /** @type {{ [playerId: number]: { finalRsn: string, resolvedAt: number }}} */
+    const latestByPlayer = {};
 
-        if (oldNameEntry.length === 0) {
-            logger.warn(`[updateRegisteredRSN] No entry found for oldName: "${oldName}".`);
-            return false;
+    for (const row of rows) {
+        const { player_id, new_rsn, resolved_at } = row;
+        if (!latestByPlayer[player_id] || resolved_at > latestByPlayer[player_id].resolvedAt) {
+            latestByPlayer[player_id] = {
+                finalRsn: new_rsn,
+                resolvedAt: resolved_at,
+            };
         }
+    }
+    return latestByPlayer;
+}
 
-        const { user_id: oldUserId } = oldNameEntry[0];
+/**
+ * ### getUserNamesHistory
+ * Uses WOM's getPlayerNames to fetch the full name-change history for a given RSN.
+ * Returns an array of objects with { oldName, newName, resolvedAt } or empty if not found.
+ * @param username
+ */
+async function getUserNamesHistory(username) {
+    try {
+        const nameChanges = await WOMApiClient.players.getPlayerNames(username);
+        return nameChanges;
+    } catch (err) {
+        logger.warn(`⚠️ [getUserNamesHistory] Could not fetch names for '${username}': ${err.message}`);
+        return [];
+    }
+}
 
-        // Check if `newName` already exists for the same user
-        const newNameQuery = `
-            SELECT user_id, rsn
-            FROM registered_rsn
-            WHERE LOWER(rsn) = LOWER(?) AND user_id = ?
-        `;
-        const newNameEntry = await getAll(newNameQuery, [newName, oldUserId]);
+/**
+ * ### userHasRsnInHistory
+ * Checks if `finalRsn` is found anywhere in the user's WOM name history (oldName or newName).
+ * This indicates the user truly used/owns that name at some point.
+ *
+ * @param {string} knownRsn - The user's current (or last-known) RSN
+ * @param {string} finalRsn - The new RSN they want to claim
+ * @returns {Promise<boolean>}
+ */
+async function userHasRsnInHistory(knownRsn, finalRsn) {
+    const history = await getUserNamesHistory(knownRsn);
+    if (!history || !history.length) return false;
 
-        if (newNameEntry.length > 0) {
-            // If `newName` exists for the same user, remove the old RSN.
-            const deleteOldNameQuery = `
-                DELETE FROM registered_rsn
-                WHERE user_id = ? AND LOWER(rsn) = LOWER(?)
-            `;
-            await runQuery(deleteOldNameQuery, [oldUserId, oldName]);
-
-            logger.info(`[updateRegisteredRSN] Removed outdated RSN: "${oldName}" for user_id ${oldUserId} as "${newName}" already exists.`);
-            // Send a confirmation embed for successful removal and update.
-            if (channelManager) {
-                const channel = await channelManager.fetch(NAME_CHANGE_CHANNEL_ID).catch(() => null);
-                if (channel) {
-                    const embed = new EmbedBuilder()
-                        .setTitle('🔄 RSN Name Change')
-                        .setDescription(`<@${oldUserId}>\nYour RSN has been successfully updated:\n\n📛 **Old Name:** \`${oldName}\`\n🔗 **New Name:** \`${newName}\``)
-                        .setColor(0x3498db)
-                        .setTimestamp();
-
-                    await channel.send({ embeds: [embed] });
-                }
-            }
-            // Propagate the change across all databases.
-            await updateNameEverywhere(oldName, newName);
+    const finalLower = finalRsn.toLowerCase();
+    for (const entry of history) {
+        if (entry.oldName.toLowerCase() === finalLower || entry.newName.toLowerCase() === finalLower) {
             return true;
         }
+    }
+    return false;
+}
 
-        // Check for conflicts: If `newName` exists for a different user, resolve the conflict.
-        const conflictQuery = `
-            SELECT user_id, rsn
-            FROM registered_rsn
-            WHERE LOWER(rsn) = LOWER(?)
-        `;
-        const newNameConflicts = await getAll(conflictQuery, [newName]);
+/**
+ * ### resolveConflictByNameHistory
+ * When we detect a conflict, we check if the requesting user truly has "finalRsn" in their
+ * official name history from WOM. If yes, we remove/replace the conflict record. If no, we block.
+ *
+ * @param {number} requestingPlayerId - The local DB "player_id" for the user who wants to rename
+ * @param {string} oldRsn - The user’s old RSN (from our DB)
+ * @param {string} finalRsn - The new RSN they'd like
+ * @returns {Promise<boolean>} - True if conflict is resolved in favor of the requesting user,
+ * False if we block the rename.
+ */
+async function resolveConflictByNameHistory(requestingPlayerId, oldRsn, finalRsn) {
+    const conflict = await getOne(
+        `
+    SELECT player_id, rsn 
+    FROM registered_rsn
+    WHERE LOWER(rsn) = LOWER(?)
+      AND player_id != ?
+  `,
+        [finalRsn, requestingPlayerId],
+    );
 
-        for (const { user_id: newUserId, rsn } of newNameConflicts) {
-            if (newUserId !== oldUserId) {
-                const deleteQuery = `
-                    DELETE FROM registered_rsn
-                    WHERE user_id = ? AND LOWER(rsn) = LOWER(?)
-                `;
-                await runQuery(deleteQuery, [newUserId, rsn]);
-
-                // Notify the conflicting user.
-                if (channelManager) {
-                    const channel = await channelManager.fetch(NAME_CHANGE_CHANNEL_ID).catch(() => null);
-                    if (channel) {
-                        const embed = new EmbedBuilder()
-                            .setTitle('⚠️ Outdated RSN Removed')
-                            .setDescription(`**Hey there, <@${newUserId}>!**\nWe noticed the RSN \`${rsn}\` conflicted with a recent name change and has been removed.\n\nIf this was your RSN, please register a new one using the \`/rsn\` command. 😊`)
-                            .setColor(0xff6347)
-                            .setTimestamp();
-
-                        await channel.send({ embeds: [embed] });
-                    }
-                }
-            }
-        }
-
-        // Proceed to update the RSN if no conflict exists.
-        const updateQuery = `
-            UPDATE registered_rsn
-            SET rsn = ?
-            WHERE LOWER(rsn) = LOWER(?)
-        `;
-        await runQuery(updateQuery, [newName, oldName]);
-        logger.info(`[updateRegisteredRSN] Updated RSN: "${oldName}" to "${newName}" for user_id ${oldUserId}.`);
-
-        // Propagate the name change to all other databases and tables.
-        await updateNameEverywhere(oldName, newName);
+    if (!conflict) {
         return true;
-    } catch (error) {
-        logger.error(`[updateRegisteredRSN] Error updating RSN: ${oldName} -> ${newName} | ${error.message}`);
+    }
+
+    logger.warn(`⚠️ Conflict: RSN '${finalRsn}' used by player #${conflict.player_id}. Checking WOM name history...`);
+
+    const userOwnsName = await userHasRsnInHistory(oldRsn, finalRsn);
+    if (userOwnsName) {
+        await runQuery('DELETE FROM registered_rsn WHERE player_id = ?', [conflict.player_id]);
+        logger.info(`✅ Freed up RSN '${finalRsn}' from #${conflict.player_id} in favor of #${requestingPlayerId}.`);
+        return true;
+    } else {
+        logger.warn(`🚫 [resolveConflictByNameHistory] Blocking rename for #${requestingPlayerId}. They have no WOM record of '${finalRsn}'.`);
         return false;
     }
 }
 
 /**
- * 🎯 **Processes Recent Name Changes**
+ * ### updateAllRegisteredRSNs
+ * 1. For each player's finalRsn, check if it differs from the existing one in `registered_rsn`.
+ * 2. If there's a conflict, call `resolveConflictByNameHistory`.
+ * 3. If resolved => update the user’s RSN.
+ * 4. Collect changedRecords to pass on to the reference updates.
  *
- * Retrieves recent name changes from the WOM API, saves them to the database, and updates the registered RSNs accordingly.
- * Handles dependency ordering and conflict resolution based on the timestamp of changes.
- *
- * @async
- * @function processNameChanges
- * @param {Discord.Client} client - The Discord client instance.
- * @returns {Promise<void>} Resolves when all name changes have been processed.
- *
- * @example
- * await processNameChanges(client);
+ * @param {{ [playerId: number]: { finalRsn: string, resolvedAt: number }}} finalNamesMap
+ * @param {import('discord.js').ChannelManager} channelManager
+ * @returns {Promise<Array<{ discord_id: string, oldRsn: string, newRsn: string }>>}
+ */
+async function updateAllRegisteredRSNs(finalNamesMap, channelManager) {
+    const changedRecords = [];
+    const registeredRows = await getAll(`
+    SELECT player_id, discord_id, rsn
+    FROM registered_rsn
+  `);
+
+    const registeredMap = new Map();
+    for (const row of registeredRows) {
+        registeredMap.set(row.player_id, row);
+    }
+
+    for (const [pidStr, { finalRsn }] of Object.entries(finalNamesMap)) {
+        const playerId = parseInt(pidStr, 10);
+        const record = registeredMap.get(playerId);
+        if (!record) continue;
+        const { discord_id, rsn: oldRsn } = record;
+
+        if (oldRsn.toLowerCase() === finalRsn.toLowerCase()) {
+            continue;
+        }
+
+        const canRename = await resolveConflictByNameHistory(playerId, oldRsn, finalRsn);
+        if (!canRename) {
+            continue;
+        }
+
+        await runQuery('UPDATE registered_rsn SET rsn = ? WHERE player_id = ?', [finalRsn, playerId]);
+        logger.info(`✅ Updated #${playerId} RSN: '${oldRsn}' → '${finalRsn}'`);
+        changedRecords.push({ discord_id, oldRsn, newRsn: finalRsn });
+    }
+
+    if (channelManager && changedRecords.length) {
+        const channel = await channelManager.fetch(NAME_CHANGE_CHANNEL_ID).catch(() => null);
+        if (channel) {
+            for (const { discord_id, oldRsn, newRsn } of changedRecords) {
+                const embed = new EmbedBuilder()
+                    .setTitle('🔄 RSN Name Change')
+                    .setColor(0x3498db)
+                    .setTimestamp()
+                    .setDescription(`<@${discord_id}>\nYour RSN has been updated:\n` + `📛 **Old Name:** \`${oldRsn}\`\n` + `🔗 **New Name:** \`${newRsn}\``);
+                await channel.send({ embeds: [embed] });
+            }
+        }
+    }
+    return changedRecords;
+}
+
+/**
+ * ### updateNamesInMessagesDB
+ * Single pass to update references in `messages.db` for all changed records.
+ * @param changedRecords
+ */
+async function updateNamesInMessagesDB(changedRecords) {
+    if (!changedRecords.length) return;
+
+    const tables = await getAllMessages('SELECT name FROM sqlite_master WHERE type=\'table\'');
+    if (!tables.length) return;
+
+    for (const { name: tableName } of tables) {
+        const columns = await getAllMessages(`PRAGMA table_info(${tableName})`);
+        if (!columns) continue;
+
+        const userCol = columns.find((c) => c.name.toLowerCase() === 'rsn');
+        if (!userCol) continue;
+
+        for (const { oldRsn, newRsn } of changedRecords) {
+            const sql = `UPDATE ${tableName} SET rsn = ? WHERE LOWER(rsn) = LOWER(?)`;
+            const result = await runMessagesQuery(sql, [newRsn, oldRsn]);
+            if (result.changes > 0) {
+                logger.info(`✅ [updateNamesInMessagesDB] Table '${tableName}': replaced '${oldRsn}' -> '${newRsn}' in ${result.changes} row(s).`);
+            }
+        }
+    }
+}
+
+/**
+ * ### updateNamesInMainDB
+ * Single pass to update references in `database.sqlite` for all changed records
+ * across any table that has a column named "rsn".
+ * @param changedRecords
+ */
+async function updateNamesInMainDB(changedRecords) {
+    if (!changedRecords.length) return;
+
+    const excludeTables = ['recent_name_changes', 'skills_bosses'];
+    const tables = await getAll('SELECT name FROM sqlite_master WHERE type=\'table\'');
+    if (!tables.length) return;
+
+    for (const { name: tableName } of tables) {
+        if (excludeTables.includes(tableName)) continue;
+
+        const columns = await getAll(`PRAGMA table_info(${tableName})`);
+        if (!columns) continue;
+
+        const rsnCol = columns.find((c) => c.name.toLowerCase() === 'rsn');
+        if (!rsnCol) continue;
+
+        for (const { oldRsn, newRsn } of changedRecords) {
+            const sql = `UPDATE ${tableName} SET rsn = ? WHERE LOWER(rsn) = LOWER(?)`;
+            const result = await runQuery(sql, [newRsn, oldRsn]);
+            if (result.changes > 0) {
+                logger.info(`✅ [updateNamesInMainDB] '${tableName}': replaced '${oldRsn}' -> '${newRsn}' in ${result.changes} row(s).`);
+            }
+        }
+    }
+}
+
+/**
+ * ### updateReferencesEverywhere
+ * Updates references across both DBs in a single pass for all changed records.
+ * @param changedRecords
+ */
+async function updateReferencesEverywhere(changedRecords) {
+    if (!changedRecords.length) return;
+
+    try {
+        await updateNamesInMessagesDB(changedRecords);
+        await updateNamesInMainDB(changedRecords);
+        logger.info(`🎉 [updateReferencesEverywhere] Finished updates for ${changedRecords.length} name(s).`);
+    } catch (err) {
+        logger.error(`❌ [updateReferencesEverywhere] Error: ${err.message}`);
+    }
+}
+
+/**
+ * ### processNameChanges
+ * Main entry point:
+ * 1. Fetch new name changes from WOM
+ * 2. Store them in `recent_name_changes`
+ * 3. Build a final name map
+ * 4. Update `registered_rsn` with conflict resolution (using getPlayerNames)
+ * 5. Update references in both DBs for all changed RSNs
+ * @param client
  */
 async function processNameChanges(client) {
     const nameChanges = await fetchNameChanges();
-
-    if (nameChanges.length === 0) {
-        logger.info('[processNameChanges] No name changes found.');
+    if (!nameChanges.length) {
+        logger.info('⏳ [processNameChanges] No new name changes found.');
         return;
     }
 
-    await saveToDatabase(nameChanges);
-    let changesApplied = 0;
+    await appendNameChangesToDb(nameChanges);
 
-    // Process registered_rsn updates first.
-    for (const { oldName, newName } of nameChanges) {
-        const updated = await updateRegisteredRSN(oldName, newName, client.channels);
-        if (updated) {
-            logger.info(`[processNameChanges] Registered RSN updated: "${oldName}" -> "${newName}".`);
-        }
+    const finalMap = await getFinalNamesMap();
+    if (!Object.keys(finalMap).length) {
+        logger.info('⏳ [processNameChanges] No final RSNs computed. Skipping.');
+        return;
     }
 
-    // Now, force update everywhere regardless of registered_rsn.
-    for (const { oldName, newName } of nameChanges) {
-        try {
-            await updateNameEverywhere(oldName, newName);
-            logger.info(`[processNameChanges] Forced update applied for: "${oldName}" -> "${newName}".`);
-            changesApplied++;
-        } catch (error) {
-            logger.error(`[processNameChanges] Error updating "${oldName}" to "${newName}": ${error.message}`);
-        }
-    }
+    // DEBUG: Forces Name Changes in the messages.db (old names to new)
+    await globalHistoricalRenameFromRecentChanges();
 
-    logger.info(`[processNameChanges] Successfully forced update on ${changesApplied} name change(s) across all databases.`);
-}
-
-/**
- * Updates Name in the Messages Database (messages.db)
- *
- * Scans every table in messages.db for a column named "user" (case-insensitive) and updates
- * any occurrence of the old name with the new name. It collects and logs a summary of effective changes.
- *
- * @async
- * @function updateNameInMessagesDB
- * @param {string} oldName - The old name value.
- * @param {string} newName - The new name value.
- * @returns {Promise<void>}
- */
-async function updateNameInMessagesDB(oldName, newName) {
-    const changesSummary = [];
-    const tables = await getAllMessages('SELECT name FROM sqlite_master WHERE type=\'table\'');
-    for (const { name: tableName } of tables) {
-        const columns = await getAllMessages(`PRAGMA table_info(${tableName})`);
-        if (columns.some((col) => col.name.toLowerCase() === 'user')) {
-            const updateQuery = `UPDATE ${tableName} SET user = ? WHERE LOWER(user) = LOWER(?)`;
-            const result = await runMessagesQuery(updateQuery, [newName, oldName]);
-            if (result.changes > 0) {
-                changesSummary.push({ table: tableName, column: 'user', rows: result.changes });
-            }
-        }
-    }
-    if (changesSummary.length > 0) {
-        const summaryStr = changesSummary.map((change) => `Table: ${change.table} | Column: ${change.column} | Rows affected: ${change.rows}`).join('\n');
-        logger.info(`[updateNameInMessagesDB] Update Summary:\n${summaryStr}`);
-    }
-}
-
-/**
- * Updates Name in the Main Database (database.sqlite)
- *
- * Scans every table (excluding `recent_name_changes` and `skills_bosses`) in the main database for columns
- * named "username", "name", "player_id", or "rsn" (case-insensitive) and updates any occurrence of the old name.
- * It collects and logs a summary of effective changes.
- *
- * @async
- * @function updateNameInMainDB
- * @param {string} oldName - The old name value.
- * @param {string} newName - The new name value.
- * @returns {Promise<void>}
- */
-async function updateNameInMainDB(oldName, newName) {
-    const excludeTables = ['recent_name_changes', 'skills_bosses'];
-    const targetColumns = ['username', 'name', 'player_id', 'rsn'];
-    const changesSummary = [];
-    const tables = await getAll('SELECT name FROM sqlite_master WHERE type=\'table\'');
-    for (const { name: tableName } of tables) {
-        if (excludeTables.includes(tableName)) continue;
-        const columns = await getAll(`PRAGMA table_info(${tableName})`);
-        for (const col of columns) {
-            if (targetColumns.includes(col.name.toLowerCase())) {
-                const updateQuery = `UPDATE ${tableName} SET ${col.name} = ? WHERE LOWER(${col.name}) = LOWER(?)`;
-                const result = await runQuery(updateQuery, [newName, oldName]);
-                if (result.changes > 0) {
-                    changesSummary.push({ table: tableName, column: col.name, rows: result.changes });
-                }
-            }
-        }
-    }
-    if (changesSummary.length > 0) {
-        const summaryStr = changesSummary.map((change) => `Table: ${change.table} | Column: ${change.column} | Rows affected: ${change.rows}`).join('\n');
-        logger.info(`[updateNameInMainDB] Update Summary:\n${summaryStr}`);
-    }
-}
-
-/**
- * Updates the name everywhere across both messages and main databases,
- * then logs a summary of effective changes.
- *
- * @async
- * @function updateNameEverywhere
- * @param {string} oldName - The old name value to replace.
- * @param {string} newName - The new name value.
- * @returns {Promise<void>}
- */
-async function updateNameEverywhere(oldName, newName) {
-    try {
-        await updateNameInMessagesDB(oldName, newName);
-        await updateNameInMainDB(oldName, newName);
-        logger.info(`[updateNameEverywhere] Completed update of "${oldName}" to "${newName}".`);
-    } catch (error) {
-        logger.error(`[updateNameEverywhere] Failed to update name everywhere: ${error.message}`);
+    const changedRecords = await updateAllRegisteredRSNs(finalMap, client?.channels);
+    const pairs = changedRecords.map(({ oldRsn, newRsn }) => ({ oldRsn, newRsn }));
+    await updateReferencesEverywhere(pairs);
+    if (changedRecords.length) {
+        await updateReferencesEverywhere(pairs);
+    } else {
+        logger.info('⏳ [processNameChanges] No new RSNs actually changed in the registry.');
     }
 }
 

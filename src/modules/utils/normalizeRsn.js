@@ -6,8 +6,8 @@
  * It ensures that RSNs are stored in a consistent format for database operations and efficient lookups.
  *
  * **Key Features:**
- * - **RSN Normalization**: Converts RSNs to a standard format by removing unwanted characters, collapsing multiple spaces, and converting the entire string to lowercase.
- * - **Error Handling**: Validates that the input is a string, throwing an error if not.
+ * - **RSN Normalization:** Converts RSNs to a standard format by removing unwanted characters, collapsing multiple spaces, and converting the entire string to lowercase.
+ * - **Error Handling:** Validates that the input is a string, throwing an error if not.
  *
  * @module utils/normalizeRsn
  */
@@ -16,7 +16,7 @@
  * Normalizes a RuneScape Name (RSN) for consistent database storage and lookup.
  *
  * The normalization process ensures RSNs are stored in a uniform format by:
- * - Replacing consecutive '-' or '_' characters with a single space.
+ * - Replacing consecutive `-` or `_` characters with a single space.
  * - Collapsing multiple spaces into a single space.
  * - Trimming leading and trailing spaces.
  * - Converting all characters to lowercase.
@@ -33,7 +33,7 @@
  */
 function normalizeRsn(rsn) {
     if (typeof rsn !== 'string') {
-        throw new TypeError('The RSN must be a string.');
+        throw new TypeError('🚨 **Invalid Input:** The RSN must be a string.');
     }
     return rsn.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 }

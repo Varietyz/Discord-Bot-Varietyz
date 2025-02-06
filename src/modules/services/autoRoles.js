@@ -8,17 +8,17 @@
  * and assigns or removes Discord roles based on hiscores and achievements (such as boss kills, activities, and skills).
  *
  * **Key Features:**
- * - **Role Assignment**: Automatically assigns roles based on boss kills, activity scores, and skill levels from RSN data.
- * - **Data Merging**: Combines data from multiple RSNs into a single profile for each player, ensuring the highest achievements are retained.
- * - **Dynamic Role Updates**: Removes outdated roles and assigns new ones based on the player's latest achievements.
- * - **Discord Notifications**: Sends embed messages in a designated channel to notify players of role assignments and removals.
- * - **Custom Mappings**: Maps boss and activity names to corresponding Discord role names for easier management.
+ * - **Role Assignment:** Automatically assigns roles based on boss kills, activity scores, and skill levels from RSN data.
+ * - **Data Merging:** Combines data from multiple RSNs into a single profile for each player, ensuring the highest achievements are retained.
+ * - **Dynamic Role Updates:** Removes outdated roles and assigns new ones based on the player's latest achievements.
+ * - **Discord Notifications:** Sends embed messages in a designated channel to notify players of role assignments and removals.
+ * - **Custom Mappings:** Maps boss and activity names to corresponding Discord role names for easier management.
  *
  * **External Dependencies:**
- * - **Wise Old Man (WOM) API**: Retrieves player data and achievements.
- * - **Discord.js**: For interacting with Discord (assigning roles, sending notifications, managing guild data).
- * - **dbUtils**: Handles database interactions.
- * - **normalizeRsn**: Provides utilities for normalizing RSNs.
+ * - **Wise Old Man (WOM) API:** Retrieves player data and achievements.
+ * - **Discord.js:** For interacting with Discord (assigning roles, sending notifications, managing guild data).
+ * - **dbUtils:** Handles database interactions.
+ * - **normalizeRsn:** Provides utilities for normalizing RSNs.
  *
  * @module modules/services/autoRoles
  */
@@ -50,7 +50,6 @@ function mapBossToRole(bossName) {
         'K\'ril Tsutsaroth': 'K\'ril Tsutsaroth',
         'Calvar\'ion': 'Calvar\'ion',
         'Vet\'ion': 'Vet\'ion',
-        // Add more mappings as needed
     };
     return roleMap[bossName] || bossName;
 }
@@ -75,7 +74,6 @@ function mapActivityToRole(activityName) {
         'Soul Wars Zeal': 'Soul Wars',
         'League Points': 'League Compete',
         'Pvp Arena': 'PvP Arena',
-        // Add more mappings as needed
     };
     return roleMap[activityName] || activityName;
 }
@@ -95,7 +93,14 @@ function mapActivityToRole(activityName) {
  * // Might log: ['PlayerOne', 'PlayerTwo']
  */
 async function getUserRSNs(userId) {
-    const rows = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userId]);
+    const query = 'SELECT rsn FROM registered_rsn WHERE CAST(discord_id AS TEXT) = ?';
+    const rows = await getAll(query, [String(userId)]);
+
+    if (!rows.length) {
+        logger.info(`⚠️ No RSNs linked to Discord ID: ${userId}`);
+        return [];
+    }
+
     return rows.map((row) => row.rsn);
 }
 
@@ -115,19 +120,16 @@ async function getUserRSNs(userId) {
  * logger.info(playerData);
  */
 async function getPlayerDataForRSN(rsn) {
-    // Normalize RSN for comparison
     const normalizedRsn = normalizeRsn(rsn);
 
-    // SQL query to normalize stored player_id and compare
     const query = `
         SELECT data_key, data_value 
         FROM player_data
-        WHERE LOWER(REPLACE(REPLACE(player_id, '-', ' '), '_', ' ')) = LOWER(?)
+        WHERE LOWER(rsn) = LOWER(?)
     `;
 
     const rows = await getAll(query, [normalizedRsn]);
 
-    // Convert rows into an object
     const result = {};
     for (const { data_key, data_value } of rows) {
         result[data_key] = data_value;
@@ -155,17 +157,14 @@ async function mergeRsnData(rsns) {
     const merged = {};
 
     for (const rsn of rsns) {
-        // Pull data from DB (which is standardized)
         const data = await getPlayerDataForRSN(rsn);
 
         for (const [key, value] of Object.entries(data)) {
-            // If it's a numeric skill, boss, or activity, store the max value.
             if ((key.startsWith('Skills ') && key.endsWith(' Level')) || (key.startsWith('Bosses ') && key.endsWith(' Kills')) || (key.startsWith('Activities ') && key.endsWith(' Score'))) {
                 const oldVal = merged[key] ? parseInt(merged[key], 10) : 0;
                 const newVal = parseInt(value, 10);
                 merged[key] = Math.max(oldVal, newVal).toString();
             } else {
-                // For top-level fields (e.g., DisplayName), overwrite with the latest value.
                 merged[key] = value;
             }
         }
@@ -191,29 +190,25 @@ async function mergeRsnData(rsns) {
  */
 async function fetchAndProcessMember(guild, userId) {
     try {
-        // 1) Get the user's RSNs from the database.
         const rsns = await getUserRSNs(userId);
 
         if (!rsns.length) {
-            logger.info(`No RSNs linked to user ID: ${userId}`);
+            logger.info(`⚠️ No RSNs linked to user ID: ${userId}`);
             return;
         }
 
-        // 2) Attempt to fetch the corresponding GuildMember.
         const member = await guild.members.fetch(userId).catch(() => null);
         if (!member) {
-            logger.error(`Member with ID ${userId} not found in the guild`);
+            logger.error(`🚨 Member with ID ${userId} not found in the guild.`);
             return;
         }
 
-        // 3) Merge data across all RSNs.
         const mergedData = await mergeRsnData(rsns);
 
-        // 4) Assign roles based on the merged hiscores data.
         await handleHiscoresData(guild, member, rsns, mergedData);
-        logger.info(`Processed data for RSNs: ${rsns.join(', ')} (User ID: ${userId})`);
+        logger.info(`✅ Processed data for RSNs: ${rsns.join(', ')} (User ID: ${userId})`);
     } catch (error) {
-        logger.error(`Error processing member ID ${userId}: ${error.message}`);
+        logger.error(`🚨 Error processing member ID ${userId}: ${error.message}`);
     }
 }
 
@@ -236,7 +231,7 @@ async function fetchAndProcessMember(guild, userId) {
 async function handleHiscoresData(guild, member, rsns, hiscoresData) {
     const channelUpdate = guild.channels.cache.get(ROLE_CHANNEL_ID);
     if (!channelUpdate) {
-        logger.error(`Role channel with ID ${ROLE_CHANNEL_ID} not found.`);
+        logger.error(`🚨 Role channel with ID ${ROLE_CHANNEL_ID} not found.`);
         return;
     }
 
@@ -260,15 +255,13 @@ async function handleHiscoresData(guild, member, rsns, hiscoresData) {
  * await createAchievementRoles(guild, member, mergedData, channelUpdate);
  */
 async function createAchievementRoles(guild, member, hiscoresData, channelUpdate) {
-    // Use the first RSN for display purposes.
     const rsns = await getUserRSNs(member.id);
     const playerName = rsns.length > 0 ? rsns[0] : 'Unknown RSN';
 
     for (const key in hiscoresData) {
         const score = parseInt(hiscoresData[key], 10) || 0;
-        if (score <= 0) continue; // Skip non-positive scores.
+        if (score <= 0) continue;
 
-        // Boss kills.
         if (key.startsWith('Bosses ') && key.endsWith(' Kills')) {
             const bossName = key.replace('Bosses ', '').replace(' Kills', '');
             if (score >= 100) {
@@ -276,7 +269,6 @@ async function createAchievementRoles(guild, member, hiscoresData, channelUpdate
             }
         }
 
-        // Activities.
         if (key.startsWith('Activities ') && key.endsWith(' Score')) {
             const activityName = key.replace('Activities ', '').replace(' Score', '');
             await maybeAssignActivityRole(guild, member, activityName, score, playerName, channelUpdate);
@@ -311,12 +303,12 @@ async function maybeAssignBossRole(guild, member, bossName, kills, playerName, c
         await member.roles.add(role);
         const embed = new EmbedBuilder()
             .setTitle('Role Assigned!')
-            .setDescription(`🎉 **Congratulations, <@${member.id}>!**\n<a:redutility4:1224115732632309760> You have defeated \`${bossName}\` \`${kills}\` times and earned the role <@&${role.id}>. 🏆`)
+            .setDescription(`🎉 **Congratulations, <@${member.id}>!**\n🔥 You have defeated \`${bossName}\` **${kills}** times and earned the role <@&${role.id}>. 🏆`)
             .setColor(0x48de6f)
             .setTimestamp();
 
         await channelUpdate.send({ embeds: [embed] });
-        logger.info(`Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
+        logger.info(`✅ Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
     }
 }
 
@@ -355,12 +347,12 @@ async function maybeAssignActivityRole(guild, member, activityName, score, playe
             await member.roles.add(role);
             const embed = new EmbedBuilder()
                 .setTitle('Role Assigned!')
-                .setDescription(`🎉 **Awesome job, <@${member.id}>!**\n<a:redutility4:1224115732632309760> You completed \`${score}\` \`${activityName}\` and unlocked the role <@&${role.id}>. 🏅`)
+                .setDescription(`🎉 **Awesome job, <@${member.id}>!**\n🔥 You completed \`${score}\` in \`${activityName}\` and unlocked the role <@&${role.id}>. 🏅`)
                 .setColor(0x48de6f)
                 .setTimestamp();
 
             await channelUpdate.send({ embeds: [embed] });
-            logger.info(`Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
+            logger.info(`✅ Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
         }
     }
 }
@@ -383,15 +375,12 @@ async function maybeAssignActivityRole(guild, member, activityName, score, playe
  * await createUpdateOsrsRoles(guild, member, mergedData, channelUpdate);
  */
 async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate) {
-    // Use the first RSN for display purposes.
     const rsns = await getUserRSNs(member.id);
     const playerName = rsns.length > 0 ? rsns[0] : 'Unknown RSN';
 
     const currentRoles = new Set(member.roles.cache.map((role) => role.name));
-    // Track new 99 roles assigned to avoid removing them later.
     const newlyAssigned99Roles = new Set();
 
-    // 1) Check each "Skills X Level" for level 99.
     for (const key in hiscoresData) {
         if (!key.startsWith('Skills ') || !key.endsWith(' Level')) continue;
 
@@ -404,19 +393,14 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
             const role = guild.roles.cache.find((r) => r.name === roleName);
             if (role && !member.roles.cache.has(role.id)) {
                 await member.roles.add(role);
-                const embed = new EmbedBuilder()
-                    .setTitle('Role Assigned!')
-                    .setDescription(`🎉 **Well done, <@${member.id}>!**\n<a:redutility4:1224115732632309760> You’ve reached \`${roleName}\` and earned the role <@&${role.id}>. 🎊`)
-                    .setColor(0x48de6f)
-                    .setTimestamp();
+                const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Well done, <@${member.id}>!**\n🔥 You’ve reached \`${roleName}\` and earned the role <@&${role.id}>. 🎊`).setColor(0x48de6f).setTimestamp();
 
                 await channelUpdate.send({ embeds: [embed] });
-                logger.info(`Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
+                logger.info(`✅ Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
             }
         }
     }
 
-    // 2) Check for overall achievements (e.g., 2277 Total Level and Max Cape).
     const overallKey = 'Skills Overall Level';
     if (hiscoresData[overallKey] && hiscoresData[overallKey] === '2277') {
         const role2277Total = guild.roles.cache.find((r) => r.name === '2277 Total');
@@ -426,28 +410,27 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
             await member.roles.add(role2277Total);
             const embed = new EmbedBuilder()
                 .setTitle('Role Assigned!')
-                .setDescription(`🎉 **Fantastic achievement, <@${member.id}>!**\n<a:redutility4:1224115732632309760> You’ve reached \`2277 Total level\` and earned the role \`${role2277Total.name}\`. 🎊`)
+                .setDescription(`🎉 **Fantastic achievement, <@${member.id}>!**\n🔥 You’ve reached \`2277 Total level\` and earned the role <@&${role2277Total.id}>. 🎊`)
                 .setColor(0x48de6f)
                 .setTimestamp();
 
             await channelUpdate.send({ embeds: [embed] });
-            logger.info(`Assigned role "2277 Total" to RSN: ${playerName} (User ID: ${member.id})`);
+            logger.info(`✅ Assigned role "2277 Total" to RSN: ${playerName} (User ID: ${member.id})`);
         }
 
         if (roleMaxCape && !member.roles.cache.has(roleMaxCape.id)) {
             await member.roles.add(roleMaxCape);
             const embed = new EmbedBuilder()
                 .setTitle('Role Assigned!')
-                .setDescription(`🎉 **Incredible work, <@${member.id}>!**\n<a:redutility4:1224115732632309760> You’ve earned the prestigious \`Max Cape\` and the role \`${roleMaxCape.name}\`. 🏆`)
+                .setDescription(`🎉 **Incredible work, <@${member.id}>!**\n🔥 You’ve earned the prestigious \`Max Cape\` and the role <@&${roleMaxCape.id}>. 🏆`)
                 .setColor(0x48de6f)
                 .setTimestamp();
 
             await channelUpdate.send({ embeds: [embed] });
-            logger.info(`Assigned role "Max Cape" to RSN: ${playerName} (User ID: ${member.id})`);
+            logger.info(`✅ Assigned role "Max Cape" to RSN: ${playerName} (User ID: ${member.id})`);
         }
     }
 
-    // 3) Remove any 99 skill roles that the member should no longer have.
     for (const roleName of currentRoles) {
         if (!roleName.startsWith('99 ')) continue;
         if (!newlyAssigned99Roles.has(roleName)) {
@@ -456,12 +439,12 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
                 await member.roles.remove(role);
                 const embed = new EmbedBuilder()
                     .setTitle('Role Removed!')
-                    .setDescription(`⚠️ **Hey, <@${member.id}>!**\n<a:redutility4:1224115732632309760> It seems the role \`${roleName}\` isn’t supposed to be assigned to you. Removing it now. 🔄`)
+                    .setDescription(`⚠️ **Hey, <@${member.id}>!**\n🔥 It seems the role \`${roleName}\` isn’t supposed to be assigned to you. Removing it now. 🔄`)
                     .setColor(0xff0000)
                     .setTimestamp();
 
                 await channelUpdate.send({ embeds: [embed] });
-                logger.info(`Removed role "${roleName}" from RSN: ${playerName} (User ID: ${member.id})`);
+                logger.info(`✅ Removed role "${roleName}" from RSN: ${playerName} (User ID: ${member.id})`);
             }
         }
     }

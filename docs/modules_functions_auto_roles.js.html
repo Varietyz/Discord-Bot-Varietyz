@@ -92,7 +92,7 @@ const { standardizeName } = require("../../utils/normalizeRsn.js");
  */
 async function getUserRSNs(userId) {
   const rows = await getAll(
-    "SELECT rsn FROM registered_rsn WHERE user_id = ?",
+    "SELECT rsn FROM registered_rsn WHERE discord_id = ?",
     [userId],
   );
   return rows.map((row) => row.rsn);

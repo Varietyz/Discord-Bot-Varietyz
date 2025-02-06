@@ -8,12 +8,9 @@
  * introduce delays without blocking the event loop.
  *
  * **Key Features:**
- * - **Promise-based Delay**: Returns a promise that resolves after the specified time.
- * - **Input Validation**: Validates that the delay duration is a non-negative number.
- * - **Ease of Use**: Simplifies adding delays in asynchronous operations.
- *
- * **External Dependencies:**
- * - None.
+ * - **Promise-based Delay:** Returns a promise that resolves after the specified time.
+ * - **Input Validation:** Ensures the delay duration is a non-negative number.
+ * - **Ease of Use:** Simplifies adding delays in asynchronous operations.
  *
  * @module utils/sleepUtil
  */
@@ -32,14 +29,14 @@
  * @example
  * // Example: Pause execution for 2 seconds.
  * async function example() {
- *     console.log('Start');
+ *     console.log('⏳ Start');
  *     await sleep(2000);
- *     console.log('End'); // "End" will log after approximately 2 seconds.
+ *     console.log('✅ End'); // "End" will log after approximately 2 seconds.
  * }
  */
 async function sleep(ms) {
     if (typeof ms !== 'number' || ms < 0) {
-        throw new TypeError('The "ms" parameter must be a non-negative number.');
+        throw new TypeError('🚨 **Invalid Parameter:** The `ms` parameter must be a non-negative number.');
     }
     return new Promise((resolve) => setTimeout(resolve, ms));
 }

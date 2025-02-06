@@ -34,7 +34,7 @@ const logger = require('../modules/utils/logger'); // Import the logger
  * Path to the SQLite database file.
  * @constant {string}
  */
-const dbPath = path.join(__dirname, '..', '..', 'data', 'database.sqlite');
+const dbPath = path.join(__dirname, '..', 'data', 'database.sqlite');
 
 /**
  * Initializes the SQLite database by deleting any existing database file,
@@ -47,12 +47,6 @@ const dbPath = path.join(__dirname, '..', '..', 'data', 'database.sqlite');
  * const db = initializeDatabase();
  */
 function initializeDatabase() {
-    // Delete existing database file if it exists.
-    if (fs.existsSync(dbPath)) {
-        fs.unlinkSync(dbPath);
-        logger.info('Existing database file deleted.');
-    }
-
     // Create the database directory if it doesn't exist.
     if (!fs.existsSync(path.dirname(dbPath))) {
         fs.mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -73,144 +67,126 @@ function initializeDatabase() {
 }
 
 /**
- * Creates the 'registered_rsn' table to store registered RuneScape names.
- *
- * @function createRegisteredRsnTable
- * @param {sqlite3.Database} db - The SQLite database instance.
- */
-function createRegisteredRsnTable(db) {
-    const query = `
-        CREATE TABLE IF NOT EXISTS registered_rsn (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id TEXT NOT NULL,
-          rsn TEXT NOT NULL,
-          registered_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `;
-    db.run(query, (err) => {
-        if (err) {
-            logger.error(`Error creating 'registered_rsn' table: ${err.message}`);
-        } else {
-            logger.info('\'registered_rsn\' table created (empty).');
-        }
-    });
-}
-
-/**
- * Creates the 'clan_members' table to store clan member information.
- *
- * @function createClanMembersTable
- * @param {sqlite3.Database} db - The SQLite database instance.
- */
-function createClanMembersTable(db) {
-    const query = `
-        CREATE TABLE IF NOT EXISTS clan_members (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          rank TEXT,
-          joined_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `;
-    db.run(query, (err) => {
-        if (err) {
-            logger.error(`Error creating 'clan_members' table: ${err.message}`);
-        } else {
-            logger.info('\'clan_members\' table created (empty).');
-        }
-    });
-}
-
-/**
- * Creates the 'recent_name_changes' table to track recent player name changes.
- *
- * @function createRecentNameChangesTable
- * @param {sqlite3.Database} db - The SQLite database instance.
- */
-function createRecentNameChangesTable(db) {
-    const query = `
-        CREATE TABLE IF NOT EXISTS recent_name_changes (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          old_name TEXT NOT NULL,
-          new_name TEXT NOT NULL,
-          resolved_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `;
-    db.run(query, (err) => {
-        if (err) {
-            logger.error(`Error creating 'recent_name_changes' table: ${err.message}`);
-        } else {
-            logger.info('\'recent_name_changes\' table created (empty).');
-        }
-    });
-}
-
-/**
- * Creates the 'player_data' table to store various player-specific data points.
- *
- * @function createPlayerDataTable
- * @param {sqlite3.Database} db - The SQLite database instance.
- */
-function createPlayerDataTable(db) {
-    const query = `
-        CREATE TABLE IF NOT EXISTS player_data (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          player_id TEXT NOT NULL,
-          data_key TEXT NOT NULL,
-          data_value TEXT,
-          last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `;
-    db.run(query, (err) => {
-        if (err) {
-            logger.error(`Error creating 'player_data' table: ${err.message}`);
-        } else {
-            logger.info('\'player_data\' table created (empty).');
-        }
-    });
-}
-
-/**
- * Creates the 'player_fetch_times' table to track when player data was last fetched.
- *
- * @function createFetchTimeTable
- * @param {sqlite3.Database} db - The SQLite database instance.
- */
-function createFetchTimeTable(db) {
-    const query = `
-        CREATE TABLE IF NOT EXISTS player_fetch_times (
-            rsn TEXT PRIMARY KEY,
-            last_fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `;
-    db.run(query, (err) => {
-        if (err) {
-            logger.error(`Error creating 'player_fetch_times' table: ${err.message}`);
-        } else {
-            logger.info('\'player_fetch_times\' table created (empty).');
-        }
-    });
-}
-
-/**
  * Creates the 'active_inactive' table to track player activity status.
  *
  * @function createActiveInactiveTable
  * @param {sqlite3.Database} db - The SQLite database instance.
  */
-function createActiveInactiveTable(db) {
-    const query = `
-        CREATE TABLE IF NOT EXISTS active_inactive (
-            username TEXT PRIMARY KEY,
-            last_progressed DATETIME
+function createTables(db) {
+    db.run(`
+        CREATE TABLE IF NOT EXISTS registered_rsn (
+                player_id INTEGER PRIMARY KEY,
+                discord_id INTEGER NOT NULL,
+                rsn TEXT NOT NULL UNIQUE,
+                registered_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
-    `;
-    db.run(query, (err) => {
-        if (err) {
-            logger.error(`Error creating 'active_inactive' table: ${err.message}`);
-        } else {
-            logger.info('\'active_inactive\' table created (empty).');
-        }
-    });
+    `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS clan_members (
+          player_id INTEGER PRIMARY KEY,
+                rsn TEXT NOT NULL UNIQUE,
+                rank TEXT,
+                joined_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS recent_name_changes (
+            idx INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_id INTEGER NOT NULL,
+                old_rsn TEXT NOT NULL,
+                new_rsn TEXT NOT NULL,
+                resolved_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS player_data (
+          idx INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_id INTEGER NOT NULL,
+                rsn TEXT NOT NULL,
+                data_key TEXT NOT NULL,
+                data_value TEXT,
+                last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS player_fetch_times (
+            player_id INTEGER PRIMARY KEY,
+                last_fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS active_inactive (
+            player_id INTEGER PRIMARY KEY,
+                last_progressed DATETIME
+        );
+    `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS competitions (
+            competition_id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                metric TEXT NOT NULL,
+                type TEXT CHECK(type IN ('SOTW', 'BOTW')) NOT NULL,
+                starts_at DATETIME NOT NULL,
+                ends_at DATETIME NOT NULL,
+                verification_code TEXT,
+                previous_metric TEXT,
+                last_selected_at DATETIME,
+                message_id TEXT,
+                leaderboard_message_id TEXT,
+                rotation_index INTEGER DEFAULT 0,
+                final_leaderboard_sent INTEGER DEFAULT 0
+        );
+    `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS votes ( 
+                idx INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_id INTEGER NOT NULL,
+                discord_id INTEGER NOT NULL,
+                competition_id INTEGER NOT NULL,
+                vote_choice TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (player_id) REFERENCES users(player_id) ON DELETE CASCADE,
+                FOREIGN KEY (competition_id) REFERENCES competitions(competition_id),
+                UNIQUE(discord_id, competition_id)
+        );`);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS users ( 
+                player_id INTEGER PRIMARY KEY,
+                rsn TEXT,
+                total_wins INTEGER DEFAULT 0,
+                total_metric_gain_sotw INTEGER DEFAULT 0,
+                total_metric_gain_botw INTEGER DEFAULT 0,
+                total_top10_appearances_sotw INTEGER DEFAULT 0,
+                total_top10_appearances_botw INTEGER DEFAULT 0
+        );`);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS winners ( 
+                competition_id INTEGER PRIMARY KEY,
+                rsn TEXT NOT NULL,
+                metric_gain INTEGER NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (competition_id) REFERENCES competitions(competition_id)
+            
+        );`);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS skills_bosses ( 
+                idx INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT CHECK(type IN ('Skill', 'Boss')) NOT NULL,
+                last_selected_at DATETIME
+        );`);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS competition_queue ( 
+                idx INTEGER PRIMARY KEY AUTOINCREMENT,
+                type TEXT CHECK(type IN ('SOTW', 'BOTW')) NOT NULL,
+                metric TEXT NOT NULL,
+                queued_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );`);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS config ( 
+           key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );`);
 }
 
 // Main execution flow.
@@ -220,12 +196,7 @@ function createActiveInactiveTable(db) {
 
         // Serialize database operations to run sequentially.
         db.serialize(() => {
-            createRegisteredRsnTable(db);
-            createClanMembersTable(db);
-            createRecentNameChangesTable(db);
-            createPlayerDataTable(db);
-            createFetchTimeTable(db);
-            createActiveInactiveTable(db);
+            createTables(db);
         });
 
         // Close the database connection after all tables are created.

@@ -94,7 +94,7 @@ function isValidEmbedSize(embedDescription, maxDescriptionLength = 4096) {
  * @returns {Object} Object where keys are user IDs and values are arrays of RSNs.
  */
 const loadRSNData = async () => {
-  const rows = await getAll("SELECT user_id, rsn FROM registered_rsn");
+  const rows = await getAll("SELECT discord_id, rsn FROM registered_rsn");
   const rsnData = {};
   rows.forEach((row) => {
     if (!rsnData[row.user_id]) rsnData[row.user_id] = [];

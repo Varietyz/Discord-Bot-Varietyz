@@ -19,32 +19,7 @@
  */
 
 const { DateTime } = require('luxon');
-const { getAll, runQuery } = require('./dbUtils');
-
-/**
- * 🎯 **Ensures the Active_Inactive Table Exists**
- *
- * Checks if the `active_inactive` table exists in the SQLite database. If the table does not exist, it creates one
- * with the following schema:
- * - `username` (TEXT): The player's username (primary key).
- * - `last_progressed` (DATETIME): The timestamp of the player's last recorded progress.
- *
- * @async
- * @function ensureActiveInactiveTable
- * @returns {Promise<void>} Resolves when the table is ensured to exist.
- *
- * @example
- * // Ensure the active_inactive table exists before updating player activity data.
- * await ensureActiveInactiveTable();
- */
-async function ensureActiveInactiveTable() {
-    await runQuery(`
-        CREATE TABLE IF NOT EXISTS active_inactive (
-            username TEXT PRIMARY KEY,
-            last_progressed DATETIME
-        );
-    `);
-}
+const { getAll } = require('./dbUtils');
 
 /**
  * 🎯 **Calculates the Number of Active Players**
@@ -89,5 +64,4 @@ async function calculateInactivity() {
 module.exports = {
     calculateInactivity,
     calculateProgressCount,
-    ensureActiveInactiveTable,
 };

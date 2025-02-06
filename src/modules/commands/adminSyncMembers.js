@@ -8,7 +8,13 @@
  * updating their data and roles. It fetches all distinct user IDs from the `registered_rsn` table,
  * processes each user by calling the `fetchAndProcessMember` function, and returns a summary of the results.
  *
- * **External Dependencies:**
+ * ---
+ *
+ * 🔹 **Usage:**
+ * - Must be executed by an administrator.
+ * - Provides a summary of processed and failed member synchronizations.
+ *
+ * 🔗 **External Dependencies:**
  * - **Discord.js**: For handling slash command interactions.
  * - **SQLite**: For querying registered RSN data.
  * - **Wise Old Man API**: For fetching the latest member data.
@@ -28,7 +34,7 @@ module.exports = {
     /**
      * 🎯 **Executes the /sync_members Command**
      *
-     * This function performs the following steps:
+     * Performs the following steps:
      * 1. Defers the reply to allow sufficient processing time.
      * 2. Fetches all distinct user IDs from the `registered_rsn` table.
      * 3. Iterates through each user ID and calls `fetchAndProcessMember` to update their data and roles.
@@ -45,37 +51,34 @@ module.exports = {
      */
     async execute(interaction) {
         try {
-            // Defer the reply to allow processing time.
             await interaction.deferReply({ flags: 64 });
-            logger.info(`Admin ${interaction.user.tag} initiated member synchronization.`);
+            logger.info(`👮 Admin ${interaction.user.tag} initiated member synchronization.`);
 
-            // Fetch all distinct user IDs from the registered_rsn table.
-            const users = await db.getAll('SELECT DISTINCT user_id FROM registered_rsn', []);
+            const users = await db.getAll('SELECT DISTINCT discord_id FROM registered_rsn', []);
             if (!users || users.length === 0) {
-                return await interaction.editReply('No registered clan members found.');
+                return await interaction.editReply('ℹ️ No registered clan members found.');
             }
 
             const guild = interaction.guild;
             let processedCount = 0;
             let failedCount = 0;
 
-            // Process each member sequentially.
             for (const row of users) {
                 try {
-                    await fetchAndProcessMember(guild, row.user_id);
+                    await fetchAndProcessMember(guild, row.discord_id);
                     processedCount++;
                 } catch (err) {
-                    logger.error(`Failed to process member ${row.user_id}: ${err.message}`);
+                    logger.error(`❌ Failed to process member ${row.discord_id}: ${err.message}`);
                     failedCount++;
                 }
             }
 
-            const replyMessage = `Member synchronization complete. Processed: ${processedCount}, Failed: ${failedCount}.`;
+            const replyMessage = `✅ Member synchronization complete. Processed: \`${processedCount}\`, Failed: \`${failedCount}\`.`;
             logger.info(replyMessage);
             await interaction.editReply(replyMessage);
         } catch (error) {
-            logger.error(`Error executing /sync_members command: ${error.message}`);
-            await interaction.editReply('An error occurred during member synchronization. Please try again later.');
+            logger.error(`❌ Error executing /sync_members command: ${error.message}`);
+            await interaction.editReply('❌ An error occurred during member synchronization. Please try again later.');
         }
     },
 };

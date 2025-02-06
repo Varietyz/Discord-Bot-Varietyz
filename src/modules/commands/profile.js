@@ -10,7 +10,7 @@
  * then builds and displays an embed with account information, experience data, skill and boss achievements,
  * registration dates, competition stats, and clan details.
  *
- * **External Dependencies:**
+ * 🔗 **External Dependencies:**
  * - **Discord.js**: For building embeds and handling interactions.
  * - **SQLite**: For retrieving registered RSN, clan member, and user data.
  * - **Wise Old Man API**: For fetching live player data.
@@ -27,14 +27,14 @@ const womApi = require('../../api/wise_old_man/apiClient');
 const { getRankEmoji } = require('../utils/rankUtils');
 
 /**
- * Safely truncates a string to a specified maximum length.
+ * 🎯 **Safely Truncates a String**
  *
- * If the input text exceeds the maximum length, it truncates the text and appends an ellipsis ("...").
+ * If the input text exceeds the maximum length, this function truncates the text and appends an ellipsis ("...").
  *
  * @function safeTruncate
  * @param {string} text - The text to truncate.
  * @param {number} maxLength - The maximum allowed length.
- * @returns {string} The truncated string, or the original string if it is within the limit.
+ * @returns {string} The truncated string, or the original string if within the limit.
  *
  * @example
  * const truncated = safeTruncate("This is a very long text", 10);
@@ -46,9 +46,9 @@ function safeTruncate(text, maxLength) {
 }
 
 /**
- * Retrieves competition statistics for a given username from the users table.
+ * 🎯 **Retrieves Competition Statistics**
  *
- * Fetches total wins, SOTW total experience gain, and BOTW total kills for the specified player.
+ * Fetches total wins, SOTW total experience gain, and BOTW total kills for the specified player from the users table.
  * If no statistics are found, returns default placeholder values.
  *
  * @async
@@ -67,22 +67,21 @@ async function getCompetitionStats(playerUsername) {
         const stats = await db.getOne(
             `SELECT total_wins, total_metric_gain_sotw, total_metric_gain_botw 
              FROM users 
-             WHERE LOWER(username) = ?`,
+             WHERE LOWER(rsn) = ?`,
             [playerUsername.toLowerCase()],
         );
         return stats || { total_wins: '\u200b', total_metric_gain_sotw: '\u200b', total_metric_gain_botw: '\u200b' };
     } catch (error) {
-        logger.error(`Error fetching competition stats for ${playerUsername}: ${error.message}`);
+        logger.error(`❌ Error fetching competition stats for ${playerUsername}: ${error.message}`);
         return { total_wins: '\u200b', total_metric_gain_sotw: '\u200b', total_metric_gain_botw: '\u200b' };
     }
 }
 
 /**
- * Determines the local registration date based on available data.
+ * 🎯 **Determines the Local Registration Date**
  *
- * The function prioritizes the registration date from the `registered_rsn` table. If not available,
- * it falls back to the clan member's joined date. If neither is available, "Determining.." is returned.
- * If a live registration timestamp from the WOM API is provided, it is used instead.
+ * Chooses the registration date from the registered RSN table, falling back to the clan member's joined date,
+ * or "Determining.." if neither is available. If a live registration timestamp is provided, it takes precedence.
  *
  * @function getLocalRegDate
  * @param {Object|null} clanMemberProfile - The clan member record.
@@ -104,12 +103,14 @@ function getLocalRegDate(clanMemberProfile, regRsns, liveRegisteredAt) {
 }
 
 /**
- * Fetches a guild emoji by name, with a fallback if the emoji is not found or unavailable.
+ * 🎯 **Fetches a Guild Emoji**
+ *
+ * Searches for a custom emoji by name in the provided guild. If not found or unavailable, returns the fallback emoji.
  *
  * @function getGuildEmoji
- * @param {string} name - The name of the emoji to search for.
- * @param {Guild} guild - The guild to search in.
- * @param {string} [fallbackEmoji='⚔️'] - The fallback emoji to use if not found.
+ * @param {string} name - The name of the emoji.
+ * @param {Guild} guild - The guild in which to search.
+ * @param {string} [fallbackEmoji='⚔️'] - The fallback emoji.
  * @returns {string} The emoji string if found; otherwise, the fallback emoji.
  *
  * @example
@@ -117,7 +118,7 @@ function getLocalRegDate(clanMemberProfile, regRsns, liveRegisteredAt) {
  */
 function getGuildEmoji(name, guild, fallbackEmoji = '⚔️') {
     if (guild) {
-        const normalizedName = name.toLowerCase().replace(/\s+/g, '_'); // Normalize the name
+        const normalizedName = name.toLowerCase().replace(/\s+/g, '_');
         const foundEmoji = guild.emojis.cache.find((e) => e.name.toLowerCase() === normalizedName);
         if (foundEmoji && foundEmoji.available) {
             return foundEmoji.toString();
@@ -132,23 +133,22 @@ function getGuildEmoji(name, guild, fallbackEmoji = '⚔️') {
 }
 
 /**
- * Builds the main account embed using live data and formatted strings.
+ * 🎯 **Builds the Main Account Embed**
  *
  * Constructs an embed with the player's profile information, including account details,
- * experience, skills, bosses, competition stats, and date information. Conditionally adds fields
- * based on available data.
+ * experience, skills, bosses, competition stats, and date information.
  *
  * @function buildAccountEmbed
  * @param {Object} liveData - Live player data from the WOM API.
  * @param {string} accountInfo - Formatted account information.
  * @param {string} experienceInfo - Formatted experience data.
- * @param {string} leftSkillsStr - Formatted string for left column skills.
- * @param {string} rightSkillsStr - Formatted string for right column skills.
- * @param {string} leftBossesStr - Formatted string for left column bosses.
- * @param {string} rightBossesStr - Formatted string for right column bosses.
- * @param {string} dateInfo - Formatted date information.
- * @param {string} compInfo - Formatted competition statistics.
- * @param {string} clanInfo - Formatted clan information.
+ * @param {string} leftSkillsStr - Left column skills string.
+ * @param {string} rightSkillsStr - Right column skills string.
+ * @param {string} leftBossesStr - Left column bosses string.
+ * @param {string} rightBossesStr - Right column bosses string.
+ * @param {string} dateInfo - Date information string.
+ * @param {string} compInfo - Competition statistics string.
+ * @param {string} clanInfo - Clan information string.
  * @returns {EmbedBuilder} The constructed account embed.
  *
  * @example
@@ -156,11 +156,9 @@ function getGuildEmoji(name, guild, fallbackEmoji = '⚔️') {
  */
 function buildAccountEmbed(liveData, accountInfo, experienceInfo, leftSkillsStr, rightSkillsStr, leftBossesStr, rightBossesStr, dateInfo, compInfo, clanInfo) {
     const playerName = liveData.displayName;
-    // Build profile link for the player.
     const playerNameForLink = encodeURIComponent(playerName.replace(/ /g, '%20'));
     const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
 
-    // Initialize the embed builder.
     const embed = new EmbedBuilder().setTitle(`ℹ️ ${playerName}`).setURL(profileLink).setColor(0x3498db).setDescription(' ').setFooter({ text: 'Profile updated live via WOM API' }).setTimestamp();
 
     if (clanInfo && clanInfo.trim().length > 0) {
@@ -188,7 +186,7 @@ function buildAccountEmbed(liveData, accountInfo, experienceInfo, leftSkillsStr,
 }
 
 /**
- * Builds an embed displaying registered RSNs.
+ * 🎯 **Builds the RSN Registration Embed**
  *
  * Constructs an embed that lists registered RSNs along with their registration dates.
  *
@@ -211,12 +209,12 @@ function buildRSNEmbed(regRsns) {
 }
 
 /**
+ * 🎯 **Formats a Country Display String**
+ *
  * Returns a string that combines a Discord flag emoji shortcode with the full country code.
  *
- * For example, for the input "AUS", it returns ":flag_au: AUS".
- *
  * @function getCountryDisplay
- * @param {string} countryCode - A country code (can be more than 2 letters).
+ * @param {string} countryCode - A country code.
  * @returns {string} The formatted country display string.
  *
  * @example
@@ -226,10 +224,12 @@ function buildRSNEmbed(regRsns) {
 function getCountryDisplay(countryCode) {
     if (!countryCode) return '';
     const twoLetter = countryCode.substring(0, 2).toLowerCase();
-    return `:flag_${twoLetter}:`;
+    return `:flag_${twoLetter}: ${countryCode}`;
 }
 
 /**
+ * 🎯 **Capitalizes Each Word**
+ *
  * Capitalizes the first letter of each word in the provided string.
  *
  * @function capitalizeWords
@@ -248,20 +248,15 @@ function capitalizeWords(str) {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('profile')
-        .setDescription('View a player profile by RSN. If no RSN is provided, your own registered RSN is used.')
+        .setDescription('View a player profile by RSN. If none is provided, your own registered RSN is used.')
         .addStringOption((option) => option.setName('rsn').setDescription('The RSN to view (autocomplete searches users, registered RSNs, and clan members).').setAutocomplete(true).setRequired(false)),
 
     /**
      * 🎯 **Executes the /profile Command**
      *
-     * Fetches a player's profile based on a provided RSN or the user's own registered RSN if none is provided.
-     * The command:
-     * 1. Retrieves the RSN from the interaction options or defaults to the user's first registered RSN.
-     * 2. Normalizes the RSN for consistency.
-     * 3. Queries the database for clan member and user profiles.
-     * 4. Fetches live data from the Wise Old Man API.
-     * 5. Gathers additional data such as competition statistics and registration dates.
-     * 6. Builds an account embed and, if applicable, an RSN embed.
+     * Fetches a player's profile based on a provided RSN or defaults to the user's own registered RSN.
+     * The command retrieves clan and user profiles from the database, fetches live data from the WOM API,
+     * collects competition stats, and builds a detailed account embed (and an RSN embed if applicable).
      *
      * @async
      * @function execute
@@ -269,104 +264,91 @@ module.exports = {
      * @returns {Promise<void>} Resolves when the command execution is complete.
      *
      * @example
-     * // Invoked when a user runs /profile.
+     * // When a user runs /profile, this function is invoked:
      * await execute(interaction);
      */
     async execute(interaction) {
         try {
             await interaction.deferReply({ flags: 64 });
 
-            // If no RSN is provided, default to the command user's registered RSN.
             let rsnInput = interaction.options.getString('rsn');
             if (!rsnInput) {
-                const userRsns = await db.getAll('SELECT rsn, registered_at FROM registered_rsn WHERE user_id = ? ORDER BY registered_at ASC', [interaction.user.id]);
+                const userRsns = await db.getAll('SELECT rsn, registered_at FROM registered_rsn WHERE discord_id = ? ORDER BY registered_at ASC', [interaction.user.id]);
                 if (!userRsns || userRsns.length === 0) {
                     return await interaction.editReply({
-                        content: '🚫 You haven\'t registered any RSNs yet. Use `/rsn` to register one.',
+                        content: '🚫 **Notice:** You haven\'t registered any RSNs yet. Use `/rsn` to register one.',
                         flags: 64,
                     });
                 }
                 rsnInput = userRsns[0].rsn;
             }
             const normalizedInput = normalizeRsn(rsnInput);
-            logger.info(`Searching profile for RSN: ${rsnInput} (normalized: ${normalizedInput})`);
+            logger.info(`🔍 Searching profile for RSN: "${rsnInput}" (normalized: "${normalizedInput}")`);
 
-            // 1. Look up clan member record.
-            const clanMemberProfile = await db.getOne('SELECT * FROM clan_members WHERE LOWER(name) = ?', [normalizedInput]);
-            // 2. Look up users record.
-            const userProfile = await db.getOne('SELECT * FROM users WHERE LOWER(username) = ?', [normalizedInput]);
+            const clanMemberProfile = await db.getOne('SELECT * FROM clan_members WHERE LOWER(rsn) = ?', [normalizedInput]);
+            const userProfile = await db.getOne('SELECT * FROM users WHERE LOWER(rsn) = ?', [normalizedInput]);
 
-            // Determine profile source.
             let profileSource = null;
             if (!clanMemberProfile && !userProfile) {
-                // Fallback: try to get a registered RSN record.
                 const regRsnFallback = await db.getOne('SELECT rsn, registered_at FROM registered_rsn WHERE LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ?', [normalizedInput]);
                 if (regRsnFallback) {
                     profileSource = 'registered';
-                    logger.info(`Found registered RSN record for RSN: ${rsnInput} (fallback only)`);
+                    logger.info(`✅ Found registered RSN record for RSN: "${rsnInput}" (fallback only)`);
                 } else {
                     return await interaction.editReply({
-                        content: `❌ No profile found for RSN **\`${rsnInput}\`**.`,
+                        content: `❌ **Error:** No profile found for RSN **\`${rsnInput}\`**.`,
                         flags: 64,
                     });
                 }
             } else if (clanMemberProfile && userProfile) {
                 profileSource = 'both';
-                logger.info(`Found both clan member and users profile for RSN: ${rsnInput}`);
+                logger.info(`✅ Found both clan member and user profile for RSN: "${rsnInput}"`);
             } else if (clanMemberProfile) {
                 profileSource = 'clan';
-                logger.info(`Found clan member profile for RSN: ${rsnInput}`);
+                logger.info(`✅ Found clan member profile for RSN: "${rsnInput}"`);
             } else if (userProfile) {
                 profileSource = 'users';
-                logger.info(`Found users profile for RSN: ${rsnInput}`);
+                logger.info(`✅ Found user profile for RSN: "${rsnInput}"`);
             }
 
-            // 3. Retrieve competition stats if a users record exists.
             const compStats = userProfile ? await getCompetitionStats(userProfile.username) : { total_wins: '\u200b', total_metric_gain_sotw: '\u200b', total_metric_gain_botw: '\u200b' };
 
-            // 4. Fetch live data from WOM API.
             const liveData = await womApi.request('players', 'getPlayerDetails', normalizedInput);
             if (!liveData) {
                 const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(normalizedInput)}`;
                 return await interaction.editReply({
-                    content: `❌ Unable to fetch live data for RSN **\`${rsnInput}\`**. Please verify the RSN.\n🔗 [View Profile](${profileLink})`,
+                    content: `❌ **Error:** Unable to fetch live data for RSN **\`${rsnInput}\`**. Please verify the RSN.\n\n🔗 [View Profile](${profileLink})`,
                     flags: 64,
                 });
             }
 
-            // 5. Query registered_rsn for this RSN.
-            const regRsnRow = await db.getOne('SELECT user_id FROM registered_rsn WHERE LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ?', [normalizedInput]);
+            const regRsnRow = await db.getOne('SELECT discord_id FROM registered_rsn WHERE LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ?', [normalizedInput]);
             let regRsns = [];
             let hasRegistered = false;
-            if (regRsnRow && regRsnRow.user_id) {
-                regRsns = await db.getAll('SELECT rsn, registered_at FROM registered_rsn WHERE user_id = ? ORDER BY registered_at ASC', [regRsnRow.user_id]);
+            if (regRsnRow && regRsnRow.discord_id) {
+                regRsns = await db.getAll('SELECT rsn, registered_at FROM registered_rsn WHERE discord_id = ? ORDER BY registered_at ASC', [regRsnRow.discord_id]);
                 hasRegistered = regRsns && regRsns.length > 0;
             }
 
-            // 6. Build embed fields.
             const { type: accountType, build, status, exp, registeredAt: liveRegisteredAt, updatedAt, combatLevel, country, lastChangedAt } = liveData;
             const regDateToUse = getLocalRegDate(clanMemberProfile, regRsns, liveRegisteredAt);
             const statusEmoji = status.toLowerCase() === 'active' ? ':battery:' : ':low_battery:';
 
-            // Build account information string.
             const accountInfo = safeTruncate(
                 `:crossed_swords: Combat Level: **\`${combatLevel || 'Unranked'}\`**\n` +
                     `:gear: Account Type: **\`${capitalizeWords(accountType)} | ${capitalizeWords(build)}\`**\n` +
                     `${statusEmoji} Status: **\`${capitalizeWords(status)}\`**\n` +
-                    `:globe_with_meridians: Country: ${getCountryDisplay(country) || '\u200b'} ${country || 'https://discord.com/channels/679454777708380161/802680940835897384'}`,
+                    `:globe_with_meridians: Country: ${getCountryDisplay(country) || '\u200b'} ${country || 'N/A'}`,
                 1024,
             );
 
-            // Build experience information string.
             let experienceInfo = `<:Total_Level:1127669463613976636> Total Exp: **\`${exp.toLocaleString()}\`**\n`;
             if (exp >= 500_000_000) {
                 experienceInfo += ':trophy: Over **`500M EXP`** achieved!\n';
             }
 
-            // Process snapshot data for skills and bosses.
             const snapshot = liveData.latestSnapshot && liveData.latestSnapshot.data;
 
-            // --- Process skills ---
             const skillsLines = [];
             if (snapshot && snapshot.skills) {
                 const skillKeys = Object.keys(snapshot.skills).filter((key) => key !== 'overall');
@@ -382,7 +364,6 @@ module.exports = {
                 }
             }
 
-            // Split skills into two columns.
             const leftSkills = [];
             const rightSkills = [];
             skillsLines.forEach((line, index) => {
@@ -395,7 +376,6 @@ module.exports = {
             const leftSkillsStr = safeTruncate(leftSkills.join('\n'), 1024);
             const rightSkillsStr = safeTruncate(rightSkills.join('\n'), 1024);
 
-            // --- Process bosses ---
             const bossesLines = [];
             if (snapshot && snapshot.bosses) {
                 const KILLCOUNT_THRESHOLD = 300;
@@ -463,21 +443,21 @@ module.exports = {
                 embedArray.push(buildRSNEmbed(regRsns));
             }
 
-            logger.debug(`Account Info Length: ${accountInfo.length}`);
-            logger.debug(`Total Exp Info Length: ${finalExperienceInfo.length}`);
-            logger.debug(`Total Levels Info Length: ${leftSkillsStr.length}`);
-            logger.debug(`Total Levels Info 2 Length: ${rightSkillsStr.length}`);
-            logger.debug(`Total Bosses Info Length: ${leftBossesStr.length}`);
-            logger.debug(`Total Bosses Info 2 Length: ${rightBossesStr.length}`);
-            logger.debug(`Date Info Length: ${dateInfo.length}`);
-            logger.debug(`Comp Info Length: ${compInfo.length}`);
-            logger.debug(`Clan Info Length: ${clanInfo.length}`);
+            //logger.debug(`📝 Account Info Length: ${accountInfo.length}`);
+            //logger.debug(`📝 Total Exp Info Length: ${finalExperienceInfo.length}`);
+            //logger.debug(`📝 Left Skills Info Length: ${leftSkillsStr.length}`);
+            //logger.debug(`📝 Right Skills Info Length: ${rightSkillsStr.length}`);
+            //logger.debug(`📝 Left Bosses Info Length: ${leftBossesStr.length}`);
+            //logger.debug(`📝 Right Bosses Info Length: ${rightBossesStr.length}`);
+            //logger.debug(`📝 Date Info Length: ${dateInfo.length}`);
+            //logger.debug(`📝 Comp Info Length: ${compInfo.length}`);
+            //logger.debug(`📝 Clan Info Length: ${clanInfo.length}`);
 
             await interaction.editReply({ embeds: embedArray, flags: 64 });
         } catch (error) {
-            logger.error(`Error executing /profile command: ${error.message}`);
+            logger.error(`❌ Error executing /profile command: ${error.message}`);
             await interaction.editReply({
-                content: '❌ An error occurred while fetching the profile. Please try again later.',
+                content: '❌ **Error:** An error occurred while fetching the profile. Please try again later.',
                 flags: 64,
             });
         }
@@ -486,8 +466,8 @@ module.exports = {
     /**
      * 🎯 **Handles Autocomplete for the /profile Command**
      *
-     * Provides autocomplete suggestions for RSN input by combining data from users,
-     * registered RSNs, and clan members. It ensures up to 25 unique suggestions are sent.
+     * Provides autocomplete suggestions for RSN input by combining data from users, registered RSNs,
+     * and clan members. Up to 25 unique suggestions are returned.
      *
      * @async
      * @function autocomplete
@@ -503,16 +483,16 @@ module.exports = {
         try {
             if (focusedOption.name === 'rsn') {
                 const input = focusedOption.value.toLowerCase();
-                const userResults = await db.getAll('SELECT username FROM users WHERE LOWER(username) LIKE ?', [`%${input}%`]);
+                const userResults = await db.getAll('SELECT rsn FROM users WHERE LOWER(rsn) LIKE ?', [`%${input}%`]);
                 const regResults = await db.getAll('SELECT DISTINCT rsn FROM registered_rsn WHERE LOWER(rsn) LIKE ?', [`%${input}%`]);
-                const clanResults = await db.getAll('SELECT name FROM clan_members WHERE LOWER(name) LIKE ?', [`%${input}%`]);
+                const clanResults = await db.getAll('SELECT rsn FROM clan_members WHERE LOWER(rsn) LIKE ?', [`%${input}%`]);
                 const combinedSet = new Set();
                 const choices = [];
                 userResults.forEach((row) => {
-                    const uname = row.username.toLowerCase();
+                    const uname = row.rsn.toLowerCase();
                     if (!combinedSet.has(uname)) {
                         combinedSet.add(uname);
-                        choices.push({ name: row.username, value: row.username });
+                        choices.push({ name: row.username || row.rsn, value: row.rsn });
                     }
                 });
                 regResults.forEach((row) => {
@@ -523,16 +503,16 @@ module.exports = {
                     }
                 });
                 clanResults.forEach((row) => {
-                    const nameLower = row.name.toLowerCase();
+                    const nameLower = row.rsn.toLowerCase();
                     if (!combinedSet.has(nameLower)) {
                         combinedSet.add(nameLower);
-                        choices.push({ name: row.name, value: row.name });
+                        choices.push({ name: row.name || row.rsn, value: row.rsn });
                     }
                 });
                 await interaction.respond(choices.slice(0, 25));
             }
         } catch (error) {
-            logger.error(`Error in autocomplete for /profile: ${error.message}`);
+            logger.error(`❌ Error in autocomplete for /profile: ${error.message}`);
             await interaction.respond([]);
         }
     },

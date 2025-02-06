@@ -55,7 +55,7 @@ function getRankEmoji(rank) {
  */
 function getRankColor(rank) {
     const rankData = RANKS[rank.toLowerCase()];
-    return rankData ? rankData.color : 0xffff00; // Default to yellow if rank not found
+    return rankData ? rankData.color : 0xffff00;
 }
 
 /**

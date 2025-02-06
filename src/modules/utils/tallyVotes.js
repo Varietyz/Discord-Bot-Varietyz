@@ -25,9 +25,8 @@ const logger = require('./logger');
  */
 const tallyVotesAndRecordWinner = async (competition) => {
     try {
-        logger.info(`Tallying votes for competition ID ${competition.id} (${competition.type})...`);
+        logger.info(`🎯 **Tallying Votes:** Processing votes for competition ID \`${competition.id}\` (${competition.type})...`);
 
-        // Step 1: Collect votes by metric.
         const votes = await db.getAll(
             `SELECT vote_choice, COUNT(*) as count 
              FROM votes 
@@ -38,29 +37,25 @@ const tallyVotesAndRecordWinner = async (competition) => {
         );
 
         if (votes.length === 0) {
-            logger.info(`No votes recorded for competition ID ${competition.id}.`);
-            return null; // No votes recorded; alternative action should be taken (e.g., checking a queue).
+            logger.info(`⚠️ **No Votes Found:** No votes recorded for competition ID \`${competition.id}\`.`);
+            return null;
         }
 
-        // Step 2: Determine the winning metric.
         const highestVoteCount = votes[0].count;
-        // Filter metrics that have the same highest vote count.
         const topMetrics = votes.filter((vote) => vote.count === highestVoteCount).map((vote) => vote.vote_choice);
 
         let winningMetric;
         if (topMetrics.length === 1) {
-            // One clear winner.
             winningMetric = topMetrics[0];
         } else {
-            // Randomly select one metric from the tied metrics.
             winningMetric = topMetrics[Math.floor(Math.random() * topMetrics.length)];
-            logger.info(`Tie detected. Randomly selected metric: ${winningMetric}`);
+            logger.info(`⚖️ **Tie Detected:** Randomly selected metric: \`${winningMetric}\`.`);
         }
 
-        logger.info(`Winning metric for ${competition.type}: ${winningMetric}`);
+        logger.info(`✅ **Winning Metric:** For \`${competition.type}\`, the winning metric is \`${winningMetric}\`. 🎉`);
         return winningMetric;
     } catch (error) {
-        logger.error(`Error tallying votes for competition ID ${competition.id}: ${error.message}`);
+        logger.error(`🚨 **Error:** Error tallying votes for competition ID \`${competition.id}\`: ${error.message} ❌`);
         return null;
     }
 };

@@ -149,7 +149,7 @@ async function updateRegisteredRSN(oldName, newName, channelManager) {
   try {
     // Fetch the `user_id` associated with the `oldName`
     const oldNameQuery = `
-      SELECT user_id, rsn
+      SELECT discord_id, rsn
       FROM registered_rsn
       WHERE LOWER(rsn) = LOWER(?)
     `;
@@ -166,7 +166,7 @@ async function updateRegisteredRSN(oldName, newName, channelManager) {
 
     // Check if `newName` already exists for the same user
     const newNameQuery = `
-      SELECT user_id, rsn
+      SELECT discord_id, rsn
       FROM registered_rsn
       WHERE LOWER(rsn) = LOWER(?) AND user_id = ?
     `;
@@ -176,7 +176,7 @@ async function updateRegisteredRSN(oldName, newName, channelManager) {
       // If `newName` already exists for the same user, remove `oldName`
       const deleteOldNameQuery = `
         DELETE FROM registered_rsn
-        WHERE user_id = ? AND LOWER(rsn) = LOWER(?)
+        WHERE discord_id = ? AND LOWER(rsn) = LOWER(?)
       `;
       await runQuery(deleteOldNameQuery, [oldUserId, oldName]);
 
@@ -205,7 +205,7 @@ async function updateRegisteredRSN(oldName, newName, channelManager) {
 
     // Check if `newName` exists for a different user and handle conflicts
     const conflictQuery = `
-      SELECT user_id, rsn
+      SELECT discord_id, rsn
       FROM registered_rsn
       WHERE LOWER(rsn) = LOWER(?)
     `;
@@ -215,7 +215,7 @@ async function updateRegisteredRSN(oldName, newName, channelManager) {
       if (newUserId !== oldUserId) {
         const deleteQuery = `
           DELETE FROM registered_rsn
-          WHERE user_id = ? AND LOWER(rsn) = LOWER(?)
+          WHERE discord_id = ? AND LOWER(rsn) = LOWER(?)
         `;
         await runQuery(deleteQuery, [newUserId, rsn]);
 
@@ -277,7 +277,7 @@ async function processNameChanges(client) {
   const dependencyGraph = new Map();
   for (const { oldName, newName, resolvedAt } of nameChanges) {
     const userIdQuery = `
-      SELECT user_id
+      SELECT discord_id
       FROM registered_rsn
       WHERE LOWER(rsn) = LOWER(?)
     `;
@@ -313,7 +313,7 @@ async function processNameChanges(client) {
 
     // Step 3.1: Check if `newName` exists and validate its timestamp
     const newNameQuery = `
-      SELECT user_id, rsn, registered_at
+      SELECT discord_id, rsn, registered_at
       FROM registered_rsn
       WHERE LOWER(rsn) = LOWER(?)
     `;

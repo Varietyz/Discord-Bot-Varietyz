@@ -1,4 +1,23 @@
 // @ts-nocheck
+/**
+ * @fileoverview
+ * 🚀 **Module Purpose:**
+ * This module handles updating the competition leaderboard on Discord by:
+ * - Fetching active competition details from the database.
+ * - Retrieving competition data from the Wise Old Man API.
+ * - Sorting participants by progress.
+ * - Formatting and sending/updating a Discord embed in the corresponding channel.
+ *
+ * 📦 **Key Exports:**
+ * - `updateLeaderboard(competitionType, db, client, constants)`
+ * - `buildLeaderboardEmbed(competitionType, description, competitionId)`
+ *
+ * 🛠️ **Dependencies:**
+ * - `discord.js` (for building and sending embeds)
+ * - Custom `logger` utility for logging messages
+ * - `WOMApiClient` for interacting with the Wise Old Man API
+ */
+
 const { EmbedBuilder } = require('discord.js');
 const logger = require('../../utils/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
@@ -19,7 +38,7 @@ const WOMApiClient = require('../../../api/wise_old_man/apiClient');
  * @returns {Promise<void>} Resolves when the leaderboard has been updated.
  *
  * @example
- * // Update the SOTW leaderboard:
+ * // 📌 Update the SOTW leaderboard:
  * await updateLeaderboard('SOTW', db, client, constants);
  */
 async function updateLeaderboard(competitionType, db, client, constants) {
@@ -28,43 +47,40 @@ async function updateLeaderboard(competitionType, db, client, constants) {
         const channel = await client.channels.fetch(channelId);
 
         if (!channel) {
-            logger.error(`No channel found for type ${competitionType}`);
+            logger.error(`🚫 **Error:** No channel found for type \`${competitionType}\`. Please verify the configuration.`);
             return;
         }
 
         const competition = await getActiveCompetition(competitionType, db);
         if (!competition) {
-            logger.warn(`No active competition found for ${competitionType}`);
+            logger.warn(`⚠️ **Warning:** No active competition found for \`${competitionType}\`. Skipping leaderboard update.`);
             return;
         }
 
-        // ✅ Fetch full competition details (metric + participants)
-        const competitionDetails = await WOMApiClient.request('competitions', 'getCompetitionDetails', competition.id);
+        const competitionDetails = await WOMApiClient.request('competitions', 'getCompetitionDetails', competition.competition_id);
 
         if (!competitionDetails) {
-            logger.error(`Failed to fetch competition details for ID ${competition.id}`);
+            logger.error(`🚫 **Error:** Failed to fetch competition details for ID \`${competition.competition_id}\`.`);
             return;
         }
 
-        const { metric, participations } = competitionDetails; // Extract metric & participants
+        const { metric, participations } = competitionDetails;
 
         if (!metric || !participations) {
-            logger.warn(`Competition ID ${competition.id} is missing metric or participants.`);
+            logger.warn(`⚠️ **Warning:** Competition ID \`${competition.competition_id}\` is missing metric or participant data.`);
             return;
         }
 
-        // ✅ Sort participants based on progress gained (descending order)
         const sortedParticipants = participations.sort((a, b) => b.progress.gained - a.progress.gained);
 
-        // ✅ Format leaderboard description with metric emoji and participant data
         const embedDescription = formatLeaderboardDescription(sortedParticipants, competitionType, metric, channel.guild);
 
-        const embed = buildLeaderboardEmbed(competitionType, embedDescription, competition.id);
+        const embed = buildLeaderboardEmbed(competitionType, embedDescription, competition.competition_id);
 
         await sendOrUpdateEmbed(channel, competition, embed, db);
-        logger.info(`Updated ${competitionType} leaderboard with WOM data.`);
+        logger.info(`✅ **Success:** Updated \`${competitionType}\` leaderboard with WOM data.`);
     } catch (err) {
-        logger.error(`Error in updateLeaderboard: ${err.message}`);
+        logger.error(`🚫 **Error in updateLeaderboard:** ${err.message}`);
     }
 }
 
@@ -80,6 +96,7 @@ async function updateLeaderboard(competitionType, db, client, constants) {
  * @returns {Promise<Object|null>} Returns the active competition object or `null` if not found.
  *
  * @example
+ * // 📌 Retrieve the active BOTW competition:
  * const activeComp = await getActiveCompetition('BOTW', db);
  */
 async function getActiveCompetition(competitionType, db) {
@@ -105,29 +122,27 @@ async function getActiveCompetition(competitionType, db) {
  * @param {Array<Object>} participants - Array of participant objects with progress details.
  * @param {string} competitionType - The competition type, either `SOTW` or `BOTW`.
  * @param {string} metric - The competition metric (e.g., "Mining", "Agility").
- * @param {Guild} guild - The Discord guild object used to fetch custom emojis.
+ * @param {Object} guild - The Discord guild object used to fetch custom emojis.
  * @returns {string} A formatted string containing the leaderboard description.
  *
  * @example
+ * // 📌 Format the leaderboard description:
  * const description = formatLeaderboardDescription(participants, 'SOTW', 'Mining', guild);
  */
 function formatLeaderboardDescription(participants, competitionType, metric, guild) {
-    // Normalize the metric name to match emoji names in the guild
     const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_');
 
-    // Fetch the correct emoji from the guild
     let metricEmoji = '';
     if (guild) {
         const foundEmoji = guild.emojis.cache.find((e) => e.name.toLowerCase() === normalizedMetric);
         if (foundEmoji && foundEmoji.available) {
-            metricEmoji = foundEmoji.toString(); // Use custom emoji if available
+            metricEmoji = foundEmoji.toString();
         } else {
-            // Use fallback emojis based on competition type
             metricEmoji = competitionType === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️';
-            logger.warn(`⚠️ Custom emoji "${normalizedMetric}" not found or unavailable. Using fallback ${metricEmoji}`);
+            logger.warn(`⚠️ **Warning:** Custom emoji \`${normalizedMetric}\` not found or unavailable. Fallback emoji \`${metricEmoji}\` is used.`);
         }
     } else {
-        logger.warn(`⚠️ Guild is undefined; cannot fetch emoji for metric: ${metric}`);
+        logger.warn(`⚠️ **Warning:** Guild is undefined; cannot fetch emoji for metric: \`${metric}\`.`);
         metricEmoji = competitionType === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️'; // Default fallback when guild is null
     }
 
@@ -155,17 +170,18 @@ function formatLeaderboardDescription(participants, competitionType, metric, gui
  * @returns {EmbedBuilder} A Discord EmbedBuilder instance representing the leaderboard.
  *
  * @example
- * const embed = buildLeaderboardEmbed('BOTW', description, competition.id);
+ * // 📌 Build a BOTW leaderboard embed:
+ * const embed = buildLeaderboardEmbed('BOTW', description, competition.competition_id);
  */
 function buildLeaderboardEmbed(competitionType, description, competitionId) {
     const typeEmoji = competitionType === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '<:Slayer:1127658069984288919>';
 
     return new EmbedBuilder()
         .setTitle(`${typeEmoji} ${competitionType} Leaderboard`)
-        .setURL(`https://wiseoldman.net/competitions/${competitionId}/top-5`) // ✅ Clickable Title Link
+        .setURL(`https://wiseoldman.net/competitions/${competitionId}/top-5`)
         .setColor(competitionType === 'SOTW' ? 0x3498db : 0xe74c3c)
         .setDescription(description)
-        .setFooter({ text: '🕓Last Updated' })
+        .setFooter({ text: '🕓 Last Updated' })
         .setTimestamp();
 }
 
@@ -177,13 +193,14 @@ function buildLeaderboardEmbed(competitionType, description, competitionId) {
  *
  * @async
  * @function sendOrUpdateEmbed
- * @param {Channel} channel - The Discord channel where the leaderboard is posted.
+ * @param {Object} channel - The Discord channel where the leaderboard is posted.
  * @param {Object} competition - The competition object containing leaderboard information.
  * @param {EmbedBuilder} embed - The embed to send or update.
  * @param {Object} db - The database utility object.
  * @returns {Promise<void>} Resolves when the message has been sent or updated.
  *
  * @example
+ * // 📌 Send or update the leaderboard embed:
  * await sendOrUpdateEmbed(channel, competition, embed, db);
  */
 async function sendOrUpdateEmbed(channel, competition, embed, db) {
@@ -192,16 +209,15 @@ async function sendOrUpdateEmbed(channel, competition, embed, db) {
             const msg = await channel.messages.fetch(competition.leaderboard_message_id);
             await msg.edit({ embeds: [embed] });
         } catch (err) {
-            logger.error(`Failed to fetch or edit message ID ${competition.leaderboard_message_id}: ${err.message}`);
-            // Send new embed if updating fails
+            logger.error(`🚫 **Error:** Failed to fetch or edit message ID \`${competition.leaderboard_message_id}\`: ${err.message}. Sending a new message.`);
             const newMsg = await channel.send({ embeds: [embed] });
             await db.runQuery(
                 `
                 UPDATE competitions
                 SET leaderboard_message_id = ?
-                WHERE id = ?
+                WHERE competition_id = ?
                 `,
-                [newMsg.id, competition.id],
+                [newMsg.id, competition.competition_id],
             );
         }
     } else {
@@ -210,9 +226,9 @@ async function sendOrUpdateEmbed(channel, competition, embed, db) {
             `
             UPDATE competitions
             SET leaderboard_message_id = ?
-            WHERE id = ?
+            WHERE competition_id = ?
             `,
-            [newMsg.id, competition.id],
+            [newMsg.id, competition.competition_id],
         );
     }
 }

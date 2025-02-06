@@ -18,23 +18,18 @@
 function calculateEndDate(rotationWeeks) {
     const now = new Date();
 
-    // Start time is now + 1 minute.
-    const startsAt = new Date(now.getTime() + 60000); // Current time + 1 minute.
+    const startsAt = new Date(now.getTime() + 60000);
 
-    // Determine the current day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday).
     const dayOfWeek = startsAt.getUTCDay();
-    // Calculate days until the next Sunday.
     let daysUntilSunday = (7 - dayOfWeek) % 7;
     if (daysUntilSunday === 0) {
-        daysUntilSunday = 7; // If today is Sunday, schedule for the next Sunday.
+        daysUntilSunday = 7;
     }
 
-    // Calculate the date for the first upcoming Sunday.
     const firstSunday = new Date(startsAt);
     firstSunday.setUTCDate(startsAt.getUTCDate() + daysUntilSunday);
-    firstSunday.setUTCHours(23, 59, 0, 0); // Set time to 23:59 UTC.
+    firstSunday.setUTCHours(23, 59, 0, 0);
 
-    // Add additional weeks to the first Sunday based on the rotationWeeks parameter.
     const totalWeeksToAdd = rotationWeeks - 1;
     if (totalWeeksToAdd > 0) {
         firstSunday.setUTCDate(firstSunday.getUTCDate() + totalWeeksToAdd * 7);

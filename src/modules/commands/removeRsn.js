@@ -14,7 +14,7 @@
  * - Provides autocomplete suggestions for RSN options.
  * - Updates the database to ensure successful RSN removal.
  *
- * **External Dependencies:**
+ * 🔗 **External Dependencies:**
  * - **Discord.js**: For handling slash commands, creating buttons, and managing interactive components.
  * - **SQLite**: For managing registered RSN data.
  *
@@ -27,14 +27,14 @@ const logger = require('../utils/logger');
 const { runQuery, getAll } = require('../utils/dbUtils');
 const { normalizeRsn } = require('../utils/normalizeRsn');
 
-const RATE_LIMIT = 5; // Maximum number of allowed attempts 🔢
-const RATE_LIMIT_DURATION = 60 * 1000; // 1 minute in milliseconds ⏳
+const RATE_LIMIT = 5;
+const RATE_LIMIT_DURATION = 60 * 1000;
 const rateLimitMap = new Map();
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('remove_rsn')
-        .setDescription('Remove up to three registered RSNs from your list')
+        .setDescription('Remove up to three registered RSNs from your account')
         .addStringOption((option) => option.setName('1st').setDescription('The first RSN you want to remove').setRequired(true).setAutocomplete(true))
         .addStringOption((option) => option.setName('2nd').setDescription('The second RSN you want to remove (optional)').setAutocomplete(true))
         .addStringOption((option) => option.setName('3rd').setDescription('The third RSN you want to remove (optional)').setAutocomplete(true)),
@@ -43,6 +43,7 @@ module.exports = {
      * 🎯 **Executes the /remove_rsn Command**
      *
      * This command allows users to remove up to three RSNs from their account. It performs the following steps:
+     *
      * 1. Retrieves RSN options from the command and filters out null values.
      * 2. Applies rate limiting to prevent command abuse.
      * 3. Checks if the user has any registered RSNs.
@@ -56,23 +57,24 @@ module.exports = {
      * @returns {Promise<void>} Resolves when the command execution is complete.
      *
      * @example
-     * // Internally invoked when a user runs /remove_rsn with their RSN selections.
+     * // When a user runs /remove_rsn with their RSN selections:
      * await execute(interaction);
      */
     async execute(interaction) {
         try {
-            // Retrieve RSNs to remove from the options (filtering out any null values)
+            // Retrieve RSN options in reverse order (to preserve order when filtering out null values)
             const rsnsToRemove = [interaction.options.getString('3rd'), interaction.options.getString('2nd'), interaction.options.getString('1st')].filter(Boolean);
 
-            const userID = interaction.user.id;
+            const discordID = interaction.user.id;
             const currentTime = Date.now();
-            const userData = rateLimitMap.get(userID) || { count: 0, firstRequest: currentTime };
+            const userData = rateLimitMap.get(discordID) || { count: 0, firstRequest: currentTime };
 
+            // Rate limiting check
             if (currentTime - userData.firstRequest < RATE_LIMIT_DURATION) {
                 if (userData.count >= RATE_LIMIT) {
                     const retryAfter = Math.ceil((RATE_LIMIT_DURATION - (currentTime - userData.firstRequest)) / 1000);
                     return await interaction.reply({
-                        content: `🚫 You're using this command too frequently. Please wait \`${retryAfter}\` second(s) before trying again. ⏳`,
+                        content: `🚫 **Rate Limit:** You're using this command too frequently. Please wait \`${retryAfter}\` second(s) before trying again. ⏳`,
                         flags: 64,
                     });
                 }
@@ -81,34 +83,33 @@ module.exports = {
                 userData.count = 1;
                 userData.firstRequest = currentTime;
             }
+            rateLimitMap.set(discordID, userData);
+            setTimeout(() => rateLimitMap.delete(discordID), RATE_LIMIT_DURATION);
 
-            rateLimitMap.set(userID, userData);
+            logger.info(`🔍 User \`${discordID}\` attempting to remove RSNs: \`${rsnsToRemove.join(', ')}\`.`);
 
-            // Remove the user's rate limit data after the configured duration.
-            setTimeout(() => rateLimitMap.delete(userID), RATE_LIMIT_DURATION);
-
-            logger.info(`User ${userID} attempting to remove RSNs: ${rsnsToRemove.join(', ')}`);
-
-            const userRSNs = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ?', [userID]);
+            // Retrieve user's registered RSNs
+            const userRSNs = await getAll('SELECT rsn FROM registered_rsn WHERE discord_id = ?', [discordID]);
 
             if (!userRSNs.length) {
                 return await interaction.reply({
-                    content: '⚠️ You have no registered RSNs. Please register an RSN first to use this command. 📝',
+                    content: '⚠️ **Notice:** You have no registered RSNs. Please register an RSN first to use this command. 📝',
                     flags: 64,
                 });
             }
 
+            // Normalize the user's registered RSNs for accurate matching
             const normalizedUserRSNs = userRSNs.map((row) => normalizeRsn(row.rsn));
             const validRSNs = rsnsToRemove.filter((rsn) => normalizedUserRSNs.includes(normalizeRsn(rsn)));
 
             if (validRSNs.length === 0) {
                 return await interaction.reply({
-                    content: '⚠️ None of the provided RSNs were found in your account. Please check and try again.',
+                    content: '⚠️ **Notice:** None of the provided RSNs were found in your account. Please check your input and try again.',
                     flags: 64,
                 });
             }
 
-            // Build confirmation prompt with interactive buttons.
+            // Build confirmation prompt with interactive buttons
             const confirmationRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('confirm_removersn').setLabel('Confirm').setStyle(ButtonStyle.Danger),
                 new ButtonBuilder().setCustomId('cancel_removersn').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
@@ -130,17 +131,17 @@ module.exports = {
             collector.on('collect', async (i) => {
                 if (i.customId === 'confirm_removersn') {
                     for (const rsn of validRSNs) {
-                        await runQuery('DELETE FROM registered_rsn WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ?', [userID, normalizeRsn(rsn)]);
+                        await runQuery('DELETE FROM registered_rsn WHERE discord_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ?', [discordID, normalizeRsn(rsn)]);
                     }
-                    logger.info(`User ${userID} successfully removed RSNs: ${validRSNs.join(', ')}`);
+                    logger.info(`✅ User \`${discordID}\` successfully removed RSNs: \`${validRSNs.join(', ')}\`.`);
                     await i.update({
-                        content: `✅ The following RSNs have been successfully removed from your account:\n${validRSNs.map((rsn) => `- \`${rsn}\``).join('\n')}`,
+                        content: `✅ **Success:** The following RSNs have been removed from your account:\n${validRSNs.map((rsn) => `- \`${rsn}\``).join('\n')}`,
                         components: [],
                         flags: 64,
                     });
                 } else if (i.customId === 'cancel_removersn') {
                     await i.update({
-                        content: '❌ RSN removal has been canceled.',
+                        content: '❌ **Canceled:** RSN removal has been canceled.',
                         components: [],
                         flags: 64,
                     });
@@ -150,16 +151,16 @@ module.exports = {
             collector.on('end', async (collected, reason) => {
                 if (reason === 'time' && collected.size === 0) {
                     await interaction.editReply({
-                        content: '⌛ Confirmation timed out. RSN removal has been canceled.',
+                        content: '⌛ **Timeout:** Confirmation timed out. RSN removal has been canceled.',
                         components: [],
                         flags: 64,
                     });
                 }
             });
         } catch (error) {
-            logger.error(`Error executing /removersn command: ${error.message}`);
+            logger.error(`❌ Error executing /remove_rsn command: ${error.message}`);
             await interaction.reply({
-                content: '❌ An error occurred while processing your request. Please try again later. 🛠️',
+                content: '❌ **Error:** An error occurred while processing your request. Please try again later. 🛠️',
                 flags: 64,
             });
         }
@@ -177,16 +178,16 @@ module.exports = {
      * @returns {Promise<void>} Resolves when autocomplete suggestions have been sent.
      *
      * @example
-     * // Invoked internally when a user types in the RSN field.
+     * // Invoked internally when a user types in an RSN field.
      * await autocomplete(interaction);
      */
     async autocomplete(interaction) {
         const focusedOption = interaction.options.getFocused(true);
-        const userID = interaction.user.id;
+        const discordID = interaction.user.id;
 
         try {
             const normalizedInput = normalizeRsn(focusedOption.value);
-            const rsnsResult = await getAll('SELECT rsn FROM registered_rsn WHERE user_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) LIKE ?', [userID, `%${normalizedInput}%`]);
+            const rsnsResult = await getAll('SELECT rsn FROM registered_rsn WHERE discord_id = ? AND LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) LIKE ?', [discordID, `%${normalizedInput}%`]);
 
             const choices = rsnsResult.map((row) => ({
                 name: row.rsn,
@@ -206,7 +207,7 @@ module.exports = {
                 await interaction.respond(filteredChoices.slice(0, 25));
             }
         } catch (error) {
-            logger.error(`Error in autocomplete for /remove_rsn: ${error.message}`);
+            logger.error(`❌ Error in autocomplete for /remove_rsn: ${error.message}`);
             await interaction.respond([]);
         }
     },

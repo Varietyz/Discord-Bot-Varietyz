@@ -7,10 +7,12 @@
  * It allows administrators to set the rotation period (in weeks) for competitions.
  * The command updates the configuration in the database and informs the user upon success or failure.
  *
- * **Key Features:**
- * - **Command Registration**: Defines a slash command with a required integer option for the number of weeks.
- * - **Permission Management**: Restricted to administrators.
- * - **Database Update**: Updates the rotation period in the configuration table using an upsert query.
+ * ---
+ *
+ * 🔹 **Usage:**
+ * - Administrator-only command.
+ * - Takes an integer value (minimum 1) representing the number of weeks.
+ * - Updates the configuration table using an upsert query.
  *
  * @module src/modules/commands/adminSetRotationPeriod
  */
@@ -33,13 +35,15 @@ module.exports = {
      * It retrieves the number of weeks from the command options, validates that it is at least 1,
      * and updates the configuration in the database accordingly.
      *
+     * ---
+     *
      * @async
      * @function execute
      * @param {Discord.CommandInteraction} interaction - The command interaction object.
      * @returns {Promise<void>} Resolves when the command execution is complete.
      *
      * @example
-     * // When an administrator runs:
+     * // 📌 Example:
      * // /set_rotation_period weeks:2
      * // The rotation period is set to 2 weeks.
      */
@@ -48,23 +52,22 @@ module.exports = {
 
         if (weeks < 1) {
             return interaction.reply({
-                content: 'Rotation period must be at least 1 week.',
+                content: '🚫 **Error:** Rotation period must be at least 1 week.',
                 flags: 64,
             });
         }
 
-        // Update the rotation period in the config table.
         try {
             await db.runQuery('INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', ['rotation_period_weeks', weeks.toString()]);
-            logger.info(`Rotation period set to ${weeks} week(s) by ${interaction.user.tag}`);
+            logger.info(`✅ Rotation period set to ${weeks} week(s) by ${interaction.user.tag}`);
             return interaction.reply({
-                content: `Rotation period successfully set to ${weeks} week(s). This will take effect from the next competition cycle.`,
+                content: `🎉 **Success:** Rotation period successfully set to \`${weeks}\` week(s). This will take effect from the next competition cycle. ⏱️`,
                 flags: 64,
             });
         } catch (error) {
-            logger.error(`Error setting rotation period: ${error.message}`);
+            logger.error(`❌ Error setting rotation period: ${error.message}`);
             return interaction.reply({
-                content: 'There was an error setting the rotation period. Please try again later.',
+                content: '❌ **Error:** There was an error setting the rotation period. Please try again later. 🛠️',
                 flags: 64,
             });
         }

@@ -7,17 +7,16 @@
  * This command provides insights into player activity by fetching data from the database
  * and presenting it with pagination support.
  *
- * Core Features: (Administrator-only command)
- * - Displays active or inactive players based on recent progression.
- * - Paginated display of player data with navigation controls.
- * - Includes the last progress timestamp for each player.
- * - Displays total count of active or inactive players.
- * - Supports interactive buttons for page navigation and closing.
+ * **Core Features:**
+ * - Displays active players (progressed in the last 7 days) or inactive players (inactive for >21 days).
+ * - Paginated display with interactive navigation buttons.
+ * - Shows each player's last progress timestamp (using relative time).
+ * - Displays the total count of players for the chosen status.
  *
- * External Dependencies:
+ * **External Dependencies:**
  * - **Discord.js**: For handling slash commands, creating embeds, and managing interactive buttons.
- * - **Luxon**: For date and time manipulation (calculating progression and inactivity).
- * - **SQLite**: For retrieving player activity data from the database.
+ * - **Luxon**: For date and time manipulation.
+ * - **SQLite**: For retrieving player activity data.
  *
  * @module modules/commands/adminCheckActivity
  */
@@ -34,20 +33,19 @@ module.exports = {
         .setName('check_activity')
         .setDescription('View active and inactive players based on their recent progression.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
-        .addStringOption((option) => option.setName('status').setDescription('Choose to view active or inactive players.').setRequired(true).addChoices({ name: 'Active', value: 'active' }, { name: 'Inactive', value: 'inactive' })),
+        .addStringOption((option) => option.setName('status').setDescription('Choose to view **active** or **inactive** players.').setRequired(true).addChoices({ name: 'Active', value: 'active' }, { name: 'Inactive', value: 'inactive' })),
 
     /**
-     * 🎯 Executes the `/check_activity` command.
+     * 🎯 **Executes the /check_activity Command**
      *
      * Retrieves active or inactive players based on their last progress and displays the results
-     * in a paginated embed with navigation buttons.
+     * in a paginated embed with interactive navigation buttons.
      *
-     * The command:
-     * - Defers the reply.
-     * - Updates the activity data from the database.
-     * - Retrieves and calculates the total count of active/inactive players.
-     * - Fetches the corresponding player records.
-     * - Paginates the data and sends an embed with interactive navigation.
+     * Steps:
+     * - Defers the reply and updates activity data.
+     * - Calculates the total count of active/inactive players.
+     * - Fetches player records and paginates them.
+     * - Provides interactive buttons for page navigation and closing.
      *
      * @async
      * @function execute
@@ -55,50 +53,50 @@ module.exports = {
      * @returns {Promise<void>} Resolves when the command execution is complete.
      *
      * @example
-     * // Executed when an admin runs /check_activity status:active
-     * await execute(interaction);
+     * // 📌 Example:
+     * await execute(interaction); // Run with /check_activity status:active
      */
     async execute(interaction) {
         try {
-            logger.info(`Command 'check_activity' triggered by user: ${interaction.user.username}`);
+            logger.info(`🔎 /check_activity command triggered by ${interaction.user.username}`);
             await interaction.deferReply({ flags: 64 });
 
             const status = interaction.options.getString('status');
 
-            // Update the database with the latest data before calculating
+            // Update activity data before processing
             await updateActivityData();
 
+            // Calculate player count based on status
             const count = status === 'active' ? await calculateProgressCount() : await calculateInactivity();
 
             if (count === 0) {
-                const message = status === 'active' ? '> 🟢 No players have progressed in the last 7 days.' : '> 🔴 No players have been inactive for more than 21 days.';
+                const message = status === 'active' ? '> 🟢 **No players** have progressed in the last 7 days.' : '> 🔴 **No players** have been inactive for more than 21 days.';
                 return await interaction.editReply({ content: message });
             }
 
+            // Retrieve players based on status
             const players =
                 status === 'active'
-                    ? await getAll('SELECT username, last_progressed FROM active_inactive WHERE last_progressed >= ? ORDER BY last_progressed ASC', [DateTime.now().minus({ days: 7 }).toISO()])
-                    : await getAll('SELECT username, last_progressed FROM active_inactive WHERE last_progressed < ? ORDER BY last_progressed ASC', [DateTime.now().minus({ days: 21 }).toISO()]);
+                    ? await getAll('SELECT rsn, last_progressed FROM active_inactive WHERE last_progressed >= ? ORDER BY last_progressed ASC', [DateTime.now().minus({ days: 7 }).toISO()])
+                    : await getAll('SELECT rsn, last_progressed FROM active_inactive WHERE last_progressed < ? ORDER BY last_progressed ASC', [DateTime.now().minus({ days: 21 }).toISO()]);
 
             const statusEmoji = status === 'active' ? '🟢' : '🔴';
-
             const ITEMS_PER_PAGE = 10;
-
             const pages = [];
+
             for (let i = 0; i < players.length; i += ITEMS_PER_PAGE) {
                 const pagePlayers = players.slice(i, i + ITEMS_PER_PAGE);
                 const embed = new EmbedBuilder()
-                    .setTitle(`📊 Players - ${status.charAt(0).toUpperCase() + status.slice(1)}`)
+                    .setTitle(`📊 ${status.charAt(0).toUpperCase() + status.slice(1)} Players`)
                     .setColor(status === 'active' ? 'Green' : 'Red')
-                    .setDescription(pagePlayers.map(({ username, last_progressed }, index) => `🕒 **${i + index + 1}. \`${username}\`**Last Progressed: \`${DateTime.fromISO(last_progressed).toRelative()}\``).join('\n'))
-                    .addFields({ name: 'Status', value: `${statusEmoji} \`` + status.charAt(0).toUpperCase() + status.slice(1) + '`', inline: true }, { name: 'Total Players', value: `\`${count}\``, inline: true })
+                    .setDescription(pagePlayers.map(({ username, last_progressed }, index) => `🕒 **${i + index + 1}. \`${username}\`** — Last Progressed: \`${DateTime.fromISO(last_progressed).toRelative()}\``).join('\n'))
+                    .addFields({ name: 'Status', value: `${statusEmoji} \`${status.charAt(0).toUpperCase() + status.slice(1)}\``, inline: true }, { name: 'Total Players', value: `\`${count}\``, inline: true })
                     .setFooter({ text: `Page ${Math.floor(i / ITEMS_PER_PAGE) + 1}/${Math.ceil(players.length / ITEMS_PER_PAGE)}` });
 
                 pages.push(embed);
             }
 
             let currentPage = 0;
-
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('previous').setLabel('◀️ Previous').setStyle(ButtonStyle.Primary).setDisabled(true),
                 new ButtonBuilder()
@@ -129,6 +127,7 @@ module.exports = {
                     return await i.update({ content: '⛔ Navigation closed.', components: [], embeds: [] });
                 }
 
+                // Update button states based on current page
                 row.components[0].setDisabled(currentPage === 0);
                 row.components[1].setDisabled(currentPage === pages.length - 1);
 
@@ -147,9 +146,9 @@ module.exports = {
                 }
             });
         } catch (err) {
-            logger.error(`Error executing check_activity command: ${err.message}`);
+            logger.error(`❌ Error executing /check_activity command: ${err.message}`);
             await interaction.editReply({
-                content: '❌ An error occurred while executing the command. Please try again later. 🛠️',
+                content: '❌ **Error:** An error occurred while executing the command. Please try again later. 🛠️',
             });
         }
     },

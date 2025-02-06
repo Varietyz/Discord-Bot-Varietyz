@@ -1,21 +1,22 @@
-/* eslint-disable no-process-exit */
 // @ts-nocheck
 /**
  * @fileoverview
  * **RSN List Command** 📜
  *
- * Defines the `/rsn_list` slash command for the Varietyz Bot.
- * This command allows users to view all registered RuneScape Names (RSNs) along with their associated ranks for clan members.
+ * This module defines the `/rsn_list` slash command for the Varietyz Bot.
+ * It allows users to view all registered RuneScape Names (RSNs) along with their associated ranks for clan members.
  * The command displays the data in a paginated embed with interactive navigation buttons.
  *
- * **Core Features:**
- * - Displays RSNs grouped by Discord user.
- * - Shows rank emojis and provides links to Wise Old Man profiles.
- * - Supports paginated navigation via buttons.
+ * ---
  *
- * **External Dependencies:**
- * - discord.js for embeds, actions rows, buttons.
- * - SQLite for retrieving RSN and clan member data.
+ * 🔹 **Core Features:**
+ * - Displays RSNs grouped by Discord user.
+ * - Shows rank emojis and provides clickable links to Wise Old Man profiles.
+ * - Supports paginated navigation via interactive buttons.
+ *
+ * 🔗 **External Dependencies:**
+ * - **discord.js** for embeds, action rows, and buttons.
+ * - **SQLite** for retrieving RSN and clan member data.
  *
  * @module modules/commands/adminRsnList
  */
@@ -43,41 +44,40 @@ module.exports = {
      * @returns {Promise<void>} Resolves when the command execution is complete.
      *
      * @example
-     * // Invoked when a user runs /rsn_list.
+     * // 📌 Usage:
      * await execute(interaction);
      */
     async execute(interaction) {
         try {
-            logger.info(`Command 'rsnlist' triggered by user: ${interaction.user.username}`);
+            logger.info(`🔍 Command 'rsn_list' triggered by user: \`${interaction.user.username}\``);
             await interaction.deferReply({ flags: 64 });
 
-            const rsnData = await getAll('SELECT user_id, rsn FROM registered_rsn');
-            const clanMembers = await getAll('SELECT name, rank FROM clan_members');
+            const rsnData = await getAll('SELECT discord_id, rsn FROM registered_rsn');
+            const clanMembers = await getAll('SELECT rsn, rank FROM clan_members');
 
             if (!rsnData.length) {
-                const embed = new EmbedBuilder().setTitle('No RSNs Registered').setDescription('⚠️ No RSNs are currently registered. Use `/rsn` to register your first one! 📝').setColor('Red');
+                const embed = new EmbedBuilder().setTitle('No RSNs Registered').setDescription('⚠️ **Notice:** No RSNs are currently registered. Use `/rsn` to register your first one! 📝').setColor('Red');
 
                 return await interaction.editReply({ embeds: [embed] });
             }
 
-            // Paginate the data
             const ITEMS_PER_PAGE = 10;
+            //logger.debug(`🛠️ Paginating RSN data with \`${ITEMS_PER_PAGE}\` items per page.`);
             const pages = paginateRSNData(rsnData, clanMembers, ITEMS_PER_PAGE);
+            //logger.debug(`✅ Generated \`${pages.length}\` page(s) of RSN data.`);
 
             let currentPage = 0;
 
-            // Create navigation buttons
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('previous').setLabel('Previous').setStyle(ButtonStyle.Primary).setDisabled(true),
+                new ButtonBuilder().setCustomId('previous').setLabel('◀️ Previous').setStyle(ButtonStyle.Primary).setDisabled(true),
                 new ButtonBuilder()
                     .setCustomId('next')
-                    .setLabel('Next')
+                    .setLabel('Next ▶️')
                     .setStyle(ButtonStyle.Primary)
                     .setDisabled(pages.length === 1),
-                new ButtonBuilder().setCustomId('close').setLabel('Close').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId('close').setLabel('❌ Close').setStyle(ButtonStyle.Danger),
             );
 
-            // Send the first page
             const message = await interaction.editReply({
                 embeds: [pages[currentPage]],
                 components: [row],
@@ -96,16 +96,14 @@ module.exports = {
                 } else if (i.customId === 'close') {
                     collector.stop('closed');
                     return await i.update({
-                        content: '⛔ list navigation closed.',
+                        content: '⛔ **Navigation Closed:** RSN list navigation closed.',
                         components: [],
                         embeds: [],
                     });
                 }
 
-                // Update button disabled states based on the current page.
-                // @ts-ignore
+                // Update button disabled states based on the current page
                 row.components[0].setDisabled(currentPage === 0);
-                // @ts-ignore
                 row.components[1].setDisabled(currentPage === pages.length - 1);
 
                 await i.update({
@@ -115,17 +113,17 @@ module.exports = {
             });
 
             collector.on('end', async (collected, reason) => {
-                if (reason === 'time') {
+                if (reason === 'time' && collected.size === 0) {
                     await interaction.editReply({
-                        content: '⏳ RSN list navigation timed out.',
+                        content: '⏳ **Timeout:** RSN list navigation timed out.',
                         components: [],
                     });
                 }
             });
         } catch (err) {
-            logger.error(`Error executing rsnlist command: ${err.message}`);
+            logger.error(`❌ Error executing rsn_list command: \`${err.message}\``);
             await interaction.editReply({
-                content: '❌ An error occurred while executing the command. Please try again later. 🛠️',
+                content: '❌ **Error:** An error occurred while executing the command. Please try again later. 🛠️',
             });
         }
     },
@@ -134,52 +132,52 @@ module.exports = {
 /**
  * 🎯 **Determines the Highest Rank Among RSNs for a User**
  *
- * For a given array of RSNs and clan member data, this function determines which RSN corresponds to the highest rank
- * based on a predefined rank hierarchy. If no clan member data is found, the rank defaults to 'guest'.
+ * For a given array of RSNs and the clan member data, this function determines which RSN corresponds
+ * to the highest rank based on a predefined rank hierarchy. If no matching clan member is found, the rank defaults to 'guest'.
  *
  * @function getHighestRank
- * @param {Array<string>} rsns - The user's RSNs.
- * @param {Array<Object>} clanMembers - The clan member data.
- * @returns {Object} An object containing the highest rank and its associated RSN.
+ * @param {Array<string>} rsns - An array of RSNs associated with a user.
+ * @param {Array<Object>} clanMembers - An array of clan member records, each containing at least `name` and `rank`.
+ * @returns {Object} An object with properties:
+ * - `rsn`: The RSN with the highest rank.
+ * - `rank`: The highest rank found.
  *
  * @example
  * const highest = getHighestRank(['PlayerOne', 'PlayerTwo'], clanMembers);
- * console.log(highest); // { rsn: 'PlayerOne', rank: 'Leader' }
+ * // Output: { rsn: 'PlayerOne', rank: 'Leader' }
  */
 function getHighestRank(rsns, clanMembers) {
     const rankedRsns = rsns.map((rsn) => {
         const normalizedRSN = normalizeRsn(rsn);
         const member = clanMembers.find((member) => normalizeRsn(member.name) === normalizedRSN);
-        const rank = member ? member.rank : 'guest'; // Default to 'guest' if not found.
+        const rank = member ? member.rank : 'guest';
         return { rsn, rank };
     });
 
-    // Sort RSNs by rank hierarchy (highest first).
     rankedRsns.sort((a, b) => rankHierarchy[b.rank.toLowerCase()] - rankHierarchy[a.rank.toLowerCase()]);
-
     return rankedRsns[0];
 }
 
 /**
  * 🎯 **Paginates RSN Data into Embed Pages**
  *
- * Splits the RSN data (grouped by user) into multiple pages for display.
- * Each page is represented by an EmbedBuilder object containing RSN information and pagination details.
+ * Groups RSN data by Discord user, sorts users based on their highest rank, and paginates the results.
+ * Each page is represented by an embed that contains the formatted RSN information.
  *
  * @function paginateRSNData
- * @param {Array<Object>} rsnData - The RSN data from the database.
- * @param {Array<Object>} clanMembers - The clan member data from the database.
+ * @param {Array<Object>} rsnData - An array of objects containing `discord_id` and `rsn` properties.
+ * @param {Array<Object>} clanMembers - An array of clan member data.
  * @param {number} itemsPerPage - The maximum number of users per page.
- * @returns {EmbedBuilder[]} An array of embeds, each representing a page.
+ * @returns {Array<EmbedBuilder>} An array of embeds, each representing a paginated page of RSN data.
  *
  * @example
  * const pages = paginateRSNData(rsnData, clanMembers, 10);
  * console.log(`Generated ${pages.length} pages.`);
  */
 function paginateRSNData(rsnData, clanMembers, itemsPerPage) {
+    //logger.debug('🛠️ Grouping RSN data by user...');
     const rsnGroupedByUser = groupRSNByUser(rsnData);
 
-    // Sort user IDs based on highest rank hierarchy, placing 'guest' users at the end.
     const sortedUserIds = Object.keys(rsnGroupedByUser).sort((a, b) => {
         const rankA = getHighestRank(rsnGroupedByUser[a], clanMembers);
         const rankB = getHighestRank(rsnGroupedByUser[b], clanMembers);
@@ -193,15 +191,10 @@ function paginateRSNData(rsnData, clanMembers, itemsPerPage) {
     const pages = [];
     for (let i = 0; i < sortedUserIds.length; i += itemsPerPage) {
         const pageUserIds = sortedUserIds.slice(i, i + itemsPerPage);
-        const description = pageUserIds
-            .map((userId) => {
-                const rsns = rsnGroupedByUser[userId];
-                return prepareUserContent(userId, rsns, clanMembers);
-            })
-            .join('\n\n');
+        const description = pageUserIds.map((discordId) => prepareUserContent(discordId, rsnGroupedByUser[discordId], clanMembers)).join('\n\n');
 
         const embed = new EmbedBuilder()
-            .setTitle('Registered RSNs')
+            .setTitle('📜 Registered RSNs')
             .setDescription(description)
             .setColor('Green')
             .setFooter({
@@ -215,23 +208,26 @@ function paginateRSNData(rsnData, clanMembers, itemsPerPage) {
 }
 
 /**
- * 🎯 **Prepares Formatted Content for a User's RSN List**
+ * 🎯 **Prepares Formatted RSN Content for a User**
  *
- * Generates a formatted string for a user's RSNs, including a Discord mention,
- * rank emojis, and clickable links to Wise Old Man profiles.
+ * Generates a formatted string for a user's RSNs by:
+ * - Mentioning the user via their Discord ID.
+ * - Sorting the user's RSNs by rank.
+ * - Formatting each RSN with its corresponding rank emoji and a clickable link to the Wise Old Man profile.
  *
  * @function prepareUserContent
- * @param {string} userId - The Discord user ID.
- * @param {Array<string>} rsns - The RSNs associated with the user.
- * @param {Array<Object>} clanMembers - The clan member data.
- * @returns {string} A formatted string containing the user's mention and their RSNs.
+ * @param {string} discordId - The Discord user ID.
+ * @param {Array<string>} rsns - An array of RSNs associated with the user.
+ * @param {Array<Object>} clanMembers - An array of clan member records.
+ * @returns {string} A formatted string containing the user's mention and their RSN listings.
  *
  * @example
  * const content = prepareUserContent('123456789012345678', ['PlayerOne'], clanMembers);
  * console.log(content);
  */
-function prepareUserContent(userId, rsns, clanMembers) {
-    const userMention = `<@${userId}>`;
+function prepareUserContent(discordId, rsns, clanMembers) {
+    //logger.debug(`🛠️ Preparing RSN content for user \`${discordId}\`...`);
+    const userMention = `<@${discordId}>`;
     const rankedRsns = rsns
         .map((rsn) => {
             const normalizedRSN = normalizeRsn(rsn);
@@ -244,29 +240,31 @@ function prepareUserContent(userId, rsns, clanMembers) {
                 content: rank ? `- ${emoji}[${rsn}](${profileLink})` : `- [${rsn}](${profileLink})`,
             };
         })
-        .sort((a, b) => rankHierarchy[b.rank.toLowerCase()] - rankHierarchy[a.rank.toLowerCase()]); // Sort by rank.
+        .sort((a, b) => rankHierarchy[b.rank.toLowerCase()] - rankHierarchy[a.rank.toLowerCase()]);
 
     return `${userMention}\n${rankedRsns.map((entry) => entry.content).join('\n')}`;
 }
 
 /**
- * 🎯 **Groups RSNs by Discord User**
+ * 🎯 **Groups RSN Data by Discord User**
  *
- * Organizes RSN data into an object where each key is a user ID and each value is an array of RSNs for that user.
+ * Organizes RSN data into an object where each key is a Discord user ID and each value is an array of RSNs
+ * registered by that user.
  *
  * @function groupRSNByUser
- * @param {Array<Object>} rsnData - An array of objects containing `user_id` and `rsn` properties.
- * @returns {Object} An object mapping user IDs to arrays of RSNs.
+ * @param {Array<Object>} rsnData - An array of objects containing properties `discord_id` and `rsn`.
+ * @returns {Object} An object mapping each Discord user ID to an array of RSNs.
  *
  * @example
  * const grouped = groupRSNByUser(rsnData);
- * console.log(grouped); // { 'user1': ['RSN1', 'RSN2'], 'user2': ['RSN3'] }
+ * // Output: { 'user1': ['RSN1', 'RSN2'], 'user2': ['RSN3'] }
  */
 function groupRSNByUser(rsnData) {
+    //logger.debug(`🛠️ Grouping ${rsnData.length} RSN record(s) by user...`);
     const grouped = {};
-    rsnData.forEach(({ user_id, rsn }) => {
-        if (!grouped[user_id]) grouped[user_id] = [];
-        grouped[user_id].push(rsn);
+    rsnData.forEach(({ discord_id, rsn }) => {
+        if (!grouped[discord_id]) grouped[discord_id] = [];
+        grouped[discord_id].push(rsn);
     });
     return grouped;
 }

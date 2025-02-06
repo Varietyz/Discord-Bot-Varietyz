@@ -17,20 +17,17 @@
         "match": "\\.js$", // Match all .js files
         "cmd": "npm run replace-ephemeral", // Run the script from package.json
         "message": "Running replace-ephemeral on save for ${fileBasename}",
-        "messageAfter": "replace-ephemeral finished for ${fileBasename}",
-        "autoShowOutputPanel": "always" // Automatically show the output panel
+        "messageAfter": "replace-ephemeral finished for ${fileBasename}"
       },
       {
         "cmd": "npm run precommit", // Run the script from package.json
         "message": "Packaging docs and readme",
-        "messageAfter": "Finished packing docs and generating JSDOC_README.md in root folder.",
-        "autoShowOutputPanel": "always" // Automatically show the output panel
+        "messageAfter": "Finished packing docs and generating JSDOC_README.md in root folder."
       },
       {
         "cmd": "npm run generate:cache",
         "message": "Cache Update",
-        "messageAfter": "Finished updating",
-        "autoShowOutputPanel": "always" // Automatically show the output panel
+        "messageAfter": "Finished updating"
       }
     ]
   }

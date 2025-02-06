@@ -5,76 +5,80 @@ const { EmbedBuilder } = require('discord.js');
 const constants = require('../../../config/constants');
 
 /**
- * 🎯 **Records the Competition Winner**
+ * 🎯 **Records the Competition Winner (Includes `player_id`)**
  *
- * Determines the real winner of a competition based on in-game performance (not votes)
- * by retrieving competition details from the WOM API. If a valid winner is found,
- * the function records the winner in the `winners` table and updates the cumulative stats
- * for the user in the `users` table. Each win increments `total_wins` and adds the metric gain
- * to the respective total for either SOTW or BOTW.
+ * Determines the real winner based on in-game performance by retrieving final results from the WOM API.
+ * If a valid winner is found, their `player_id` and `rsn` are recorded in the `winners` table,
+ * and their cumulative stats in the `users` table are updated.
  *
  * @async
  * @function recordCompetitionWinner
- * @param {Object} competition - The ended competition object containing at least `id` and `type`.
+ * @param {Object} competition - The ended competition object containing at least `competition_id` and `type`.
  *
  * @example
- * // Record the winner for an ended competition:
- * await recordCompetitionWinner({ id: 123, type: 'SOTW', title: 'Weekly Skill Competition' });
+ * // 📌 Record the winner for a competition:
+ * await recordCompetitionWinner(competition);
  */
 const recordCompetitionWinner = async (competition) => {
     try {
-        logger.info(`Fetching final leaderboard for competition ID ${competition.id} (${competition.type})...`);
-        const details = await WOMApiClient.request('competitions', 'getCompetitionDetails', competition.id);
+        logger.info(`🔍 Fetching final leaderboard for competition ID \`${competition.competition_id}\` (${competition.type})...`);
+
+        const details = await WOMApiClient.request('competitions', 'getCompetitionDetails', competition.competition_id);
         if (!details || !Array.isArray(details.participations) || details.participations.length === 0) {
-            logger.info(`No valid participants found for competition ID ${competition.id}.`);
+            logger.info(`ℹ️ No valid participants found for competition ID \`${competition.competition_id}\`.`);
             return;
         }
+
         const topParticipant = details.participations.sort((a, b) => b.progress.gained - a.progress.gained)[0];
         if (!topParticipant || topParticipant.progress.gained <= 0) {
-            logger.info(`No valid winner found for competition ID ${competition.id}.`);
+            logger.info(`ℹ️ No valid winner found for competition ID \`${competition.competition_id}\`.`);
             return;
         }
+
+        const playerId = topParticipant.player.id;
         const winnerRSN = topParticipant.player.displayName;
         const normalizedRSN = winnerRSN.trim().toLowerCase();
         const winnerScore = topParticipant.progress.gained;
 
-        // Look up user by username (directly, since username is primary)
-        let user = await db.getOne('SELECT username FROM users WHERE LOWER(username) = ?', [normalizedRSN]);
+        let user = await db.getOne('SELECT player_id, rsn FROM users WHERE player_id = ?', [playerId]);
+
         if (!user) {
-            logger.warn(`No user found for RSN: ${normalizedRSN}. Creating a new entry in users.`);
+            logger.warn(`⚠️ No user found for playerId: \`${playerId}\` (RSN: \`${normalizedRSN}\`). Creating a new entry.`);
             await db.runQuery(
-                `INSERT OR IGNORE INTO users (username, total_wins, total_metric_gain_sotw, total_metric_gain_botw)
-                 VALUES (?, 0, 0, 0)`,
-                [normalizedRSN],
+                `INSERT OR IGNORE INTO users (player_id, rsn, total_wins, total_metric_gain_sotw, total_metric_gain_botw)
+                 VALUES (?, ?, 0, 0, 0)`,
+                [playerId, normalizedRSN],
             );
-            user = await db.getOne('SELECT username FROM users WHERE LOWER(username) = ?', [normalizedRSN]);
+            user = await db.getOne('SELECT player_id FROM users WHERE player_id = ?', [playerId]);
+
             if (!user) {
-                logger.error(`🚨 Failed to create/retrieve user for RSN: ${normalizedRSN}. Skipping winner insertion.`);
+                logger.error(`❌ Failed to create/retrieve user for playerId: \`${playerId}\` (RSN: \`${normalizedRSN}\`). Skipping winner insertion.`);
                 return;
             }
+        } else if (user.rsn.toLowerCase() !== normalizedRSN) {
+            await db.runQuery('UPDATE users SET rsn = ? WHERE player_id = ?', [normalizedRSN, playerId]);
         }
 
-        // Check if this competition already recorded a winner for this username
-        const existingWinner = await db.getOne('SELECT * FROM winners WHERE competition_id = ? AND LOWER(username) = ?', [competition.id, normalizedRSN]);
-        if (!existingWinner) {
-            // Insert the winner record for the current competition
-            await db.runQuery('INSERT INTO winners (competition_id, username, metric_gain) VALUES (?, ?, ?)', [competition.id, normalizedRSN, winnerScore]);
+        const existingWinner = await db.getOne('SELECT * FROM winners WHERE competition_id = ? AND player_id = ?', [competition.competition_id, playerId]);
 
-            // Update cumulative stats: Always increment total_wins by 1 and add the metric gain.
+        if (!existingWinner) {
+            await db.runQuery('INSERT INTO winners (competition_id, player_id, rsn, metric_gain, timestamp) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)', [competition.competition_id, playerId, normalizedRSN, winnerScore]);
+
             await db.runQuery(
                 `UPDATE users 
                  SET total_wins = total_wins + 1, 
                      ${competition.type === 'SOTW' ? 'total_metric_gain_sotw' : 'total_metric_gain_botw'} =
                      ${competition.type === 'SOTW' ? 'total_metric_gain_sotw' : 'total_metric_gain_botw'} + ?
-                 WHERE LOWER(username) = ?`,
-                [winnerScore, normalizedRSN],
+                 WHERE player_id = ?`,
+                [winnerScore, playerId],
             );
-            logger.info(`🏆 Recorded winner ${normalizedRSN} with score ${winnerScore} for competition ID ${competition.id}.`);
+
+            logger.info(`🏆 **Winner Recorded:** \`${normalizedRSN}\` (playerId: \`${playerId}\`) with score \`${winnerScore}\` for competition ID \`${competition.competition_id}\`.`);
         } else {
-            logger.info(`🏆 Winner ${normalizedRSN} already recorded for competition ID ${competition.id}. Skipping.`);
+            logger.info(`🏆 **Already Recorded:** \`${normalizedRSN}\` (playerId: \`${playerId}\`) is already recorded for competition ID \`${competition.competition_id}\`. Skipping insertion.`);
         }
     } catch (error) {
-        logger.error(`Error recording winner for competition ${competition.id}: ${error.message}`);
+        logger.error(`❌ Error recording winner for competition ID \`${competition.competition_id}\`: ${error.message}`);
     }
 };
 
@@ -91,33 +95,28 @@ const recordCompetitionWinner = async (competition) => {
  * @param {Object} client - The Discord client instance.
  *
  * @example
- * // Update the final leaderboard for a competition:
+ * // 📌 Update the final leaderboard for a competition:
  * await updateFinalLeaderboard(competition, client);
  */
 const updateFinalLeaderboard = async (competition, client) => {
     try {
-        // Retrieve competition details from the WOM API.
-        const details = await WOMApiClient.request('competitions', 'getCompetitionDetails', competition.id);
+        const details = await WOMApiClient.request('competitions', 'getCompetitionDetails', competition.competition_id);
 
         if (!details || !Array.isArray(details.participations) || details.participations.length === 0) {
-            logger.info(`No valid participants found for competition ID ${competition.id}.`);
+            logger.info(`ℹ️ No valid participants found for competition ID \`${competition.competition_id}\`.`);
             return;
         }
 
-        // Filter participants with a positive gain and sort them descending by progress gained.
         const sortedParticipants = details.participations.filter((p) => p.progress.gained > 0).sort((a, b) => b.progress.gained - a.progress.gained);
 
-        // Biggest Gainer: The participant with the highest progress.
         const biggestGainer = sortedParticipants.length > 0 ? sortedParticipants[0] : null;
-        // Fetch the designated Hall of Fame channel.
         const channelId = constants.HALL_OF_FAME_CHANNEL_ID;
         const channel = await client.channels.fetch(channelId);
         if (!channel) {
-            logger.warn(`Could not find Hall of Fame channel for ${competition.type}.`);
+            logger.warn(`⚠️ Could not find Hall of Fame channel for \`${competition.type}\`.`);
             return;
         }
 
-        // Build the top 10 leaderboard text with clickable player links.
         const leaderboardText =
             sortedParticipants.length > 0
                 ? sortedParticipants
@@ -129,29 +128,25 @@ const updateFinalLeaderboard = async (competition, client) => {
                     .join('\n')
                 : '_No participants._';
 
-        // Format the Biggest Gainer field with a clickable player link.
         const biggestGainerField = biggestGainer
             ? `**[${biggestGainer.player.displayName}](https://wiseoldman.net/players/${encodeURIComponent(biggestGainer.player.displayName)})** gained \`${biggestGainer.progress.gained.toLocaleString()}\``
             : '_No significant gains._';
 
-        // Prepare the competition title and URL for a clickable embed title.
         const competitionName = competition.title;
-        const competitionUrl = `https://wiseoldman.net/competitions/${competition.id}`;
+        const competitionUrl = `https://wiseoldman.net/competitions/${competition.competition_id}`;
 
-        // Build the embed with the updated visual styling.
         const embed = new EmbedBuilder()
             .setTitle(`🏆 ${competitionName} - Final Results`)
-            .setURL(competitionUrl) // Makes the title clickable.
+            .setURL(competitionUrl)
             .addFields({ name: '🏅 **Top 10 Players**', value: leaderboardText, inline: false }, { name: '🚀 **Biggest Gainer**', value: biggestGainerField, inline: true })
-            .setColor(0xffd700) // Gold color for final results.
+            .setColor(0xffd700)
             .setFooter({ text: 'Final results based on WOM data' })
             .setTimestamp();
 
-        // Send the updated embed.
         await channel.send({ embeds: [embed] });
-        logger.info(`✅ Sent new final leaderboard message in ${channelId}`);
+        logger.info(`✅ **Success:** Sent final leaderboard embed to channel ID \`${channelId}\`.`);
     } catch (err) {
-        logger.error(`❌ Error updating final leaderboard: ${err.message}`);
+        logger.error(`❌ Error updating final leaderboard for competition ID \`${competition.competition_id}\`: ${err.message}`);
     }
 };
 

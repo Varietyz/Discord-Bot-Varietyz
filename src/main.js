@@ -1,3 +1,4 @@
+/* eslint-disable node/no-missing-require */
 /* eslint-disable no-process-exit */
 // @ts-nocheck
 /**
@@ -29,13 +30,17 @@ const logger = require('./modules/utils/logger');
 const fs = require('fs');
 const path = require('path');
 const tasks = require('./tasks');
-const initializeCompetitionsTables = require('./migrations/initializeCompetitionTables');
+const initializeTables = require('./migrations/initializeTables');
 const populateSkillsBosses = require('./migrations/populateSkillsBosses');
 const CompetitionService = require('./modules/services/competitionServices/competitionService');
 const { handleAutocomplete, handleSlashCommand } = require('./modules/utils/slashCommandHandler');
 
 const { CLAN_CHAT_CHANNEL_ID } = require('./config/constants');
-const { initDatabase, saveMessage } = require('./modules/events/clanchatDatabase');
+const { initDatabase } = require('./modules/collection/msgDatabase');
+const { saveMessage } = require('./modules/collection/msgDbSave');
+const { fetchAndStoreChannelHistory } = require('./modules/collection/msgFetcher');
+
+//const migrateRegisteredRSN = require('./migrations/migrateRsn');
 
 /**
  * Creates a new Discord client instance with the necessary intents.
@@ -47,7 +52,7 @@ const { initDatabase, saveMessage } = require('./modules/events/clanchatDatabase
  * });
  */
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers],
 });
 
 /** @type {Array<Object>} */
@@ -63,7 +68,7 @@ const functions = [];
  * For `services`, the module is simply loaded.
  *
  * @function loadModules
- * @param {string} type - The type of modules to load ('commands' or 'services').
+ * @param {string} type - The type of modules to load (`commands` or `services`).
  * @returns {Array<Object>} An array of loaded modules.
  *
  * @example
@@ -80,17 +85,16 @@ const loadModules = (type) => {
             const module = require(filePath);
 
             if (type === 'commands') {
-                // Only load commands if the file exports data and execute
                 if (!module.data || !module.data.description || !module.execute) {
-                    logger.error(`Invalid command structure in ${file}: Missing description or execute function.`);
+                    logger.error(`❌ **Error:** Invalid command structure in \`${file}\`: Missing \`description\` or \`execute\` function. ❌`);
                     return;
                 }
-                commands.push(module); // Push only commands to commands array
-                logger.info(`Command ${module.data.name} loaded.`);
+                commands.push(module);
+                logger.info(`✅ **Loaded Command:** \`${module.data.name}\` successfully. 🎉`);
             } else if (type === 'services') {
                 const funcName = path.basename(file, '.js');
-                functions.push(module); // Push functions to a separate array
-                logger.info(`Function ${funcName} loaded.`);
+                functions.push(module);
+                logger.info(`✅ **Loaded Function:** \`${funcName}\` successfully. 🎉`);
             }
         }
     });
@@ -110,6 +114,8 @@ const competitionService = new CompetitionService(client);
  * 4. Registers slash commands with Discord's API.
  * 5. Logs the bot into Discord.
  *
+ * 🚀 This is the primary bootstrapping function for the bot.
+ *
  * @async
  * @function initializeBot
  * @returns {Promise<void>} Resolves when the bot is fully initialized.
@@ -119,36 +125,28 @@ const competitionService = new CompetitionService(client);
  */
 const initializeBot = async () => {
     try {
-        await initDatabase(); // Initialize Clanchat database
-        await initializeCompetitionsTables(); // Initialize competitions-related tables.
-        await populateSkillsBosses(); // Populate skills_bosses table.
+        await initDatabase();
+        await initializeTables();
+        await populateSkillsBosses();
 
-        loadModules('commands'); // Load all slash commands.
-        loadModules('services'); // Load all functions.
+        loadModules('commands');
+        loadModules('services');
 
-        // eslint-disable-next-line node/no-missing-require
         const { REST } = require('@discordjs/rest');
         const { Routes } = require('discord-api-types/v10');
 
-        // @ts-ignore
         const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
-        // Register the commands with Discord for a specific guild.
-        await rest.put(
-            // @ts-ignore
-            Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-            { body: commands.map((cmd) => cmd.data.toJSON()) }, // Ensure this always includes the latest changes to your commands.
-        );
+        await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: commands.map((cmd) => cmd.data.toJSON()) });
 
-        logger.info('Slash commands registered successfully.');
+        logger.info('✅ **Success!** Slash commands registered successfully. 🎉');
 
-        // Log the bot into Discord.
         await client.login(process.env.DISCORD_TOKEN);
 
-        //await cleanupDatabase();
-        logger.info('Bot logged in successfully.');
+        await fetchAndStoreChannelHistory(client, CLAN_CHAT_CHANNEL_ID);
+        logger.info('✅ **Success!** Bot logged in successfully. 🎉');
     } catch (error) {
-        logger.error('Bot initialization failed: ' + error.message);
+        logger.error('🚨 **Initialization Failed:** ' + error.message + ' ❌');
     }
 };
 
@@ -161,36 +159,32 @@ const initializeBot = async () => {
  * @event Client#ready
  */
 client.once('ready', async () => {
-    // @ts-ignore
-    logger.info(`${client.user.tag} is online!`);
-    // Execute tasks that should run immediately on bot startup.
+    logger.info(`✅ **Online:** \`${client.user.tag}\` is now online! 🎉`);
     for (const task of tasks) {
         if (task.runOnStart) {
-            logger.info(`Running task: ${task.name} on startup...`);
+            logger.info(`⏳ **Startup Task:** Running \`${task.name}\` on startup...`);
             try {
-                await task.func(client); // Run the task immediately.
+                await task.func(client);
             } catch (err) {
-                logger.error(`Error running task: ${task.name} on startup: ${err}`);
+                logger.error(`🚨 **Error in Startup Task:** \`${task.name}\` encountered an error: ${err}`);
             }
         }
     }
 
-    // Schedule tasks that should run at regular intervals.
     tasks.forEach((task) => {
         if (task.runAsTask) {
-            // Calculate interval in hours and minutes for logging.
             const hours = Math.floor(task.interval / 3600);
             const minutes = Math.floor((task.interval % 3600) / 60);
             const intervalFormatted = `${hours > 0 ? `${hours}h ` : ''}${minutes}m`;
 
-            logger.info(`Scheduling task: ${task.name} to run at ${intervalFormatted} intervals.`);
+            logger.info(`⏳ **Scheduled Task:** \`${task.name}\` set to run every ${intervalFormatted}.`);
             try {
                 setInterval(async () => {
-                    logger.info(`Running scheduled task: ${task.name}...`);
-                    await task.func(client); // Run at the scheduled interval.
-                }, task.interval * 1000); // Convert seconds to milliseconds.
+                    logger.info(`⏳ **Executing Scheduled Task:** Running \`${task.name}\`...`);
+                    await task.func(client);
+                }, task.interval * 1000);
             } catch (err) {
-                logger.error(`Error scheduling task: ${task.name}: ${err}`);
+                logger.error(`🚨 **Scheduling Error:** \`${task.name}\` - ${err}`);
             }
         }
     });
@@ -204,13 +198,10 @@ client.once('ready', async () => {
  */
 client.on('interactionCreate', async (interaction) => {
     if (interaction.isCommand()) {
-        // Handle slash command interactions.
         await handleSlashCommand(interaction, commands);
     } else if (interaction.isAutocomplete()) {
-        // Handle autocomplete interactions.
         await handleAutocomplete(interaction, commands);
     } else if (interaction.isStringSelectMenu()) {
-        // Handle select menu interactions (voting).
         if (interaction.customId === 'vote_dropdown') {
             await competitionService.handleVote(interaction);
         }
@@ -219,14 +210,11 @@ client.on('interactionCreate', async (interaction) => {
 
 client.on('messageCreate', async (message) => {
     if (![CLAN_CHAT_CHANNEL_ID].includes(message.channel.id)) return;
-    console.log(`💬 Chat logged: ${message.author.username}: ${message.content}`);
     try {
         await saveMessage(message.author.username, message.content, message.id, message.createdTimestamp);
-        console.log(`Saved message ${message.id} from ${message.author.username}`);
     } catch (error) {
-        console.error(`Error saving message ${message.id}:`, error);
+        logger.error(`🚨 **Message Save Error:** Error saving message \`${message.id}\`:`, error);
     }
 });
 
-// Run bot initialization.
 initializeBot();

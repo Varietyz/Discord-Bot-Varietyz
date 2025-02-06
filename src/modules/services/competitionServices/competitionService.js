@@ -92,41 +92,35 @@ class CompetitionService {
             for (const type of competitionTypes) {
                 await removeInvalidCompetitions(db);
 
-                // 🏆 Step 1: Process Completed Competitions
                 await this.processEndedCompetitions(type);
 
-                // ⏳ Step 2: Check for Ongoing Competitions (Skip if Active)
                 const nearestEndDate = await this.checkOngoingCompetitions(type, now);
                 if (nearestEndDate) {
                     overallNearestEndTime = this.updateNearestEndTime(overallNearestEndTime, nearestEndDate);
                     continue;
                 }
 
-                // 🗳️ Step 3: Check if Votes Exist for the Last Competition
                 const lastCompetition = await db.getOne('SELECT * FROM competitions WHERE type = ? ORDER BY ends_at DESC LIMIT 1', [type]);
 
                 let votesExist = false;
                 if (lastCompetition) {
-                    votesExist = await this.checkIfVotesExist(lastCompetition.id);
+                    votesExist = await this.checkIfVotesExist(lastCompetition.competition_id);
                 }
 
                 if (votesExist) {
-                    logger.info(`Processing votes for last ${type} competition.`);
+                    logger.info(`ℹ️ **Info:** Processing votes for last \`${type}\` competition.`);
                     await this.processLastCompetition(type, lastCompetition);
                     pauseForRotationUpdate = true;
                 }
 
-                // 📜 Step 4: Create New Competitions (Queued or Default)
                 pauseForRotationUpdate = await this.createNewCompetitions(type, lastCompetition, votesExist, pauseForRotationUpdate);
 
-                // 🗓️ Step 5: Determine Next Rotation Time
                 overallNearestEndTime = await this.getNearestFutureCompetition(type, overallNearestEndTime);
             }
 
-            // 🔄 Step 6: Finalize Rotation Setup
             await this.finalizeRotation(overallNearestEndTime, pauseForRotationUpdate);
         } catch (err) {
-            logger.error(`Error in startNextCompetitionCycle: ${err.message}`);
+            logger.error(`❌ Error in startNextCompetitionCycle: ${err.message}`);
         }
     }
 
@@ -140,7 +134,6 @@ class CompetitionService {
      */
     async checkIfVotesExist(competitionId) {
         const votes = await db.getOne('SELECT COUNT(*) as count FROM votes WHERE competition_id = ?', [competitionId]);
-
         return votes && votes.count > 0;
     }
 
@@ -158,11 +151,10 @@ class CompetitionService {
      */
     async createNewCompetitions(type, lastCompetition, votesExist, pauseForRotationUpdate) {
         const queuedCompetitions = await db.getAll('SELECT * FROM competition_queue WHERE type = ? ORDER BY queued_at ASC', [type]);
-
         const channel = await this.client.channels.fetch(type === 'SOTW' ? constants.SOTW_CHANNEL_ID : constants.BOTW_CHANNEL_ID);
 
         if (!votesExist && queuedCompetitions.length === 0) {
-            logger.info(`No votes and no queued competitions for ${type}. Creating a random competition.`);
+            logger.info(`ℹ️ **Info:** No votes and no queued competitions for \`${type}\`. Creating a random competition.`);
             await purgeChannel(channel);
             await this.createDefaultCompetitions(type);
             return true;
@@ -172,9 +164,8 @@ class CompetitionService {
             for (const comp of queuedCompetitions) {
                 await purgeChannel(channel);
                 await this.createCompetitionFromQueue(comp);
-                logger.info(`Created competition from queue: ${comp.id} (${type})`);
+                logger.info(`✅ **Created:** Competition from queue: \`${comp.competition_id}\` (${type}).`);
             }
-
             await db.runQuery('DELETE FROM competition_queue WHERE type = ?', [type]);
             return true;
         }
@@ -193,12 +184,10 @@ class CompetitionService {
      */
     async checkOngoingCompetitions(type, now) {
         const existingCompetitions = await db.getAll('SELECT * FROM competitions WHERE type = ? AND ends_at > ?', [type, now]);
-
         if (existingCompetitions.length > 0) {
-            logger.info(`Skipping new ${type} competition creation (active competitions exist).`);
+            logger.info(`ℹ️ **Info:** Skipping new \`${type}\` competition creation as active competitions exist.`);
             return new Date(existingCompetitions[0].ends_at);
         }
-
         return null;
     }
 
@@ -226,11 +215,9 @@ class CompetitionService {
         for (const competition of endedCompetitions) {
             await recordCompetitionWinner(competition);
             await updateFinalLeaderboard(competition, this.client);
-            await updateAllTimeLeaderboard(this.client); // ✅ Updates leaderboard after every competition
-            // ✅ Mark the competition as having sent the final leaderboard
-            await db.runQuery('UPDATE competitions SET final_leaderboard_sent = 1 WHERE id = ?', [competition.id]);
-
-            logger.info(`📢 Final leaderboard sent for competition ID ${competition.id}`);
+            await updateAllTimeLeaderboard(this.client);
+            await db.runQuery('UPDATE competitions SET final_leaderboard_sent = 1 WHERE competition_id = ?', [competition.competition_id]);
+            logger.info(`📢 **Final Leaderboard:** Sent for competition ID \`${competition.competition_id}\`.`);
         }
     }
 
@@ -245,7 +232,6 @@ class CompetitionService {
      */
     async processLastCompetition(type, lastCompetition) {
         const channel = await this.client.channels.fetch(type === 'SOTW' ? constants.SOTW_CHANNEL_ID : constants.BOTW_CHANNEL_ID);
-
         await purgeChannel(channel);
         await this.createCompetitionFromVote(lastCompetition);
     }
@@ -261,11 +247,9 @@ class CompetitionService {
      */
     async getNearestFutureCompetition(type, overallNearestEndTime) {
         const newActiveCompetitions = await db.getAll('SELECT * FROM competitions WHERE type = ? AND ends_at > ? ORDER BY ends_at ASC', [type, new Date().toISOString()]);
-
         if (newActiveCompetitions.length > 0) {
             return this.updateNearestEndTime(overallNearestEndTime, new Date(newActiveCompetitions[0].ends_at));
         }
-
         return overallNearestEndTime;
     }
 
@@ -296,20 +280,17 @@ class CompetitionService {
      * @returns {Promise<void>}
      */
     async finalizeRotation(overallNearestEndTime, pauseForRotationUpdate) {
-        logger.info('Next competition cycle setup completed.');
-
+        logger.info('✅ **Success:** Next competition cycle setup completed.');
         if (pauseForRotationUpdate) {
             await sleep(63000);
         }
-
         await this.updateCompetitionData();
-
         if (overallNearestEndTime) {
             scheduleRotation(new Date(overallNearestEndTime), () => this.startNextCompetitionCycle(), this.scheduledJobs);
-            logger.info(`Scheduled next rotation at ${overallNearestEndTime.toISOString()}.`);
+            logger.info(`🚀 Scheduled next rotation at \`${overallNearestEndTime.toISOString()}\`.`);
             await migrateEndedCompetitions();
         } else {
-            logger.info('No active or scheduled competitions found. Rotation not scheduled.');
+            logger.info('ℹ️ **Info:** No active or scheduled competitions found. Rotation not scheduled.');
         }
     }
 
@@ -325,7 +306,7 @@ class CompetitionService {
             await updateActiveCompetitionEmbed('SOTW', db, this.client, constants);
             await updateActiveCompetitionEmbed('BOTW', db, this.client, constants);
         } catch (err) {
-            logger.error(`Error in updateCompetitionData: ${err.message}`);
+            logger.error(`❌ Error in updateCompetitionData: ${err.message}`);
         }
     }
 
@@ -342,24 +323,21 @@ class CompetitionService {
         try {
             const randomSkill = await this.getRandomMetric('Skill');
             const randomBoss = await this.getRandomMetric('Boss');
-
             const now = new Date();
             const startsAt = new Date(now.getTime() + 60000);
-
             const rotationWeeksResult = await db.getOne('SELECT value FROM config WHERE key = ?', ['rotation_period_weeks']);
             const rotationWeeks = rotationWeeksResult ? parseInt(rotationWeeksResult.value, 10) : 1;
-
             const endsAt = calculateEndDate(rotationWeeks);
 
             if (type === 'SOTW') {
-                logger.info(`Creating SOTW for metric "${randomSkill}"`);
+                logger.info(`🎲 Creating SOTW competition for metric \`${randomSkill}\`.`);
                 await createCompetition(womclient, db, 'SOTW', randomSkill, startsAt, endsAt, constants);
             } else if (type === 'BOTW') {
-                logger.info(`Creating BOTW for metric "${randomBoss}"`);
+                logger.info(`🎲 Creating BOTW competition for metric \`${randomBoss}\`.`);
                 await createCompetition(womclient, db, 'BOTW', randomBoss, startsAt, endsAt, constants);
             }
         } catch (err) {
-            logger.error(`Error createDefaultCompetitions: ${err.message}`);
+            logger.error(`❌ Error createDefaultCompetitions: ${err.message}`);
         }
     }
 
@@ -376,15 +354,12 @@ class CompetitionService {
             const { type, metric } = competition;
             const now = new Date();
             const startsAt = new Date(now.getTime() + 60000);
-
             const rotationWeeksResult = await db.getOne('SELECT value FROM config WHERE key = ?', ['rotation_period_weeks']);
             const rotationWeeks = rotationWeeksResult ? parseInt(rotationWeeksResult.value, 10) : 1;
-
             const endsAt = calculateEndDate(rotationWeeks);
-
             await createCompetition(womclient, db, type, metric, startsAt, endsAt, constants);
         } catch (err) {
-            logger.error(`Error createCompetitionFromQueue: ${err.message}`);
+            logger.error(`❌ Error createCompetitionFromQueue: ${err.message}`);
         }
     }
 
@@ -399,7 +374,7 @@ class CompetitionService {
         try {
             await scheduleRotationsOnStartup(db, () => this.startNextCompetitionCycle(), constants, this.scheduledJobs, womclient);
         } catch (err) {
-            logger.error(`Error scheduling rotations on startup: ${err.message}`);
+            logger.error(`❌ Error scheduling rotations on startup: ${err.message}`);
         }
     }
 
@@ -414,55 +389,31 @@ class CompetitionService {
      */
     async createCompetitionFromVote(competition) {
         const now = new Date();
-
         if (new Date(competition.ends_at) > now) {
-            logger.warn(`❌ Competition ID ${competition.id} has NOT ended yet. Skipping vote processing.`);
+            logger.warn(`🚫 **Warning:** Competition ID \`${competition.competition_id}\` has not ended yet. Skipping vote processing.`);
             return;
         }
-
-        logger.info(`Checking vote results for ${competition.type} competition ID ${competition.id}...`);
-
-        // ✅ Step 1: Get the winning metric from the votes
+        logger.info(`🔍 Checking vote results for \`${competition.type}\` competition ID \`${competition.competition_id}\`...`);
         let winningMetric = await tallyVotesAndRecordWinner(competition);
-
         if (!winningMetric) {
-            logger.info(`No votes recorded for competition ID ${competition.id}. Checking queued competitions.`);
-
-            // ✅ Step 2: Check queued competitions
+            logger.info(`ℹ️ No votes recorded for competition ID \`${competition.competition_id}\`. Checking queued competitions.`);
             const queuedCompetition = await db.getOne('SELECT * FROM competition_queue WHERE type = ? ORDER BY queued_at ASC LIMIT 1', [competition.type]);
-
             if (queuedCompetition) {
-                logger.info(`Using queued ${competition.type} competition: ${queuedCompetition.metric}`);
-
-                // ✅ Step 3: Remove from queue
-                await db.runQuery('DELETE FROM competition_queue WHERE id = ?', [queuedCompetition.id]);
-
+                logger.info(`✅ Using queued \`${competition.type}\` competition: \`${queuedCompetition.metric}\`.`);
+                await db.runQuery('DELETE FROM competition_queue WHERE idx = ?', [queuedCompetition.idx]);
                 winningMetric = queuedCompetition.metric;
             } else {
-                logger.info(`No queued competitions found for ${competition.type}. Creating a default one.`);
-
-                // ✅ Step 4: Ensure a metric is always chosen
+                logger.info(`ℹ️ No queued competitions found for \`${competition.type}\`. Creating a default competition.`);
                 winningMetric = await this.getRandomMetric(competition.type);
             }
         }
-
-        // ✅ Step 5: Ensure competition type is always valid
         const newType = competition.type && competition.type.toUpperCase() === 'SOTW' ? 'SOTW' : 'BOTW';
-
-        // ✅ Step 6: Set start and end times for the new competition
-        const startsAt = new Date(now.getTime() + 60000); // Start in 1 minute
-
-        // ✅ Step 7: Retrieve the configured rotation period (default: 1 week)
+        const startsAt = new Date(now.getTime() + 60000);
         const rotationWeeksResult = await db.getOne('SELECT value FROM config WHERE key = ?', ['rotation_period_weeks']);
-
         const rotationWeeks = rotationWeeksResult && !isNaN(parseInt(rotationWeeksResult.value, 10)) ? parseInt(rotationWeeksResult.value, 10) : 1;
-
         const endsAt = calculateEndDate(rotationWeeks);
-
-        // ✅ Step 8: Create the new competition
         await createCompetition(womclient, db, newType, winningMetric, startsAt, endsAt, constants);
-
-        logger.info(`New ${newType} competition created successfully: ${winningMetric}`);
+        logger.info(`🏆 New \`${newType}\` competition created successfully with metric \`${winningMetric}\`.`);
     }
 
     /**
@@ -478,25 +429,19 @@ class CompetitionService {
     async getRandomMetric(type) {
         try {
             const lastComp = await db.getOne('SELECT metric FROM competitions WHERE type = ? ORDER BY ends_at DESC LIMIT 1', [type === 'Skill' ? 'SOTW' : 'BOTW']);
-
             let query = 'SELECT name FROM skills_bosses WHERE type = ?';
             const params = [type];
-
             if (lastComp && lastComp.metric) {
                 query += ' AND name != ?';
                 params.push(lastComp.metric);
             }
-
             const results = await db.getAll(query, params);
-
             if (results.length === 0) {
                 logger.error(`🚨 No available metrics found for ${type}.`);
                 throw new Error(`No metrics found for type ${type}`);
             }
-
-            // ✅ Select a random metric from the available ones
             const chosen = results[Math.floor(Math.random() * results.length)].name;
-            logger.info(`🎲 Selected random ${type} metric: ${chosen}`);
+            logger.info(`🎲 Selected random ${type} metric: \`${chosen}\`.`);
             return chosen;
         } catch (err) {
             logger.error(`⚠️ getRandomMetric error: ${err.message}`);
@@ -514,7 +459,7 @@ class CompetitionService {
      * @returns {Promise<void>}
      */
     async handleVote(interaction) {
-        const userId = interaction.user.id;
+        const discordId = interaction.user.id;
         const selectedOption = interaction.values[0];
         let competitionType = '';
 
@@ -525,7 +470,6 @@ class CompetitionService {
         }
 
         try {
-            // Find active competition
             const competition = await db.getOne(
                 `
         SELECT *
@@ -538,40 +482,45 @@ class CompetitionService {
             );
 
             if (!competition) {
-                return interaction.reply({ content: '⚠️ No active competition found.', flags: 64 });
+                return interaction.reply({
+                    content: '🚫 **Error:** No active competition found. Please try again later.',
+                    flags: 64,
+                });
             }
 
-            // Check if user already voted
             const existingVote = await db.getOne(
                 `
         SELECT *
         FROM votes
-        WHERE user_id=? AND competition_id=?
+        WHERE discord_id=? AND competition_id=?
       `,
-                [userId, competition.id],
+                [discordId, competition.competition_id],
             );
 
             if (existingVote) {
-                return interaction.reply({ content: '🚫 You have already voted in this competition.', flags: 64 });
+                return interaction.reply({
+                    content: '🚫 **Notice:** You have already voted in this competition.',
+                    flags: 64,
+                });
             }
 
-            // Insert vote into the database
             await db.runQuery(
                 `
-        INSERT INTO votes (user_id, competition_id, vote_choice)
+        INSERT INTO votes (discord_id, competition_id, vote_choice)
         VALUES (?, ?, ?)
       `,
-                [userId, competition.id, selectedOption],
+                [discordId, competition.competition_id, selectedOption],
             );
 
             await interaction.reply({
-                content: `✅ Your vote for **${selectedOption
+                content: `✅ **Success!** Your vote for **\`${selectedOption
                     .toLowerCase()
                     .split('_')
                     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                    .join(' ')}** has been recorded. Thank you!`,
+                    .join(' ')}\`** has been recorded. Thank you!`,
                 flags: 64,
             });
+
             if (competition.message_id) {
                 const channel = await interaction.client.channels.fetch(competitionType === 'SOTW' ? constants.SOTW_CHANNEL_ID : constants.BOTW_CHANNEL_ID);
 
@@ -579,12 +528,9 @@ class CompetitionService {
                     try {
                         const message = await channel.messages.fetch(competition.message_id);
                         if (message) {
-                            // **Step 2: Rebuild the dropdown with updated vote counts**
                             const dropdown = await buildPollDropdown(competitionType, db);
-
-                            // **Step 3: Edit the existing message to reflect new votes**
                             await message.edit({ components: [dropdown] });
-                            logger.info(`✅ Updated poll dropdown for ${competitionType} after a vote.`);
+                            logger.info(`✅ Updated poll dropdown for \`${competitionType}\` after a vote.`);
                         }
                     } catch (err) {
                         logger.error(`❌ Error updating dropdown after vote: ${err.message}`);
@@ -592,9 +538,9 @@ class CompetitionService {
                 }
             }
         } catch (err) {
-            logger.error(`Error handleVote for user ${userId}: ${err.message}`);
+            logger.error(`❌ Error handleVote for user \`${discordId}\`: ${err.message}`);
             return interaction.reply({
-                content: '❌ There was an error processing your vote.',
+                content: '❌ **Error:** There was an error processing your vote. Please try again later.',
                 flags: 64,
             });
         }

@@ -9,6 +9,8 @@
  * It extracts only Skill and Boss properties (excluding ActivityProperties and ComputedMetricProperties)
  * and inserts them into the table if they do not already exist.
  *
+ * ---
+ *
  * **Core Features:**
  * - Determines whether a MetricProp is a Skill or a Boss.
  * - Inserts new entries into the `skills_bosses` table within a transaction for atomicity.
@@ -27,35 +29,37 @@ const logger = require('../modules/utils/logger');
 const { MetricProps } = require('@wise-old-man/utils');
 
 /**
- * Determines the type of a MetricProp based on its properties.
+ * 🎯 **Determines the Property Type**
  *
- * Checks if the given property object has the characteristic keys that identify it as a Skill or a Boss.
+ * Checks if the given property object from MetricProps is a Skill or a Boss.
+ * - Returns `'Skill'` if the property contains an `isCombat` key.
+ * - Returns `'Boss'` if the property has both `minimumValue` and `isMembers` keys.
+ * - Otherwise, returns `null`.
  *
  * @function determinePropType
  * @param {Object} prop - The property object from MetricProps.
- * @returns {string|null} Returns `'Skill'` if the property has an `isCombat` key, `'Boss'` if it has both `minimumValue` and `isMembers` keys, otherwise returns `null`.
+ * @returns {string|null} The determined type: `'Skill'`, `'Boss'`, or `null`.
  *
  * @example
  * const propType = determinePropType(MetricProps.Attack);
  * // propType might be 'Skill'
  */
 const determinePropType = (prop) => {
-    // Use Object.prototype.hasOwnProperty.call to safely check properties
     if (Object.prototype.hasOwnProperty.call(prop, 'isCombat')) {
         return 'Skill';
     } else if (Object.prototype.hasOwnProperty.call(prop, 'minimumValue') && Object.prototype.hasOwnProperty.call(prop, 'isMembers')) {
         return 'Boss';
     }
-    return null; // Exclude if not Skill or Boss
+    return null;
 };
 
 /**
- * Populates the `skills_bosses` table with data from MetricProps.
+ * 🎯 **Populates the `skills_bosses` Table**
  *
  * Iterates over all properties in the MetricProps object to extract Skills and Bosses.
- * It skips ActivityProperties and ComputedMetricProperties, and inserts new entries
- * into the database if they do not already exist. The insertion is performed within a transaction
- * to ensure atomicity.
+ * It skips properties that are not Skills or Bosses (e.g., ActivityProperties and ComputedMetricProperties)
+ * and inserts new entries into the database if they do not already exist.
+ * The insertion is performed within a transaction to ensure atomicity.
  *
  * @async
  * @function populateSkillsBosses
@@ -67,51 +71,42 @@ const determinePropType = (prop) => {
  */
 const populateSkillsBosses = async () => {
     try {
-        // Start a transaction to ensure atomicity and improve performance.
         await db.runQuery('BEGIN TRANSACTION;');
 
-        // Fetch existing entries to prevent duplicates.
         const existing = await db.getAll('SELECT name, type FROM skills_bosses');
         const existingSet = new Set(existing.map((entry) => `${entry.name}:${entry.type}`));
 
         let insertedCount = 0;
         let excludedCount = 0;
 
-        // Iterate over MetricProps to extract skills and bosses.
         for (const [key, value] of Object.entries(MetricProps)) {
             const type = determinePropType(value);
 
             if (!type) {
-                // Skip properties that are not Skills or Bosses.
-                logger.info(`Excluded Property (${key}): Not a Skill or Boss`);
+                logger.info(`⚠️ Excluded Property (${key}): Not a Skill or Boss`);
                 excludedCount += 1;
                 continue;
             }
 
             if (!existingSet.has(`${key}:${type}`)) {
-                // Prepare the INSERT statement.
                 const insertQuery = 'INSERT INTO skills_bosses (name, type) VALUES (?, ?);';
                 const params = [key, type];
 
-                // Execute the INSERT statement.
                 await db.runQuery(insertQuery, params);
 
-                logger.info(`Inserted ${type}: ${key}`);
+                logger.info(`✅ Inserted ${type}: ${key}`);
                 insertedCount += 1;
 
-                // Add to existingSet to prevent duplicate inserts within the same run.
                 existingSet.add(`${key}:${type}`);
             }
         }
 
-        // Commit the transaction after all inserts.
         await db.runQuery('COMMIT;');
 
-        logger.info(`Migration completed successfully. Inserted: ${insertedCount}, Excluded: ${excludedCount}`);
+        logger.info(`🎉 Migration completed successfully. Inserted: ${insertedCount}, Excluded: ${excludedCount}`);
     } catch (error) {
-        // Rollback the transaction in case of any errors.
         await db.runQuery('ROLLBACK;');
-        logger.error(`Error populating skills_bosses table: ${error.message}`);
+        logger.error(`❌ Error populating skills_bosses table: ${error.message}`);
     }
 };
 

@@ -8,9 +8,13 @@
  * selects competitions whose end time has passed, inserts them into the ended_competitions table,
  * and then deletes them from the active competitions table.
  *
- * **External Dependencies:**
- * - **SQLite**: For executing SQL queries via the dbUtils module.
- * - **Logger**: For logging migration progress and errors.
+ * ---
+ *
+ * 🔹 **Usage:**
+ * Run this script with:
+ * `node migrateEndedCompetitions.js`
+ *
+ * ⚠️ **Warning:** Ensure you have a backup of your database before running migrations.
  *
  * @module src/migrations/migrateEndedCompetitions
  */
@@ -19,21 +23,21 @@ const db = require('../modules/utils/dbUtils');
 const logger = require('../modules/utils/logger');
 
 /**
- * 🎯 Migrates Ended Competitions
+ * 🎯 **Migrates Ended Competitions**
  *
- * This asynchronous function migrates competitions that have ended (i.e., where the end time is in the past)
+ * This asynchronous function performs the migration of competitions that have ended (i.e., where the end time is in the past)
  * from the active competitions table to the ended_competitions table. The process includes:
- * - Ensuring the ended_competitions table exists.
- * - Selecting competitions that have ended based on the current time.
- * - Inserting each ended competition into the ended_competitions table.
- * - Deleting the migrated competition from the active competitions table.
+ *
+ * - Creating the `ended_competitions` table if it doesn't exist.
+ * - Selecting competitions from the active table whose `ends_at` is less than the current time.
+ * - For each ended competition, inserting it into the `ended_competitions` table and then deleting it from the active table.
  *
  * @async
  * @function migrateEndedCompetitions
  * @returns {Promise<void>} Resolves when the migration process is complete.
  *
  * @example
- * // Run the migration process:
+ * // To run the migration:
  * await migrateEndedCompetitions();
  */
 const migrateEndedCompetitions = async () => {
@@ -41,7 +45,7 @@ const migrateEndedCompetitions = async () => {
         // Ensure the ended_competitions table exists
         await db.runQuery(`
             CREATE TABLE IF NOT EXISTS ended_competitions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                competition_id INTEGER PRIMARY KEY,
                 title TEXT NOT NULL,
                 metric TEXT NOT NULL,
                 type TEXT CHECK(type IN ('SOTW', 'BOTW')) NOT NULL,
@@ -57,12 +61,11 @@ const migrateEndedCompetitions = async () => {
                 migrated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        logger.info('Ensured ended_competitions table exists.');
+        logger.info('✅ Ensured ended_competitions table exists.');
 
-        // Define the current timestamp for migration comparison
         const now = new Date().toISOString();
 
-        // Select competitions that have ended (you might further filter by final_leaderboard_sent=1 if needed)
+        // Select competitions that have ended
         const endedCompetitions = await db.getAll(
             `
             SELECT * FROM competitions
@@ -72,19 +75,18 @@ const migrateEndedCompetitions = async () => {
         );
 
         if (!endedCompetitions || endedCompetitions.length === 0) {
-            logger.info('No ended competitions to migrate.');
+            logger.info('ℹ️ No ended competitions to migrate.');
             return;
         }
 
-        logger.info(`Found ${endedCompetitions.length} ended competitions to migrate.`);
+        logger.info(`🚀 Found ${endedCompetitions.length} ended competition(s) to migrate.`);
 
-        // For each ended competition, insert it into ended_competitions and then delete it from competitions
+        // Migrate each ended competition
         for (const comp of endedCompetitions) {
-            // Insert into ended_competitions
             await db.runQuery(
                 `
                 INSERT INTO ended_competitions 
-                    (id, title, metric, type, starts_at, ends_at, verification_code, previous_metric, last_selected_at, message_id, leaderboard_message_id, rotation_index, final_leaderboard_sent)
+                    (competition_id, title, metric, type, starts_at, ends_at, verification_code, previous_metric, last_selected_at, message_id, leaderboard_message_id, rotation_index, final_leaderboard_sent)
                 VALUES 
                     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
@@ -105,16 +107,14 @@ const migrateEndedCompetitions = async () => {
                 ],
             );
 
-            // Delete the migrated competition from the active competitions table
-            await db.runQuery('DELETE FROM competitions WHERE id = ?', [comp.id]);
-            logger.info(`Migrated competition ID ${comp.id} to ended_competitions.`);
+            await db.runQuery('DELETE FROM competitions WHERE competition_id = ?', [comp.id]);
+            logger.info(`✅ Migrated competition ID \`${comp.id}\` to ended_competitions.`);
         }
 
-        logger.info('Migration of ended competitions complete.');
+        logger.info('🎉 Migration of ended competitions complete.');
     } catch (error) {
-        // Rollback the transaction in case of any errors
         await db.runQuery('ROLLBACK;');
-        logger.error(`Error migrating ended competitions: ${error.message}`);
+        logger.error(`❌ Error migrating ended competitions: ${error.message}`);
     }
 };
 
