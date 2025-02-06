@@ -10,19 +10,19 @@
  * - The main database (`database.sqlite`)
  * - The messages database (`messages.db`)
  *
- * It includes functions to execute SQL queries, retrieve data, run transactions, and manage configuration values.
- * Additionally, it handles graceful database closure on process termination.
+ * Additionally, a third database is now configured for caching images, stored in `image.cache`.
  *
- * **Key Features:**
- * - **SQL Query Execution:** Execute INSERT, UPDATE, DELETE, and SELECT queries on either database.
+ * It includes functions to execute SQL queries, retrieve data, run transactions, and manage configuration values.
+ * It also handles graceful database closure on process termination.
+ *
+ * ---
+ *
+ * 🔹 **Key Features:**
+ * - **SQL Query Execution:** Execute INSERT, UPDATE, DELETE, and SELECT queries on each database.
  * - **Data Retrieval:** Retrieve all matching rows (`getAll`) or a single row (`getOne`).
  * - **Transaction Support:** Run multiple queries in a transaction.
  * - **Configuration Management:** Get and set configuration values in the main database.
  * - **Graceful Shutdown:** Closes the database connections on SIGINT.
- *
- * **External Dependencies:**
- * - **sqlite3:** For interacting with the SQLite databases.
- * - **logger:** For logging database operations and errors.
  *
  * @module utils/dbUtils
  */
@@ -33,6 +33,8 @@ const logger = require('./logger');
 
 const mainDbPath = path.join(__dirname, '../../data/database.sqlite');
 const messagesDbPath = path.join(__dirname, '../../data/messages.db');
+// 🔔 New: Define image cache database path using a dot in the name as requested.
+const imageDbPath = path.join(__dirname, '../../data/image_cache.db');
 
 const mainDb = new sqlite3.Database(mainDbPath, (err) => {
     if (err) {
@@ -50,10 +52,18 @@ const messagesDb = new sqlite3.Database(messagesDbPath, (err) => {
     }
 });
 
+// 🔔 New: Connect to the image cache database.
+const imageDb = new sqlite3.Database(imageDbPath, (err) => {
+    if (err) {
+        logger.error(`🚨 Error connecting to image cache database: ${err.message}`);
+    } else {
+        logger.info('✅ Image cache database connected successfully.');
+    }
+});
+
 /**
- * Executes a SQL query that modifies data (e.g., INSERT, UPDATE, DELETE) on the main database.
+ * 🎯 **Executes a SQL Query on the Main Database**
  *
- * @function runQuery
  * @param {string} query - The SQL query to execute.
  * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
  * @returns {Promise<sqlite3.RunResult>} A promise that resolves to the result of the query.
@@ -67,9 +77,8 @@ const runQuery = (query, params = []) =>
     });
 
 /**
- * Executes a SQL SELECT query and retrieves all matching rows from the main database.
+ * 🎯 **Retrieves All Rows from the Main Database**
  *
- * @function getAll
  * @param {string} query - The SQL SELECT query to execute.
  * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of rows.
@@ -83,12 +92,11 @@ const getAll = (query, params = []) =>
     });
 
 /**
- * Executes a SQL SELECT query and retrieves a single matching row from the main database.
+ * 🎯 **Retrieves a Single Row from the Main Database**
  *
- * @function getOne
  * @param {string} query - The SQL SELECT query to execute.
  * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
- * @returns {Promise<Object|null>} A promise that resolves to a single row object or `null` if no row matches.
+ * @returns {Promise<Object|null>} A promise that resolves to a single row object or `null` if not found.
  */
 const getOne = (query, params = []) =>
     new Promise((resolve, reject) => {
@@ -99,9 +107,8 @@ const getOne = (query, params = []) =>
     });
 
 /**
- * Executes a SQL query that modifies data on the messages database.
+ * 🎯 **Executes a SQL Query on the Messages Database**
  *
- * @function messagesRunQuery
  * @param {string} query - The SQL query to execute.
  * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
  * @returns {Promise<sqlite3.RunResult>} A promise that resolves to the result of the query.
@@ -115,9 +122,8 @@ const messagesRunQuery = (query, params = []) =>
     });
 
 /**
- * Executes a SQL SELECT query and retrieves all matching rows from the messages database.
+ * 🎯 **Retrieves All Rows from the Messages Database**
  *
- * @function messagesGetAll
  * @param {string} query - The SQL SELECT query to execute.
  * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of rows.
@@ -131,12 +137,11 @@ const messagesGetAll = (query, params = []) =>
     });
 
 /**
- * Executes a SQL SELECT query and retrieves a single matching row from the messages database.
+ * 🎯 **Retrieves a Single Row from the Messages Database**
  *
- * @function messagesGetOne
  * @param {string} query - The SQL SELECT query to execute.
  * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
- * @returns {Promise<Object|null>} A promise that resolves to a single row object or `null` if no row matches.
+ * @returns {Promise<Object|null>} A promise that resolves to a single row object or `null` if not found.
  */
 const messagesGetOne = (query, params = []) =>
     new Promise((resolve, reject) => {
@@ -147,9 +152,10 @@ const messagesGetOne = (query, params = []) =>
     });
 
 /**
- * Executes a SQL transaction with multiple queries on the main database.
+ * 🎯 **Executes a SQL Transaction on the Main Database**
  *
- * @function runTransaction
+ * Runs multiple SQL queries in a transaction for atomicity.
+ *
  * @param {Array<{query: string, params: Array<any>}>} queries - An array of query objects with their parameters.
  * @returns {Promise<void>} A promise that resolves when the transaction is complete.
  */
@@ -173,7 +179,7 @@ const runTransaction = async (queries) => {
 };
 
 /**
- * Gracefully closes both SQLite database connections upon receiving a SIGINT signal.
+ * Gracefully closes both main and messages database connections on SIGINT.
  */
 process.on('SIGINT', () => {
     mainDb.close((err) => {
@@ -189,17 +195,27 @@ process.on('SIGINT', () => {
         } else {
             logger.info('✅ Messages database connection closed successfully.');
         }
-        process.exit(0);
+        // 🔔 New: Close the image cache database connection as well.
+        imageDb.close((err) => {
+            if (err) {
+                logger.error(`🚨 Error closing the image cache database connection: ${err.message}`);
+            } else {
+                logger.info('✅ Image cache database connection closed successfully.');
+            }
+            process.exit(0);
+        });
     });
 });
 
 /**
- * Fetches a configuration value from the main database.
+ * 🎯 **Retrieves a Configuration Value from the Main Database**
  *
- * @function getConfigValue
  * @param {string} key - The configuration key.
- * @param {any} [defaultValue=null] - The default value to return if key is not found.
+ * @param {any} [defaultValue=null] - The default value if the key is not found.
  * @returns {Promise<any>} A promise that resolves to the configuration value or the default.
+ *
+ * @example
+ * const rotationPeriod = await getConfigValue('rotation_period_weeks', 1);
  */
 async function getConfigValue(key, defaultValue = null) {
     const row = await getOne('SELECT value FROM config WHERE key = ?', [key]);
@@ -208,16 +224,78 @@ async function getConfigValue(key, defaultValue = null) {
 }
 
 /**
- * Sets a configuration key's value in the main database.
+ * 🎯 **Sets a Configuration Value in the Main Database**
  *
- * @function setConfigValue
  * @param {string} key - The configuration key.
- * @param {any} value - The value to set for the key.
+ * @param {any} value - The value to set.
+ *
+ * @example
+ * await setConfigValue('rotation_period_weeks', 2);
  */
 async function setConfigValue(key, value) {
     const valStr = String(value);
     await runQuery('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)', [key, valStr]);
 }
+
+/**
+ * 🎯 **Image Cache Database: Executes a SQL Query**
+ *
+ * Executes a SQL query that modifies data (INSERT, UPDATE, DELETE) on the image cache database.
+ *
+ * @param {string} query - The SQL query to execute.
+ * @param {Array<any>} [params=[]] - The parameters for the query.
+ * @returns {Promise<sqlite3.RunResult>} A promise that resolves to the result of the query.
+ *
+ * @example
+ * await imageRunQuery('INSERT INTO images (url, timestamp) VALUES (?, ?)', [url, Date.now()]);
+ */
+const imageRunQuery = (query, params = []) =>
+    new Promise((resolve, reject) => {
+        imageDb.run(query, params, function (err) {
+            if (err) return reject(err);
+            resolve(this);
+        });
+    });
+
+/**
+ * 🎯 **Image Cache Database: Retrieves All Rows**
+ *
+ * Executes a SQL SELECT query on the image cache database and retrieves all matching rows.
+ *
+ * @param {string} query - The SQL SELECT query.
+ * @param {Array<any>} [params=[]] - The parameters for the query.
+ * @returns {Promise<Array<Object>>} A promise that resolves to an array of rows.
+ *
+ * @example
+ * const images = await imageGetAll('SELECT * FROM images');
+ */
+const imageGetAll = (query, params = []) =>
+    new Promise((resolve, reject) => {
+        imageDb.all(query, params, (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+
+/**
+ * 🎯 **Image Cache Database: Retrieves a Single Row**
+ *
+ * Executes a SQL SELECT query on the image cache database and retrieves a single matching row.
+ *
+ * @param {string} query - The SQL SELECT query.
+ * @param {Array<any>} [params=[]] - The parameters for the query.
+ * @returns {Promise<Object|null>} A promise that resolves to a single row or `null` if not found.
+ *
+ * @example
+ * const image = await imageGetOne('SELECT * FROM images WHERE id = ?', [1]);
+ */
+const imageGetOne = (query, params = []) =>
+    new Promise((resolve, reject) => {
+        imageDb.get(query, params, (err, row) => {
+            if (err) return reject(err);
+            resolve(row || null);
+        });
+    });
 
 module.exports = {
     runQuery,
@@ -230,5 +308,10 @@ module.exports = {
         runQuery: messagesRunQuery,
         getAll: messagesGetAll,
         getOne: messagesGetOne,
+    },
+    image: {
+        runQuery: imageRunQuery,
+        getAll: imageGetAll,
+        getOne: imageGetOne,
     },
 };

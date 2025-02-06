@@ -1,13 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../modules/utils/logger');
-const { runQuery } = require('../modules/utils/dbUtils');
+const {
+    image: { runQuery },
+} = require('../modules/utils/dbUtils');
 
 /**
  * Path to the resources directory.
  * @constant {string}
  */
-const resourcesPath = path.resolve(__dirname, '../resources/skills_bosses');
+const resourcesPath = path.resolve(__dirname, '../resources');
 
 /**
  * Base path for the project, starting at "src".
@@ -71,8 +73,13 @@ async function populateImageCache() {
     const files = getAllFilesWithMetadata(resourcesPath);
 
     await runQuery(`
-        DROP TABLE IF EXISTS image_cache
+        CREATE TABLE IF NOT EXISTS image_cache (
+                idx INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_name TEXT NOT NULL,
+                file_path TEXT NOT NULL
+                );
     `);
+
     logger.info('Ensured image_cache table exists.');
 
     try {

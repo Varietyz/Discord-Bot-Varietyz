@@ -84,16 +84,16 @@ function dropTables(db) {
     //db.run(`
     //    DROP TABLE IF EXISTS player_fetch_times
     //`);
-    db.run(`
-        DROP TABLE IF EXISTS recent_name_changes
-    `);
+    //db.run(`
+    //    DROP TABLE IF EXISTS recent_name_changes
+    //`);
     //db.run(`
     //    DROP TABLE IF EXISTS users
     //`);
-    db.run(`
-        DROP TABLE IF EXISTS votes
-    `);
     //db.run(`
+    //    DROP TABLE IF EXISTS votes
+    //`);
+    //db.run(`;
     //    DROP TABLE IF EXISTS winners
     //`);
     //db.run(`;
@@ -102,6 +102,9 @@ function dropTables(db) {
     //db.run(`
     //    DROP TABLE IF EXISTS competition_queue
     //`);
+    db.run(`
+        DROP TABLE IF EXISTS image_cache
+    `);
     console.log('✅dropped tables!✅');
 }
 

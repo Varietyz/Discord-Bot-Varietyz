@@ -25,7 +25,7 @@ const logger = require('./logger');
  */
 const tallyVotesAndRecordWinner = async (competition) => {
     try {
-        logger.info(`🎯 **Tallying Votes:** Processing votes for competition ID \`${competition.id}\` (${competition.type})...`);
+        logger.info(`🎯 **Tallying Votes:** Processing votes for competition ID \`${competition.competition_id}\` (${competition.type})...`);
 
         const votes = await db.getAll(
             `SELECT vote_choice, COUNT(*) as count 
@@ -33,11 +33,11 @@ const tallyVotesAndRecordWinner = async (competition) => {
              WHERE competition_id = ? 
              GROUP BY vote_choice 
              ORDER BY count DESC`,
-            [competition.id],
+            [competition.competition_id],
         );
 
         if (votes.length === 0) {
-            logger.info(`⚠️ **No Votes Found:** No votes recorded for competition ID \`${competition.id}\`.`);
+            logger.info(`⚠️ **No Votes Found:** No votes recorded for competition ID \`${competition.competition_id}\`.`);
             return null;
         }
 
@@ -55,7 +55,7 @@ const tallyVotesAndRecordWinner = async (competition) => {
         logger.info(`✅ **Winning Metric:** For \`${competition.type}\`, the winning metric is \`${winningMetric}\`. 🎉`);
         return winningMetric;
     } catch (error) {
-        logger.error(`🚨 **Error:** Error tallying votes for competition ID \`${competition.id}\`: ${error.message} ❌`);
+        logger.error(`🚨 **Error:** Error tallying votes for competition ID \`${competition.competition_id}\`: ${error.message} ❌`);
         return null;
     }
 };
