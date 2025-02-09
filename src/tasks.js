@@ -54,29 +54,29 @@ module.exports = [
             await competitionService.startNextCompetitionCycle();
         },
         interval: 600 * 3, // Runs every 30 minutes
-        runOnStart: true,
-        runAsTask: true,
+        runOnStart: false,
+        runAsTask: false,
     },
     {
         name: 'updateData',
         func: async (client) => await updateData(client),
         interval: 600 * 3, // Runs every 30 minutes
-        runOnStart: true,
-        runAsTask: true,
+        runOnStart: false,
+        runAsTask: false,
     },
     {
         name: 'processNameChanges',
         func: async (client) => await processNameChanges(client),
         interval: 3600 * 3, // Runs every 3 hours
-        runOnStart: true,
-        runAsTask: true,
+        runOnStart: false,
+        runAsTask: false,
     },
     {
         name: 'fetchAndUpdatePlayerData',
         func: async () => await fetchAndUpdatePlayerData(),
         interval: 3600 * 1, // Runs every 1 hour
-        runOnStart: true,
-        runAsTask: true,
+        runOnStart: false,
+        runAsTask: false,
     },
     {
         name: 'handleHiscoresData',
@@ -92,14 +92,14 @@ module.exports = [
             }
         },
         interval: 3600 * 1, // Runs every 1 hour
-        runOnStart: true,
-        runAsTask: true,
+        runOnStart: false,
+        runAsTask: false,
     },
     {
         name: 'updateVoiceChannel',
         func: async (client) => await updateVoiceChannel(client),
         interval: 3600 * 3, // Runs every 3 hours
-        runOnStart: true,
-        runAsTask: true,
+        runOnStart: false,
+        runAsTask: false,
     },
 ];

@@ -13,6 +13,8 @@
 ├─ 📄 LICENSE
 ├─ 📄 package.json
 ├─ 📄 README.md
+├─ 📂 readme_collection
+│   └─ 📄 readme.md
 ├─ 📂 src
 │   ├─ 📂 api
 │   │   └─ 📂 wise_old_man
@@ -21,22 +23,33 @@
 │   │   ├─ 📄 constants.js
 │   │   └─ 📄 easterEggs.js
 │   ├─ 📂 data
-│   │   ├─ 📄 data.rar
 │   │   ├─ 📄 database.sqlite
+│   │   ├─ 📄 image_cache.db
 │   │   ├─ 📄 messages.db
 │   │   ├─ 📄 messages.db-shm
 │   │   ├─ 📄 messages.db-wal
 │   │   └─ 📂 tools
 │   │       └─ 📄 sortDatabase.js
+│   ├─ 📄 main copy.js
 │   ├─ 📄 main.js
 │   ├─ 📂 migrations
-│   │   ├─ 📄 initializeCompetitionTables.js
+│   │   ├─ 📄 initializeTables.js
 │   │   ├─ 📄 migrateEndedCompetitions.js
-│   │   └─ 📄 populateSkillsBosses.js
+│   │   ├─ 📄 migrateRsn.js
+│   │   ├─ 📄 populateSkillsBosses.js
+│   │   └─ 📄 registered_rsn_backup.json
 │   ├─ 📂 modules
+│   │   ├─ 📂 collection
+│   │   │   ├─ 📄 msgDatabase.js
+│   │   │   ├─ 📄 msgDbConstants.js
+│   │   │   ├─ 📄 msgDbSave.js
+│   │   │   ├─ 📄 msgDbUtils.js
+│   │   │   ├─ 📄 msgFetcher.js
+│   │   │   └─ 📄 msgReorder.js
 │   │   ├─ 📂 commands
 │   │   │   ├─ 📄 adminAssignRsn.js
 │   │   │   ├─ 📄 adminCheckActivity.js
+│   │   │   ├─ 📄 adminLogManagement.js
 │   │   │   ├─ 📄 adminQueueCompetition.js
 │   │   │   ├─ 📄 adminRemoveRsn.js
 │   │   │   ├─ 📄 adminRenameRsn.js
@@ -44,13 +57,77 @@
 │   │   │   ├─ 📄 adminSetRotationPeriod.js
 │   │   │   ├─ 📄 adminSyncMembers.js
 │   │   │   ├─ 📄 adminUpdateClannieChannel.js
+│   │   │   ├─ 📄 analytics.js
 │   │   │   ├─ 📄 help.js
 │   │   │   ├─ 📄 listCompetitions.js
 │   │   │   ├─ 📄 profile.js
 │   │   │   ├─ 📄 removeRsn.js
 │   │   │   └─ 📄 rsn.js
 │   │   ├─ 📂 events
-│   │   │   └─ 📄 clanchatDatabase.js
+│   │   │   ├─ 📂 boosts
+│   │   │   │   ├─ 📄 memberBoost.js
+│   │   │   │   └─ 📄 memberUnboost.js
+│   │   │   ├─ 📂 bot
+│   │   │   │   ├─ 📄 debug.js
+│   │   │   │   ├─ 📄 error.js
+│   │   │   │   ├─ 📄 rateLimit.js
+│   │   │   │   ├─ 📄 shardDisconnect.js
+│   │   │   │   ├─ 📄 shardError.js
+│   │   │   │   ├─ 📄 shardReady.js
+│   │   │   │   ├─ 📄 shardReconnecting.js
+│   │   │   │   ├─ 📄 shardResume.js
+│   │   │   │   └─ 📄 warn.js
+│   │   │   ├─ 📂 channels
+│   │   │   │   ├─ 📄 channelCreate.js
+│   │   │   │   ├─ 📄 channelDelete.js
+│   │   │   │   ├─ 📄 channelPinsUpdate.js
+│   │   │   │   ├─ 📄 channelUpdate.js
+│   │   │   │   ├─ 📄 stageInstanceCreate.js
+│   │   │   │   ├─ 📄 stageInstanceDelete.js
+│   │   │   │   ├─ 📄 stageInstanceUpdate.js
+│   │   │   │   ├─ 📄 threadCreate.js
+│   │   │   │   ├─ 📄 threadDelete.js
+│   │   │   │   └─ 📄 threadUpdate.js
+│   │   │   ├─ 📂 client
+│   │   │   │   ├─ 📄 interactionCreate.js
+│   │   │   │   ├─ 📄 raw.js
+│   │   │   │   ├─ 📄 ready.js
+│   │   │   │   └─ 📄 webhookUpdate.js
+│   │   │   ├─ 📂 emojis
+│   │   │   │   ├─ 📄 emojiCreate.js
+│   │   │   │   ├─ 📄 emojiDelete.js
+│   │   │   │   └─ 📄 emojiUpdate.js
+│   │   │   ├─ 📂 guild
+│   │   │   │   ├─ 📄 guildBanAdd.js
+│   │   │   │   ├─ 📄 guildBanRemove.js
+│   │   │   │   ├─ 📄 guildIntegrationsUpdate.js
+│   │   │   │   ├─ 📄 guildMemberAdd.js
+│   │   │   │   ├─ 📄 guildMemberRemove.js
+│   │   │   │   ├─ 📄 guildMemberUpdate.js
+│   │   │   │   ├─ 📄 guildUpdate
+│   │   │   │   ├─ 📄 inviteCreate.js
+│   │   │   │   └─ 📄 inviteDelete.js
+│   │   │   ├─ 📂 messages
+│   │   │   │   ├─ 📄 messageCreate.js
+│   │   │   │   ├─ 📄 messageDelete.js
+│   │   │   │   ├─ 📄 messageDeleteBulk.js
+│   │   │   │   ├─ 📄 messageReactionAdd.js
+│   │   │   │   ├─ 📄 messageReactionRemoveEmoji.js
+│   │   │   │   └─ 📄 messageUpdate.js
+│   │   │   ├─ 📂 roles
+│   │   │   │   ├─ 📄 roleCreate.js
+│   │   │   │   ├─ 📄 roleDelete.js
+│   │   │   │   └─ 📄 roleUpdate.js
+│   │   │   ├─ 📂 scheduled
+│   │   │   │   ├─ 📄 scheduledEventCreate.js
+│   │   │   │   ├─ 📄 scheduledEventDelete.js
+│   │   │   │   ├─ 📄 scheduledEventUpdate.js
+│   │   │   │   ├─ 📄 scheduledEventUserAdd.js
+│   │   │   │   └─ 📄 scheduledEventUserRemove.js
+│   │   │   └─ 📂 user
+│   │   │       ├─ 📄 presenceUpdate.js
+│   │   │       ├─ 📄 typingStart.js
+│   │   │       └─ 📄 voiceStateUpdate.js
 │   │   ├─ 📂 services
 │   │   │   ├─ 📄 activeMembers.js
 │   │   │   ├─ 📄 autoRoles.js
@@ -69,10 +146,13 @@
 │   │   │   └─ 📄 playerDataExtractor.js
 │   │   └─ 📂 utils
 │   │       ├─ 📄 calculateActivity.js
+│   │       ├─ 📄 cleanupInactiveUsers.js
 │   │       ├─ 📄 dateUtils.js
 │   │       ├─ 📄 dbUtils.js
 │   │       ├─ 📄 embedUtils.js
+│   │       ├─ 📄 ensureLoggingCategory.js
 │   │       ├─ 📄 fetchPlayerData.js
+│   │       ├─ 📄 forceDbNameChange.js
 │   │       ├─ 📄 lastFetchedTime.js
 │   │       ├─ 📄 logger.js
 │   │       ├─ 📄 normalizeRsn.js

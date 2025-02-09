@@ -24,20 +24,17 @@
  * @module main
  */
 
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, Partials } = require('discord.js');
 require('dotenv').config();
 const logger = require('./modules/utils/logger');
 const fs = require('fs');
 const path = require('path');
-const tasks = require('./tasks');
 const initializeTables = require('./migrations/initializeTables');
 const populateSkillsBosses = require('./migrations/populateSkillsBosses');
 const CompetitionService = require('./modules/services/competitionServices/competitionService');
-const { handleAutocomplete, handleSlashCommand } = require('./modules/utils/slashCommandHandler');
 
 const { CLAN_CHAT_CHANNEL_ID } = require('./config/constants');
 const { initDatabase } = require('./modules/collection/msgDatabase');
-const { saveMessage } = require('./modules/collection/msgDbSave');
 const { fetchAndStoreChannelHistory } = require('./modules/collection/msgFetcher');
 
 //const migrateRegisteredRSN = require('./migrations/migrateRsn');
@@ -52,9 +49,28 @@ const { fetchAndStoreChannelHistory } = require('./modules/collection/msgFetcher
  * });
  */
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers],
+    intents: [
+        GatewayIntentBits.Guilds, // Required for basic guild interactions
+        GatewayIntentBits.GuildMessages, // Detects messages in the guild
+        GatewayIntentBits.MessageContent, // Required to read message content
+        GatewayIntentBits.GuildMembers, // Detects member updates (joins, leaves, role changes)
+        GatewayIntentBits.GuildMessageReactions, // Detects reactions on messages
+        GatewayIntentBits.GuildVoiceStates, // Detects voice channel joins, mutes, and disconnects
+        GatewayIntentBits.GuildPresences, // Detects status changes (online, offline, playing game)
+        GatewayIntentBits.GuildModeration, // Tracks moderation events (bans, kicks, timeouts)
+        GatewayIntentBits.GuildInvites, // Tracks invites
+        GatewayIntentBits.GuildEmojisAndStickers, // Tracks emojis and stickers in guilds
+        GatewayIntentBits.GuildIntegrations, // Tracks integrations like bots and apps
+        GatewayIntentBits.GuildScheduledEvents, // Tracks scheduled events in guilds
+        GatewayIntentBits.GuildMessagePolls, // Polls in guild message
+        GatewayIntentBits.GuildBans, // Detects bans in guild
+        GatewayIntentBits.DirectMessages, // Tracks direct messages
+        GatewayIntentBits.DirectMessageReactions, // Detects reactions in direct messages
+        GatewayIntentBits.DirectMessageTyping, // Detects typing in direct messages
+        GatewayIntentBits.DirectMessagePolls, // Polls in direct messages
+    ],
+    partials: [Partials.Message, Partials.Reaction, Partials.User], // Necessary for uncached messages, reactions, and users
 });
-
 /** @type {Array<Object>} */
 const commands = [];
 
@@ -102,7 +118,14 @@ const loadModules = (type) => {
     return loadedModules;
 };
 
+loadModules('commands');
+loadModules('services');
+// Attach the commands array to the client so event files can access it.
+client.commands = commands;
+
+// Instantiate CompetitionService and attach it to the client.
 const competitionService = new CompetitionService(client);
+client.competitionService = competitionService;
 
 /**
  * Initializes the Discord bot by loading modules, registering slash commands, and logging in.
@@ -129,9 +152,6 @@ const initializeBot = async () => {
         await initializeTables();
         await populateSkillsBosses();
 
-        loadModules('commands');
-        loadModules('services');
-
         const { REST } = require('@discordjs/rest');
         const { Routes } = require('discord-api-types/v10');
 
@@ -150,71 +170,47 @@ const initializeBot = async () => {
     }
 };
 
-/**
- * Event handler for when the Discord client is ready.
- *
- * When the client is ready, it logs the bot status, runs startup tasks,
- * and schedules periodic tasks to run at configured intervals.
- *
- * @event Client#ready
- */
-client.once('ready', async () => {
-    logger.info(`✅ **Online:** \`${client.user.tag}\` is now online! 🎉`);
-    for (const task of tasks) {
-        if (task.runOnStart) {
-            logger.info(`⏳ **Startup Task:** Running \`${task.name}\` on startup...`);
-            try {
-                await task.func(client);
-            } catch (err) {
-                logger.error(`🚨 **Error in Startup Task:** \`${task.name}\` encountered an error: ${err}`);
-            }
-        }
-    }
-
-    tasks.forEach((task) => {
-        if (task.runAsTask) {
-            const hours = Math.floor(task.interval / 3600);
-            const minutes = Math.floor((task.interval % 3600) / 60);
-            const intervalFormatted = `${hours > 0 ? `${hours}h ` : ''}${minutes}m`;
-
-            logger.info(`⏳ **Scheduled Task:** \`${task.name}\` set to run every ${intervalFormatted}.`);
-            try {
-                setInterval(async () => {
-                    logger.info(`⏳ **Executing Scheduled Task:** Running \`${task.name}\`...`);
-                    await task.func(client);
-                }, task.interval * 1000);
-            } catch (err) {
-                logger.error(`🚨 **Scheduling Error:** \`${task.name}\` - ${err}`);
-            }
-        }
-    });
-});
+const eventsPath = path.join(__dirname, 'modules', 'events');
 
 /**
- * Event handler for interaction events (slash commands, autocomplete, select menus).
- *
- * @event Client#interactionCreate
- * @param {Interaction} interaction - The interaction object created by Discord.
+ * Recursively reads all .js files in a directory (and its subdirectories).
+ * @param {string} dir - The directory to search.
+ * @returns {string[]} An array of full paths to .js files.
  */
-client.on('interactionCreate', async (interaction) => {
-    if (interaction.isCommand()) {
-        await handleSlashCommand(interaction, commands);
-    } else if (interaction.isAutocomplete()) {
-        await handleAutocomplete(interaction, commands);
-    } else if (interaction.isStringSelectMenu()) {
-        if (interaction.customId === 'vote_dropdown') {
-            await competitionService.handleVote(interaction);
+function getEventFiles(dir) {
+    let eventFiles = [];
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            // Recursively get files in subdirectories.
+            eventFiles = eventFiles.concat(getEventFiles(fullPath));
+        } else if (entry.isFile() && entry.name.endsWith('.js')) {
+            eventFiles.push(fullPath);
         }
     }
-});
 
-client.on('messageCreate', async (message) => {
-    if (![CLAN_CHAT_CHANNEL_ID].includes(message.channel.id)) return;
-    try {
-        await saveMessage(message.author.username, message.content, message.id, message.createdTimestamp);
-    } catch (error) {
-        logger.error(`🚨 **Message Save Error:** Error saving message \`${message.id}\`:`, error);
+    return eventFiles;
+}
+
+const eventFiles = getEventFiles(eventsPath);
+
+// Register each event with the Discord client.
+for (const file of eventFiles) {
+    const event = require(file);
+
+    if (event.name === 'raw') {
+        // 🔥 Raw events must be manually registered
+        client.on('raw', (...args) => event.execute(...args, client));
+        logger.info(`✅ Loaded RAW event handler from ${file}`);
+    } else if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args, client));
+    } else {
+        client.on(event.name, (...args) => event.execute(...args, client));
     }
-});
+
+    logger.info(`✅ Loaded event handler for '${event.name}' from ${file}`);
+}
 
 initializeBot();

@@ -1,6 +1,5 @@
 // competitionService/CompetitionService.js
 
-/* eslint-disable jsdoc/require-returns */
 // @ts-nocheck
 
 const db = require('../../utils/dbUtils');
@@ -55,7 +54,6 @@ class CompetitionService {
      */
     constructor(client) {
         this.client = client;
-        /** @type {Map<string, any>} Map of scheduled jobs for competition rotations. */
         this.scheduledJobs = new Map();
     }
 
@@ -143,7 +141,7 @@ class CompetitionService {
      * Checks for queued competitions and creates a new competition accordingly. If no votes and no queue exist,
      * it creates a default competition.
      *
-     * @param {string} type - Competition type (`SOTW` or `BOTW`).
+     * @param {string} type
      * @param {Object} lastCompetition - The most recent competition record. *TODO:* Clarify structure.
      * @param {boolean} votesExist - Indicates if votes exist for the last competition.
      * @param {boolean} pauseForRotationUpdate - Flag to determine if rotation update should be paused.
@@ -178,7 +176,7 @@ class CompetitionService {
      *
      * Determines if there are any active competitions of the given type that have not yet ended.
      *
-     * @param {string} type - Competition type (`SOTW` or `BOTW`).
+     * @param {string} type
      * @param {string} now - Current timestamp in ISO format.
      * @returns {Promise<Date|null>} The end date of the nearest active competition, or `null` if none exist.
      */
@@ -199,7 +197,7 @@ class CompetitionService {
      * - Updates both final and all-time leaderboards.
      * - Marks the competition as processed.
      *
-     * @param {string} type - Competition type (`SOTW` or `BOTW`).
+     * @param {string} type
      * @returns {Promise<void>}
      */
     async processEndedCompetitions(type) {
@@ -241,7 +239,7 @@ class CompetitionService {
      *
      * Checks active competitions for the given type and updates the overall nearest end time.
      *
-     * @param {string} type - Competition type (`SOTW` or `BOTW`).
+     * @param {string} type
      * @param {Date|null} overallNearestEndTime - The current overall nearest end time.
      * @returns {Promise<Date|null>} The updated overall nearest end time.
      */
@@ -316,7 +314,7 @@ class CompetitionService {
      * When no queued competitions exist, this method creates a default competition for the given type
      * by randomly selecting a metric and scheduling the competition based on the configured rotation period.
      *
-     * @param {string} type - Competition type (`SOTW` or `BOTW`).
+     * @param {string} type
      * @returns {Promise<void>}
      */
     async createDefaultCompetitions(type) {
@@ -422,7 +420,7 @@ class CompetitionService {
      * Retrieves a random metric (skill or boss name) ensuring that it does not match the metric
      * used in the most recent competition.
      *
-     * @param {string} type - The type of metric to retrieve (`Skill` or `Boss`).
+     * @param {string} type
      * @returns {Promise<string>} A promise that resolves to the selected metric name.
      * @throws {Error} If no available metrics are found.
      */

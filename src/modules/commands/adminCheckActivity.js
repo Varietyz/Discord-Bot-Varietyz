@@ -77,9 +77,24 @@ module.exports = {
             // Retrieve players based on status
             const players =
                 status === 'active'
-                    ? await getAll('SELECT rsn, last_progressed FROM active_inactive WHERE last_progressed >= ? ORDER BY last_progressed ASC', [DateTime.now().minus({ days: 7 }).toISO()])
-                    : await getAll('SELECT rsn, last_progressed FROM active_inactive WHERE last_progressed < ? ORDER BY last_progressed ASC', [DateTime.now().minus({ days: 21 }).toISO()]);
-
+                    ? await getAll(
+                        `
+        SELECT ai.player_id, ai.last_progressed, rr.rsn
+        FROM active_inactive ai
+        LEFT JOIN clan_members rr ON ai.player_id = rr.player_id
+        WHERE ai.last_progressed >= ?
+        ORDER BY ai.last_progressed ASC`,
+                        [DateTime.now().minus({ days: 7 }).toISO()],
+                    )
+                    : await getAll(
+                        `
+        SELECT ai.player_id, ai.last_progressed, rr.rsn
+        FROM active_inactive ai
+        LEFT JOIN clan_members rr ON ai.player_id = rr.player_id
+        WHERE ai.last_progressed < ?
+        ORDER BY ai.last_progressed ASC`,
+                        [DateTime.now().minus({ days: 21 }).toISO()],
+                    );
             const statusEmoji = status === 'active' ? '🟢' : '🔴';
             const ITEMS_PER_PAGE = 10;
             const pages = [];
@@ -89,7 +104,7 @@ module.exports = {
                 const embed = new EmbedBuilder()
                     .setTitle(`📊 ${status.charAt(0).toUpperCase() + status.slice(1)} Players`)
                     .setColor(status === 'active' ? 'Green' : 'Red')
-                    .setDescription(pagePlayers.map(({ username, last_progressed }, index) => `🕒 **${i + index + 1}. \`${username}\`** — Last Progressed: \`${DateTime.fromISO(last_progressed).toRelative()}\``).join('\n'))
+                    .setDescription(pagePlayers.map(({ player_id, last_progressed, rsn }, index) => `🕒 **${i + index + 1}. \`${rsn} (ID: ${player_id})\`** — Last Progressed: \`${DateTime.fromISO(last_progressed).toRelative()}\``).join('\n'))
                     .addFields({ name: 'Status', value: `${statusEmoji} \`${status.charAt(0).toUpperCase() + status.slice(1)}\``, inline: true }, { name: 'Total Players', value: `\`${count}\``, inline: true })
                     .setFooter({ text: `Page ${Math.floor(i / ITEMS_PER_PAGE) + 1}/${Math.ceil(players.length / ITEMS_PER_PAGE)}` });
 

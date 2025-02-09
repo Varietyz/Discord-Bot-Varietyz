@@ -49,10 +49,10 @@ function initializeDatabase() {
     // Establish a new database connection.
     const db = new sqlite3.Database(dbPath, (err) => {
         if (err) {
-            logger.error(`Error connecting to SQLite: ${err.message}`);
+            logger.error(`❌ Error connecting to SQLite: ${err.message}`);
             throw err; // Terminate script if connection fails.
         } else {
-            logger.info(`Connected to SQLite at: ${dbPath}`);
+            logger.info(`✅ Connected to SQLite at: ${dbPath}`);
         }
     });
 
@@ -60,75 +60,76 @@ function initializeDatabase() {
 }
 
 /**
- * Creates the 'clan_members' table to store clan member information.
+ * Drops tables on demand.
  *
- * @function createClanMembersTable
+ * @function dropTables
  * @param {sqlite3.Database} db - The SQLite database instance.
  */
-function dropTables(db) {
-    //db.run(`
-    //    DROP TABLE IF EXISTS clan_members
-    //`);
-    //db.run(`
-    //    DROP TABLE IF EXISTS active_inactive
-    //`);
-    //db.run(`;
-    //    DROP TABLE IF EXISTS competitions
-    //`);
-    //db.run(`
-    //    DROP TABLE IF EXISTS ended_competitions
-    //`);
-    //db.run(`
-    //    DROP TABLE IF EXISTS player_data
-    //`);
-    //db.run(`
-    //    DROP TABLE IF EXISTS player_fetch_times
-    //`);
-    //db.run(`
-    //    DROP TABLE IF EXISTS recent_name_changes
-    //`);
-    //db.run(`
-    //    DROP TABLE IF EXISTS users
-    //`);
-    //db.run(`
-    //    DROP TABLE IF EXISTS votes
-    //`);
-    //db.run(`;
-    //    DROP TABLE IF EXISTS winners
-    //`);
-    //db.run(`;
-    //    DROP TABLE IF EXISTS skills_bosses
-    //`);
-    //db.run(`
-    //    DROP TABLE IF EXISTS competition_queue
-    //`);
-    db.run(`
-        DROP TABLE IF EXISTS image_cache
-    `);
-    console.log('✅dropped tables!✅');
+async function dropTables(db) {
+    const tables = [
+        //'image_cache',
+        //'log_channels',
+        //'guild_channels',
+        //'guild_roles',
+        //'guild_webhooks',
+        //'guild_emojis',
+        //'guild_permissions',
+        //'guild_members',
+        'guild_events',
+        //'competitions',
+        //'competition_queue',
+        //'ended_competitions',
+        //'users',
+        //'votes',
+        //'winners',
+        //'skills_bosses',
+        //'player_data',
+        //'player_fetch_times',
+        //'recent_name_changes',
+        //'clan_members',
+        //'active_inactive',
+        //'registered_rsn'
+    ];
+
+    try {
+        for (const table of tables) {
+            await new Promise((resolve, reject) => {
+                db.run(`DROP TABLE IF EXISTS ${table};`, (err) => {
+                    if (err) {
+                        console.error(`❌ Error dropping table ${table}: ${err.message}`);
+                        reject(err);
+                    } else {
+                        console.log(`✅ Dropped table: ${table}`);
+                        resolve();
+                    }
+                });
+            });
+        }
+        console.log('✅ All selected tables dropped successfully!');
+    } catch (error) {
+        console.error(`❌ Error during table deletion: ${error.message}`);
+    }
 }
 
 // Main execution flow.
-(function main() {
+(async function main() {
     try {
         const db = initializeDatabase();
 
-        // Serialize database operations to run sequentially.
-        db.serialize(() => {
-            dropTables(db);
-        });
+        // Execute dropTables and wait until it completes
+        await dropTables(db);
 
-        // Close the database connection after all tables are created.
+        // ✅ Close database AFTER all tables are removed
         db.close((err) => {
             if (err) {
-                logger.error(`Error closing the database: ${err.message}`);
+                logger.error(`❌ Error closing the database: ${err.message}`);
             } else {
-                logger.info('Database schema created. No data imported. DB closed successfully.');
+                logger.info('✅ DB closed successfully.');
             }
             process.exit(0);
         });
     } catch (error) {
-        logger.error(`Database initialization failed: ${error.message}`);
+        logger.error(`❌ Database initialization failed: ${error.message}`);
         process.exit(1); // Exit with failure code.
     }
 })();

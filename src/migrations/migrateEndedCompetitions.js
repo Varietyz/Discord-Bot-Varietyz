@@ -91,7 +91,7 @@ const migrateEndedCompetitions = async () => {
                     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
                 [
-                    comp.id,
+                    comp.competition_id,
                     comp.title,
                     comp.metric,
                     comp.type,
@@ -107,8 +107,8 @@ const migrateEndedCompetitions = async () => {
                 ],
             );
 
-            await db.runQuery('DELETE FROM competitions WHERE competition_id = ?', [comp.id]);
-            logger.info(`✅ Migrated competition ID \`${comp.id}\` to ended_competitions.`);
+            await db.runQuery('DELETE FROM competitions WHERE competition_id = ?', [comp.competition_id]);
+            logger.info(`✅ Migrated competition ID \`${comp.competition_id}\` to ended_competitions.`);
         }
 
         logger.info('🎉 Migration of ended competitions complete.');

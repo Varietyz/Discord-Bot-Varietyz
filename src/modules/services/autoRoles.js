@@ -28,6 +28,7 @@ const logger = require('../utils/logger.js');
 const { ROLE_CHANNEL_ID } = require('../../config/constants.js');
 const { getAll } = require('../utils/dbUtils.js');
 const { normalizeRsn } = require('../utils/normalizeRsn.js');
+const { cleanupInactiveUsers } = require('../utils/cleanupInactiveUsers');
 
 /**
  * 🎯 **Maps a Boss Name to Its Corresponding Discord Role Name**
@@ -193,13 +194,14 @@ async function fetchAndProcessMember(guild, userId) {
         const rsns = await getUserRSNs(userId);
 
         if (!rsns.length) {
-            logger.info(`⚠️ No RSNs linked to user ID: ${userId}`);
+            logger.info(`🚨 No RSNs linked to user ID: ${userId}`);
             return;
         }
 
         const member = await guild.members.fetch(userId).catch(() => null);
         if (!member) {
-            logger.error(`🚨 Member with ID ${userId} not found in the guild.`);
+            logger.error(`⚠️ Member with ID ${userId} not found in the guild, preparing cleanup.`);
+            await cleanupInactiveUsers(guild);
             return;
         }
 

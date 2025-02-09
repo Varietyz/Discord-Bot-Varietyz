@@ -152,6 +152,8 @@ async function fetchAndStoreChannelHistory(client, channelId) {
         if (totalFetched > 0) {
             await setLastFetchedMessageId(afterId);
             logger.info(`✅ Last fetched ID updated to: ${afterId}`);
+            await reorderAllTables();
+            logger.info(`🎉 Auto-sorting completed for ${totalSaved} new messages!`);
         }
         logger.info(`🎉 Incremental fetch complete. Total new messages stored: ${totalSaved}.`);
     }

@@ -80,7 +80,7 @@ async function populateImageCache() {
                 );
     `);
 
-    logger.info('Ensured image_cache table exists.');
+    logger.info('✅ Ensured image_cache table exists.');
 
     try {
         for (const { fileName, filePath } of files) {
@@ -104,9 +104,9 @@ async function populateImageCache() {
             }
         }
 
-        logger.info('Image cache updated successfully.');
+        logger.info('✅ Image cache updated successfully.');
     } catch (error) {
-        logger.error('Error populating image cache:', error.message);
+        logger.error('❌ Error populating image cache:', error.message);
     }
 }
 

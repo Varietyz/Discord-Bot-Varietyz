@@ -107,7 +107,6 @@ async function reorderAllTables() {
             logger.info(`\n🔄 Reordering table: \`${tableName}\``);
             await reorderTable(db, tableName);
         }
-        await db.close();
         logger.info('\n✅ All tables have been processed successfully.');
     } catch (error) {
         logger.error('❌ Error reordering all tables:', error);

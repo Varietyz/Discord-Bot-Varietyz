@@ -102,7 +102,6 @@ async function getFinalNamesMap() {
     FROM recent_name_changes
   `);
 
-    /** @type {{ [playerId: number]: { finalRsn: string, resolvedAt: number }}} */
     const latestByPlayer = {};
 
     for (const row of rows) {
@@ -201,8 +200,8 @@ async function resolveConflictByNameHistory(requestingPlayerId, oldRsn, finalRsn
  * 3. If resolved => update the user’s RSN.
  * 4. Collect changedRecords to pass on to the reference updates.
  *
- * @param {{ [playerId: number]: { finalRsn: string, resolvedAt: number }}} finalNamesMap
- * @param {import('discord.js').ChannelManager} channelManager
+ * @param finalNamesMap
+ * @param channelManager
  * @returns {Promise<Array<{ discord_id: string, oldRsn: string, newRsn: string }>>}
  */
 async function updateAllRegisteredRSNs(finalNamesMap, channelManager) {
