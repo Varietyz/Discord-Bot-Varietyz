@@ -1,5 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
-const { getOne } = require('../../utils/dbUtils');
+const {
+    guild: { getOne },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 
 const deviceStates = new Map(); // Tracks last known device state to reduce spam
@@ -86,12 +88,6 @@ module.exports = {
             } else if (oldPresence?.premiumSince && !newPresence?.premiumSince) {
                 changes.push('🚀 **Stopped Boosting Server**');
             }
-
-            // 🚀 **Debugging: Log All Detected Activities**
-            logger.debug(`User: ${member.user.tag}`);
-            logger.debug(`New Activities: ${JSON.stringify(newActivities.map((a) => a.name))}`);
-            logger.debug(`Old Activities: ${JSON.stringify(oldActivities.map((a) => a.name))}`);
-            logger.debug(`Detected OSRS Activities: ${JSON.stringify(addedOsrsActivities.concat(removedOsrsActivities))}`);
 
             // 🚫 **Exit early if no actual changes (or non-OSRS activity changes)**
             if (changes.length === 0 || (!addedOsrsActivities.length && !removedOsrsActivities.length)) return;

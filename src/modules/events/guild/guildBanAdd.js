@@ -3,7 +3,9 @@
 // src/modules/events/guildBanAdd.js
 
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
-const { getOne } = require('../../utils/dbUtils');
+const {
+    guild: { getOne },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 
 const recentBans = new Set(); // 🔄 Store recently banned users

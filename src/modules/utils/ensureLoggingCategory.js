@@ -1,5 +1,7 @@
 const { ChannelType, PermissionsBitField } = require('discord.js');
-const { runQuery, getOne } = require('../utils/dbUtils');
+const {
+    guild: { runQuery, getOne },
+} = require('./dbUtils');
 const logger = require('./logger');
 
 /**
@@ -51,9 +53,15 @@ async function ensureLoggingCategory(guild) {
 
         // 🔍 **Ensure All Log Channels Exist and Store in DB**
         for (const { key, name, topic } of logChannels) {
-            let channel = guild.channels.cache.find((ch) => ch.name === name && ch.parentId === loggingCategory.id);
             const storedChannel = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', [key]);
 
+            // ✅ Fetch channel by ID instead of name & parent category
+            let channel = storedChannel ? guild.channels.cache.get(storedChannel.channel_id) : null;
+            // ✅ If channel exists, check if it’s in the correct category
+            if (channel && channel.parentId !== loggingCategory.id) {
+                logger.warn(`⚠️ Channel ${channel.id} is in the wrong category. Moving it...`);
+                await channel.setParent(loggingCategory.id);
+            }
             if (!channel) {
                 channel = await guild.channels.create({
                     name,

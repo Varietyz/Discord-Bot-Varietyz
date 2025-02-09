@@ -66,30 +66,7 @@ function initializeDatabase() {
  * @param {sqlite3.Database} db - The SQLite database instance.
  */
 async function dropTables(db) {
-    const tables = [
-        //'image_cache',
-        //'log_channels',
-        //'guild_channels',
-        //'guild_roles',
-        //'guild_webhooks',
-        //'guild_emojis',
-        //'guild_permissions',
-        //'guild_members',
-        'guild_events',
-        //'competitions',
-        //'competition_queue',
-        //'ended_competitions',
-        //'users',
-        //'votes',
-        //'winners',
-        //'skills_bosses',
-        //'player_data',
-        //'player_fetch_times',
-        //'recent_name_changes',
-        //'clan_members',
-        //'active_inactive',
-        //'registered_rsn'
-    ];
+    const tables = ['player_data', 'player_fetch_times', 'recent_name_changes', 'clan_members', 'active_inactive', 'registered_rsn'];
 
     try {
         for (const table of tables) {

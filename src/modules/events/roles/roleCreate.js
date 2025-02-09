@@ -1,6 +1,8 @@
 // src/modules/events/roleCreate.js
 
-const { getOne, runQuery } = require('../../utils/dbUtils');
+const {
+    guild: { getOne, runQuery },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 const { EmbedBuilder, Events, AuditLogEvent } = require('discord.js');
 const { normalizeKey } = require('../../utils/normalizeKey');

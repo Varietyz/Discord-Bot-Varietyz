@@ -1,6 +1,6 @@
-// src/modules/events/guildMemberUpdate.js
-
-const { getOne } = require('../../utils/dbUtils');
+const {
+    guild: { getOne },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 
@@ -12,7 +12,7 @@ module.exports = {
     once: false,
 
     /**
-     * Triggered when a guild member's roles are updated.
+     * Triggered when a guild member's roles or timeout status is updated.
      * @param oldMember - The guild member before the update.
      * @param newMember - The guild member after the update.
      */
@@ -24,63 +24,72 @@ module.exports = {
             const memberId = newMember.id;
             const queueKey = `${guildId}-${memberId}`; // Unique key for each member's updates
 
-            // 🏷️ Get Role Changes
+            // 🏷️ Detect Role Changes
             const oldRoles = new Set(oldMember.roles.cache.keys());
             const newRoles = new Set(newMember.roles.cache.keys());
 
             const addedRoles = [...newRoles].filter((role) => !oldRoles.has(role));
             const removedRoles = [...oldRoles].filter((role) => !newRoles.has(role));
 
-            if (addedRoles.length === 0 && removedRoles.length === 0) return; // No role change detected
+            const wasTimedOut = oldMember.communicationDisabledUntilTimestamp;
+            const isTimedOut = newMember.communicationDisabledUntilTimestamp;
 
-            logger.info(`🔍 Role update detected for ${newMember.user.tag}, queuing update...`);
+            const timeoutChanged = wasTimedOut !== isTimedOut;
+
+            if (!timeoutChanged && addedRoles.length === 0 && removedRoles.length === 0) return; // No relevant update detected
+
+            logger.info(`🔍 Update detected for ${newMember.user.tag}, queuing update...`);
 
             // 📝 Check if there's already a queued update for this user
             if (roleUpdateQueue.has(queueKey)) {
                 const existingUpdate = roleUpdateQueue.get(queueKey);
                 existingUpdate.addedRoles = [...new Set([...existingUpdate.addedRoles, ...addedRoles])]; // Merge added roles
                 existingUpdate.removedRoles = [...new Set([...existingUpdate.removedRoles, ...removedRoles])]; // Merge removed roles
+                existingUpdate.timeoutChanged = timeoutChanged;
+                existingUpdate.isTimedOut = isTimedOut;
                 clearTimeout(existingUpdate.timeout);
             } else {
                 // If no existing queue, create a new one
                 roleUpdateQueue.set(queueKey, {
                     addedRoles,
                     removedRoles,
+                    timeoutChanged,
+                    isTimedOut,
                     timeout: null,
                 });
             }
 
             // 🕒 Set a new timeout for 5 seconds
             roleUpdateQueue.get(queueKey).timeout = setTimeout(async () => {
-                const roleUpdateData = roleUpdateQueue.get(queueKey);
+                const updateData = roleUpdateQueue.get(queueKey);
                 roleUpdateQueue.delete(queueKey); // Remove from queue when executed
 
-                const { addedRoles, removedRoles } = roleUpdateData;
+                const { addedRoles, removedRoles, timeoutChanged, isTimedOut } = updateData;
 
                 // 🔍 Fetch log channel
-                const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['role_logs']);
+                const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['moderation_logs']);
                 if (!logChannelData) return;
 
                 const logChannel = await newMember.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
                 if (!logChannel) return;
 
-                logger.info(`✅ Processing queued role update for ${newMember.user.tag}...`);
+                logger.info(`✅ Processing queued update for ${newMember.user.tag}...`);
 
-                // 🕵️ Fetch audit logs to check who changed roles
+                // 🕵️ Fetch audit logs to check who performed the update
                 await new Promise((resolve) => setTimeout(resolve, 3000)); // ⏳ Wait for logs
                 const fetchedLogs = await newMember.guild.fetchAuditLogs({
-                    type: AuditLogEvent.MemberRoleUpdate,
+                    type: AuditLogEvent.MemberUpdate,
                     limit: 5,
                 });
 
-                const roleLog = fetchedLogs.entries.find((entry) => entry.target.id === newMember.id && Date.now() - entry.createdTimestamp < 10000);
+                const auditLog = fetchedLogs.entries.find((entry) => entry.target.id === newMember.id && (entry.changes.some((change) => change.key === 'communication_disabled_until') || entry.action === AuditLogEvent.MemberRoleUpdate));
 
                 let changedBy = `<@${newMember.id}>`;
-                if (roleLog) {
-                    changedBy = `<@${roleLog.executor.id}>`;
-                    logger.info(`✅ Detected role change by: ${changedBy}`);
+                if (auditLog) {
+                    changedBy = `<@${auditLog.executor.id}>`;
+                    logger.info(`✅ Detected change by: ${changedBy}`);
                 } else {
-                    logger.warn(`⚠️ No audit log entry found for role change on ${newMember.user.tag}`);
+                    logger.warn(`⚠️ No audit log entry found for update on ${newMember.user.tag}`);
                 }
 
                 const addedRolesMention = addedRoles.map((roleId) => `<@&${roleId}>`).join(', ') || '**None**';
@@ -92,7 +101,7 @@ module.exports = {
                 const embed = new EmbedBuilder()
                     .setThumbnail(userAvatar)
                     .setAuthor({ name: `${newMember.guild.name}`, iconURL: newMember.guild.iconURL({ dynamic: true }) })
-                    .setTitle(`🏷️ Roles Updated for ${newMember.displayName}`)
+                    .setTitle(`🔄 Member Updated: ${newMember.displayName}`)
                     .addFields({ name: '👤 User', value: `<@${newMember.id}>`, inline: true }, { name: '\u200b', value: '\u200b', inline: true });
 
                 if (changedBy !== `<@${newMember.id}>`) embed.addFields({ name: '👮 Changed By', value: changedBy, inline: true });
@@ -100,8 +109,20 @@ module.exports = {
                 if (addedRoles.length) embed.addFields({ name: '➕ Added Roles', value: addedRolesMention, inline: false });
                 if (removedRoles.length) embed.addFields({ name: '➖ Removed Roles', value: removedRolesMention, inline: false });
 
-                const embedColor =
-                    addedRoles.length && removedRoles.length
+                // Handle timeout updates
+                if (timeoutChanged) {
+                    embed.addFields({
+                        name: isTimedOut ? '🔇 Timed Out' : '🔊 Timeout Removed',
+                        value: isTimedOut ? `User muted, will be lifted <t:${Math.floor(isTimedOut / 1000)}:R>` : 'Timeout lifted!',
+                        inline: false,
+                    });
+                }
+
+                const embedColor = timeoutChanged
+                    ? isTimedOut
+                        ? 0xff0000 // Red for timeout
+                        : 0x2ecc71 // Green for untimeout
+                    : addedRoles.length && removedRoles.length
                         ? 0x3498db // Blue for mixed changes
                         : addedRoles.length
                             ? 0x00ff00 // Green for role additions
@@ -111,10 +132,10 @@ module.exports = {
 
                 await logChannel.send({ embeds: [embed] });
 
-                logger.info(`📋 Successfully logged role update for ${newMember.user.tag}.`);
+                logger.info(`📋 Successfully logged update for ${newMember.user.tag}.`);
             }, 5000);
         } catch (error) {
-            logger.error(`❌ Error logging role update: ${error.message}`);
+            logger.error(`❌ Error logging member update: ${error.message}`);
         }
     },
 };

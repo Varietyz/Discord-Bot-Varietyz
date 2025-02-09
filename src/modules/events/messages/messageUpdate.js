@@ -1,6 +1,8 @@
 // src/modules/events/messageUpdate.js
 
-const { getOne } = require('../../utils/dbUtils');
+const {
+    guild: { getOne },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 const { EmbedBuilder } = require('discord.js');
 
@@ -39,8 +41,8 @@ module.exports = {
             if (!logChannel) return;
 
             // 🏷️ Message Details
-            const oldContent = oldMessage?.content ? `**\`${oldMessage.content}\`**` : '**`[No Text Content]`**';
-            const newContent = newMessage.content ? `**\`${newMessage.content}\`**` : '**`[No Text Content]`**';
+            const oldContent = oldMessage?.content ? `\`\`\`${oldMessage.content}\`\`\`` : '```[No Text Content]```';
+            const newContent = newMessage.content ? `\`\`\`${newMessage.content}\`\`\`` : '```[No Text Content]```';
             const hasAttachments = newMessage.attachments.size > 0;
             const attachmentLinks = hasAttachments ? newMessage.attachments.map((att) => `[Attachment](${att.url})`).join('\n') : '**`None`**';
             const firstImage = hasAttachments ? newMessage.attachments.find((att) => att.contentType?.startsWith('image/'))?.url : null;

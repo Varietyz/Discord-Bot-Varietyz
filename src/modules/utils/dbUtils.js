@@ -33,33 +33,109 @@ const logger = require('./logger');
 
 const mainDbPath = path.join(__dirname, '../../data/database.sqlite');
 const messagesDbPath = path.join(__dirname, '../../data/messages.db');
-// 🔔 New: Define image cache database path using a dot in the name as requested.
 const imageDbPath = path.join(__dirname, '../../data/image_cache.db');
+const guildDbPath = path.join(__dirname, '../../data/guild.db');
 
-const mainDb = new sqlite3.Database(mainDbPath, (err) => {
-    if (err) {
-        logger.error(`🚨 Error connecting to main SQLite database: ${err.message}`);
-    } else {
-        logger.info('✅ Main database connected successfully.');
-    }
-});
+let mainDb, messagesDb, imageDb, guildDb;
 
-const messagesDb = new sqlite3.Database(messagesDbPath, (err) => {
-    if (err) {
-        logger.error(`🚨 Error connecting to messages SQLite database: ${err.message}`);
-    } else {
-        logger.info('✅ Messages database connected successfully.');
+/**
+ * Opens all SQLite databases if they are not already open.
+ */
+function openDatabases() {
+    if (!mainDb) {
+        mainDb = new sqlite3.Database(mainDbPath, (err) => {
+            if (err) {
+                handleDbError(err, 'Main Database');
+                return reject(err);
+            } else console.log(`✅ SQLite Main Database connected: ${mainDbPath}`);
+        });
     }
-});
 
-// 🔔 New: Connect to the image cache database.
-const imageDb = new sqlite3.Database(imageDbPath, (err) => {
-    if (err) {
-        logger.error(`🚨 Error connecting to image cache database: ${err.message}`);
-    } else {
-        logger.info('✅ Image cache database connected successfully.');
+    if (!messagesDb) {
+        messagesDb = new sqlite3.Database(messagesDbPath, (err) => {
+            if (err) {
+                handleDbError(err, 'Message Database');
+                return reject(err);
+            } else console.log(`✅ SQLite Messages Database connected: ${messagesDbPath}`);
+        });
     }
-});
+
+    if (!imageDb) {
+        imageDb = new sqlite3.Database(imageDbPath, (err) => {
+            if (err) {
+                handleDbError(err, 'Image Database');
+                return reject(err);
+            } else console.log(`✅ SQLite Image Cache Database connected: ${imageDbPath}`);
+        });
+    }
+
+    if (!guildDb) {
+        guildDb = new sqlite3.Database(guildDbPath, (err) => {
+            if (err) {
+                handleDbError(err, 'Guild Database');
+                return reject(err);
+            } else console.log(`✅ SQLite Guild Database connected: ${guildDbPath}`);
+        });
+    }
+}
+
+// 🔥 Open all databases on startup
+openDatabases();
+
+// A module-scoped variable to hold the client instance.
+let clientInstance = null;
+
+/**
+ * Sets the Discord client instance for use in error reporting.
+ *
+ * @param {Client} client - The Discord client instance.
+ */
+function setClient(client) {
+    clientInstance = client;
+}
+
+/**
+ * Handles database errors by logging them, recording in the error_logs table,
+ * and emitting an error event through the client.
+ *
+ * @param {Error} error - The error object.
+ * @param {string} dbName - The name of the database where the error occurred.
+ * @param {Client} [client] - Optional client instance; if not provided, the stored clientInstance is used.
+ */
+async function handleDbError(error, dbName, client) {
+    logger.error(`🚨 Database Error in ${dbName}: ${error.message}`);
+
+    // Use the provided client or fallback to the stored clientInstance.
+    const emitterClient = client || clientInstance;
+    if (!emitterClient) {
+        logger.warn('⚠️ Client instance is missing, cannot emit error event.');
+        return;
+    }
+
+    // Ensure the error_logs table exists.
+    await guildRunQuery(`
+        CREATE TABLE IF NOT EXISTS error_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            error_message TEXT NOT NULL,
+            error_stack TEXT,
+            occurrences INTEGER DEFAULT 1,
+            last_occurred TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            reported INTEGER DEFAULT 0
+        )
+    `);
+
+    // Check if this error occurred recently (within the last 1800 seconds).
+    const existingError = await guildGetOne('SELECT * FROM error_logs WHERE error_message = ? AND last_occurred > DATETIME(\'now\', \'-1800 seconds\')', [error.message]);
+
+    if (existingError) {
+        await guildRunQuery('UPDATE error_logs SET occurrences = occurrences + 1, last_occurred = CURRENT_TIMESTAMP WHERE id = ?', [existingError.id]);
+    } else {
+        await guildRunQuery('INSERT INTO error_logs (error_message, error_stack) VALUES (?, ?)', [error.message, error.stack || null]);
+    }
+
+    // Emit the error event so your error.js event file can catch it.
+    emitterClient.emit('error', error, emitterClient);
+}
 
 /**
  * 🎯 **Executes a SQL Query on the Main Database**
@@ -71,7 +147,10 @@ const imageDb = new sqlite3.Database(imageDbPath, (err) => {
 const runQuery = (query, params = []) =>
     new Promise((resolve, reject) => {
         mainDb.run(query, params, function (err) {
-            if (err) return reject(err);
+            if (err) {
+                handleDbError(err, 'Main Database');
+                return reject(err);
+            }
             resolve(this);
         });
     });
@@ -86,7 +165,10 @@ const runQuery = (query, params = []) =>
 const getAll = (query, params = []) =>
     new Promise((resolve, reject) => {
         mainDb.all(query, params, (err, rows) => {
-            if (err) return reject(err);
+            if (err) {
+                handleDbError(err, 'Main Database');
+                return reject(err);
+            }
             resolve(rows);
         });
     });
@@ -101,7 +183,10 @@ const getAll = (query, params = []) =>
 const getOne = (query, params = []) =>
     new Promise((resolve, reject) => {
         mainDb.get(query, params, (err, row) => {
-            if (err) return reject(err);
+            if (err) {
+                handleDbError(err, 'Main Database');
+                return reject(err);
+            }
             resolve(row || null);
         });
     });
@@ -116,7 +201,10 @@ const getOne = (query, params = []) =>
 const messagesRunQuery = (query, params = []) =>
     new Promise((resolve, reject) => {
         messagesDb.run(query, params, function (err) {
-            if (err) return reject(err);
+            if (err) {
+                handleDbError(err, 'Messages Database');
+                return reject(err);
+            }
             resolve(this);
         });
     });
@@ -131,7 +219,10 @@ const messagesRunQuery = (query, params = []) =>
 const messagesGetAll = (query, params = []) =>
     new Promise((resolve, reject) => {
         messagesDb.all(query, params, (err, rows) => {
-            if (err) return reject(err);
+            if (err) {
+                handleDbError(err, 'Messages Database');
+                return reject(err);
+            }
             resolve(rows);
         });
     });
@@ -146,7 +237,10 @@ const messagesGetAll = (query, params = []) =>
 const messagesGetOne = (query, params = []) =>
     new Promise((resolve, reject) => {
         messagesDb.get(query, params, (err, row) => {
-            if (err) return reject(err);
+            if (err) {
+                handleDbError(err, 'Messages Database');
+                return reject(err);
+            }
             resolve(row || null);
         });
     });
@@ -165,7 +259,10 @@ const runTransaction = async (queries) => {
         for (const { query, params } of queries) {
             await new Promise((resolve, reject) => {
                 mainDb.run(query, params, (err) => {
-                    if (err) return reject(err);
+                    if (err) {
+                        handleDbError(err, 'Main Database');
+                        return reject(err);
+                    }
                     resolve();
                 });
             });
@@ -183,28 +280,19 @@ const runTransaction = async (queries) => {
  */
 process.on('SIGINT', () => {
     mainDb.close((err) => {
-        if (err) {
-            logger.error(`🚨 Error closing the main database connection: ${err.message}`);
-        } else {
-            logger.info('✅ Main database connection closed successfully.');
-        }
+        if (err) handleDbError(err, 'Main Database');
+        else logger.info('✅ Main database connection closed successfully.');
     });
     messagesDb.close((err) => {
-        if (err) {
-            logger.error(`🚨 Error closing the messages database connection: ${err.message}`);
-        } else {
-            logger.info('✅ Messages database connection closed successfully.');
-        }
-        // 🔔 New: Close the image cache database connection as well.
-        imageDb.close((err) => {
-            if (err) {
-                logger.error(`🚨 Error closing the image cache database connection: ${err.message}`);
-            } else {
-                logger.info('✅ Image cache database connection closed successfully.');
-            }
-            process.exit(0);
-        });
+        if (err) handleDbError(err, 'Messages Database');
+        else logger.info('✅ Messages database connection closed successfully.');
     });
+    imageDb.close((err) => {
+        if (err) handleDbError(err, 'Image Cache Database');
+        else logger.info('✅ Image cache database connection closed successfully.');
+    });
+
+    process.exit(0);
 });
 
 /**
@@ -252,7 +340,10 @@ async function setConfigValue(key, value) {
 const imageRunQuery = (query, params = []) =>
     new Promise((resolve, reject) => {
         imageDb.run(query, params, function (err) {
-            if (err) return reject(err);
+            if (err) {
+                handleDbError(err, 'Image Database');
+                return reject(err);
+            }
             resolve(this);
         });
     });
@@ -272,7 +363,10 @@ const imageRunQuery = (query, params = []) =>
 const imageGetAll = (query, params = []) =>
     new Promise((resolve, reject) => {
         imageDb.all(query, params, (err, rows) => {
-            if (err) return reject(err);
+            if (err) {
+                handleDbError(err, 'Image Database');
+                return reject(err);
+            }
             resolve(rows);
         });
     });
@@ -292,15 +386,114 @@ const imageGetAll = (query, params = []) =>
 const imageGetOne = (query, params = []) =>
     new Promise((resolve, reject) => {
         imageDb.get(query, params, (err, row) => {
-            if (err) return reject(err);
+            if (err) {
+                handleDbError(err, 'Image Database');
+                return reject(err);
+            }
             resolve(row || null);
         });
     });
+
+/**
+ * 🎯 **Guild Database: Executes a SQL Query**
+ *
+ * Executes a SQL query that modifies data (INSERT, UPDATE, DELETE) on the Guild database.
+ *
+ * @param {string} query - The SQL query to execute.
+ * @param {Array<any>} [params=[]] - The parameters for the query.
+ * @returns {Promise<sqlite3.RunResult>} A promise that resolves to the result of the query.
+ *
+ */
+const guildRunQuery = (query, params = []) =>
+    new Promise((resolve, reject) => {
+        guildDb.run(query, params, function (err) {
+            if (err) {
+                handleDbError(err, 'Guild Database');
+                return reject(err);
+            }
+            resolve(this);
+        });
+    });
+
+/**
+ * 🎯 **Guild Database: Retrieves All Rows**
+ *
+ * Executes a SQL SELECT query on the Guild database and retrieves all matching rows.
+ *
+ * @param {string} query - The SQL SELECT query.
+ * @param {Array<any>} [params=[]] - The parameters for the query.
+ * @returns {Promise<Array<Object>>} A promise that resolves to an array of rows.
+ *
+ */
+const guildGetAll = (query, params = []) =>
+    new Promise((resolve, reject) => {
+        guildDb.all(query, params, (err, rows) => {
+            if (err) {
+                handleDbError(err, 'Guild Database');
+                return reject(err);
+            }
+            resolve(rows);
+        });
+    });
+
+/**
+ * 🎯 **Guild Database: Retrieves a Single Row**
+ *
+ * Executes a SQL SELECT query on the Guild database and retrieves a single matching row.
+ *
+ * @param {string} query - The SQL SELECT query.
+ * @param {Array<any>} [params=[]] - The parameters for the query.
+ * @returns {Promise<Object|null>} A promise that resolves to a single row or `null` if not found.
+ *
+ */
+const guildGetOne = (query, params = []) =>
+    new Promise((resolve, reject) => {
+        guildDb.get(query, params, (err, row) => {
+            if (err) {
+                handleDbError(err, 'Guild Database');
+                return reject(err);
+            }
+            resolve(row || null);
+        });
+    });
+
+/**
+ * 🎯 **Retrieves a Single Row from the Main Database Synchronously**
+ *
+ * Uses SQLite's synchronous `.prepare().get()` to ensure it runs **without async/await**.
+ *
+ * @param {string} query - The SQL SELECT query to execute.
+ * @param {Array<any>} [params=[]] - The parameters to bind to the SQL query.
+ * @returns {Object|null} A single row object or `null` if not found.
+ */
+const getOneSync = (query, params = []) => {
+    try {
+        openDatabases(); // Ensure database is open before running query
+
+        console.log(`🔍 DEBUG: Running getOneSync with query: ${query} | Params: ${JSON.stringify(params)}`);
+
+        const stmt = mainDb.prepare(query); // Prepare statement
+        const row = stmt.get(...params); // Execute query with parameters
+        stmt.finalize(); // Free memory
+
+        if (!row) {
+            console.error('🚨 getOneSync ERROR: Query returned NO RESULT.');
+            return null;
+        }
+
+        console.log('✅ getOneSync SUCCESS: Retrieved Row →', row);
+        return row;
+    } catch (err) {
+        console.error(`🚨 getOneSync ERROR: ${err.message}`);
+        return null;
+    }
+};
 
 module.exports = {
     runQuery,
     getAll,
     getOne,
+    getOneSync,
     runTransaction,
     getConfigValue,
     setConfigValue,
@@ -314,4 +507,11 @@ module.exports = {
         getAll: imageGetAll,
         getOne: imageGetOne,
     },
+    guild: {
+        runQuery: guildRunQuery,
+        getAll: guildGetAll,
+        getOne: guildGetOne,
+    },
+    setClient, // Export the setter so it can be called from your main file
+    openDatabases,
 };

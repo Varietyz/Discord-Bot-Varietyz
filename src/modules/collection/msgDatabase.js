@@ -16,15 +16,15 @@ const logger = require('../utils/logger');
  * **Note:** This initialization preserves the schema for both chat and system tables.
  *
  * @async
- * @function initDatabase
+ * @function initializeMsgTables
  *
  * @example
  * // Initialize the database at startup:
- * initDatabase().then(() => {
+ * initializeMsgTables().then(() => {
  * console.log('Database successfully initialized.');
  * }).catch(console.error);
  */
-async function initDatabase() {
+async function initializeMsgTables() {
     const db = await dbPromise;
     // Enable Write-Ahead Logging for better performance
     await db.exec('PRAGMA journal_mode=WAL;');
@@ -62,5 +62,5 @@ async function initDatabase() {
 }
 
 module.exports = {
-    initDatabase,
+    initializeMsgTables,
 };

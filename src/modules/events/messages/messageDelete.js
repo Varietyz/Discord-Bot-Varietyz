@@ -1,6 +1,8 @@
 // src/modules/events/messageDelete.js
 
-const { getOne } = require('../../utils/dbUtils');
+const {
+    guild: { getOne },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 const { EmbedBuilder } = require('discord.js');
 
@@ -18,7 +20,7 @@ module.exports = {
             if (!logChannel) return;
 
             // 🏷️ Message Details
-            const messageContent = message.content ? `**\`${message.content}\`**` : '**`[No Text Content]`**';
+            const messageContent = message.content ? `\`\`\`${message.content}\`\`\`` : '**```[No Text Content]```**';
             const hasAttachments = message.attachments.size > 0;
             const attachmentLinks = hasAttachments ? message.attachments.map((att) => `[Attachment](${att.url})`).join('\n') : '**`None`**';
             const firstImage = hasAttachments ? message.attachments.find((att) => att.contentType?.startsWith('image/'))?.url : null;

@@ -1,5 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
-const { getOne, runQuery } = require('../../utils/dbUtils');
+const {
+    guild: { getOne, runQuery },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 
 module.exports = {
@@ -30,7 +32,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor(0xff0000) // Red for deletions
                 .setTitle('🗑️ Scheduled Event Deleted')
-                .addFields({ name: '📌 Event Name', value: `\`${event.name}\``, inline: false }, { name: '📜 Description', value: event.description || '`No description provided`', inline: false })
+                .addFields({ name: '📌 Event Name', value: `\`${event.name}\``, inline: false }, { name: '📜 Description', value: `\`\`\`${event.description}\`\`\`` || '```No description provided```', inline: false })
                 .setFooter({ text: `Event ID: ${event.id}` })
                 .setTimestamp();
 

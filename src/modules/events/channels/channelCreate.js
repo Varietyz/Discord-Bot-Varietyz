@@ -1,6 +1,8 @@
 // src/modules/events/channelCreate.js
 
-const { getOne, runQuery } = require('../../utils/dbUtils');
+const {
+    guild: { getOne, getAll, runQuery },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 const { EmbedBuilder, ChannelType, AuditLogEvent } = require('discord.js');
 const { normalizeKey } = require('../../utils/normalizeKey');
@@ -56,12 +58,18 @@ module.exports = {
             }
 
             // 🛠 **Store channel in database**
-            const existingKeys = new Set();
+            // Fetch all existing channel keys from the database for uniqueness check.
+            const existingChannelKeys = await getAll('SELECT channel_key FROM guild_channels');
+            const existingKeys = new Set(existingChannelKeys.map((row) => row.channel_key));
+
+            // Generate a normalized key using the provided normalizeKey function.
             const channelKey = normalizeKey(channel.name, 'channel', existingKeys);
 
             await runQuery(
-                `INSERT INTO guild_channels (channel_id, channel_key, name, type, category, permissions) VALUES (?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(channel_id) DO UPDATE SET channel_key = excluded.channel_key, name = excluded.name, type = excluded.type, category = excluded.category, permissions = excluded.permissions`,
+                `INSERT INTO guild_channels (channel_id, channel_key, name, type, category, permissions) 
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(channel_id) DO UPDATE 
+                 SET channel_key = excluded.channel_key, name = excluded.name, type = excluded.type, category = excluded.category, permissions = excluded.permissions`,
                 [channel.id, channelKey, channel.name, channel.type, channel.parent?.name || 'Uncategorized', channel.permissionsFor(channel.guild.roles.everyone)?.bitfield.toString() || '0'],
             );
 
@@ -89,7 +97,7 @@ module.exports = {
                 .addFields(
                     { name: '🏷️ Channel Name', value: `<#${channel.id}>`, inline: false },
                     { name: '🔑 Channel Key', value: `\`${channelKey}\``, inline: true },
-                    { name: '📂 Category', value: `\`${channel.parent?.name}\`` || '`Uncategorized`', inline: true },
+                    { name: '📂 Category', value: `\`${channel.parent?.name || 'Uncategorized'}\``, inline: true },
                     { name: '📢 Type', value: `\`${channelType}\``, inline: true },
                     { name: '🛠 Created By', value: createdBy, inline: false },
                 )

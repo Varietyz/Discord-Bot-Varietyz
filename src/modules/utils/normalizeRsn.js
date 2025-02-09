@@ -33,7 +33,7 @@
  */
 function normalizeRsn(rsn) {
     if (typeof rsn !== 'string') {
-        throw new TypeError('🚨 **Invalid Input:** The RSN must be a string.');
+        return ''; // Return an empty string instead of breaking execution
     }
     return rsn.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 }

@@ -29,12 +29,13 @@ require('dotenv').config();
 const logger = require('./modules/utils/logger');
 const fs = require('fs');
 const path = require('path');
-const initializeTables = require('./migrations/initializeTables');
+const initializeMainTables = require('./migrations/initializeMainTables');
+const initializeGuildTables = require('./migrations/initializeGuildTables');
 const populateSkillsBosses = require('./migrations/populateSkillsBosses');
 const CompetitionService = require('./modules/services/competitionServices/competitionService');
 
 const { CLAN_CHAT_CHANNEL_ID } = require('./config/constants');
-const { initDatabase } = require('./modules/collection/msgDatabase');
+const { initializeMsgTables } = require('./modules/collection/msgDatabase');
 const { fetchAndStoreChannelHistory } = require('./modules/collection/msgFetcher');
 
 //const migrateRegisteredRSN = require('./migrations/migrateRsn');
@@ -51,6 +52,9 @@ const { fetchAndStoreChannelHistory } = require('./modules/collection/msgFetcher
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, // Required for basic guild interactions
+        GatewayIntentBits.GuildWebhooks,
+        GatewayIntentBits.AutoModerationConfiguration,
+        GatewayIntentBits.AutoModerationExecution,
         GatewayIntentBits.GuildMessages, // Detects messages in the guild
         GatewayIntentBits.MessageContent, // Required to read message content
         GatewayIntentBits.GuildMembers, // Detects member updates (joins, leaves, role changes)
@@ -94,27 +98,39 @@ const loadModules = (type) => {
     const folderPath = path.join(__dirname, `modules/${type}`);
     const loadedModules = [];
 
-    fs.readdirSync(folderPath).forEach((file) => {
-        const filePath = path.join(folderPath, file);
-
-        if (file.endsWith('.js')) {
-            const module = require(filePath);
-
-            if (type === 'commands') {
-                if (!module.data || !module.data.description || !module.execute) {
-                    logger.error(`❌ **Error:** Invalid command structure in \`${file}\`: Missing \`description\` or \`execute\` function. ❌`);
-                    return;
+    // Recursive function to traverse directories.
+    const traverseDirectory = (currentPath) => {
+        const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(currentPath, entry.name);
+            if (entry.isDirectory()) {
+                // Recurse into subdirectory.
+                traverseDirectory(fullPath);
+            } else if (entry.isFile() && entry.name.endsWith('.js')) {
+                try {
+                    const module = require(fullPath);
+                    // Process commands.
+                    if (type === 'commands') {
+                        if (!module.data || !module.data.description || !module.execute) {
+                            logger.error(`❌ **Error:** Invalid command structure in \`${entry.name}\`: Missing \`description\` or \`execute\` function. ❌`);
+                            continue;
+                        }
+                        commands.push(module);
+                        logger.info(`✅ **Loaded Command:** \`${module.data.name}\` successfully from ${fullPath}. 🎉`);
+                    } else if (type === 'services') {
+                        const funcName = path.basename(entry.name, '.js');
+                        functions.push(module);
+                        logger.info(`✅ **Loaded Function:** \`${funcName}\` successfully from ${fullPath}. 🎉`);
+                    }
+                    loadedModules.push(module);
+                } catch (err) {
+                    logger.error(`❌ **Error:** Failed to load module from ${fullPath}: ${err.message}`);
                 }
-                commands.push(module);
-                logger.info(`✅ **Loaded Command:** \`${module.data.name}\` successfully. 🎉`);
-            } else if (type === 'services') {
-                const funcName = path.basename(file, '.js');
-                functions.push(module);
-                logger.info(`✅ **Loaded Function:** \`${funcName}\` successfully. 🎉`);
             }
         }
-    });
+    };
 
+    traverseDirectory(folderPath);
     return loadedModules;
 };
 
@@ -148,8 +164,9 @@ client.competitionService = competitionService;
  */
 const initializeBot = async () => {
     try {
-        await initDatabase();
-        await initializeTables();
+        await initializeGuildTables();
+        await initializeMsgTables();
+        await initializeMainTables();
         await populateSkillsBosses();
 
         const { REST } = require('@discordjs/rest');

@@ -1,5 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
-const { getOne, runQuery } = require('../../utils/dbUtils');
+const {
+    guild: { getOne, runQuery },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 
 module.exports = {
@@ -19,7 +21,7 @@ module.exports = {
 
             const changes = [];
             if (oldEvent.name !== newEvent.name) changes.push(`📛 **Name:** \`${oldEvent.name}\` → **\`${newEvent.name}\`**`);
-            if (oldEvent.description !== newEvent.description) changes.push('📜 **Description Changed**');
+            if (oldEvent.description !== newEvent.description) changes.push(`📜 **Description Changed**\n\`\`\`${oldEvent.description}\`\`\`\nto\n\`\`\`${newEvent.description}\`\`\``);
             if (oldEvent.scheduledStartTimestamp !== newEvent.scheduledStartTimestamp) {
                 changes.push(`🕒 **Start Time Changed:** <t:${Math.floor(newEvent.scheduledStartTimestamp / 1000)}:F>`);
             }

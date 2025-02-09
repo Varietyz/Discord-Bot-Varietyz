@@ -1,7 +1,9 @@
 // src/modules/events/guildMemberRemove.js
 
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
-const { getOne } = require('../../utils/dbUtils');
+const {
+    guild: { getOne },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 const { recentBans } = require('./guildBanAdd'); // Import recentBans set
 

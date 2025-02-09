@@ -1,6 +1,8 @@
 // src/modules/events/emojiUpdate.js
 
-const { runQuery, getOne } = require('../../utils/dbUtils');
+const {
+    guild: { getOne, runQuery },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 

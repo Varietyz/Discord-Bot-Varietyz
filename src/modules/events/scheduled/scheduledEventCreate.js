@@ -1,5 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
-const { getOne, runQuery } = require('../../utils/dbUtils');
+const {
+    guild: { getOne, runQuery },
+} = require('../../utils/dbUtils');
 const logger = require('../../utils/logger');
 
 module.exports = {
@@ -69,7 +71,7 @@ module.exports = {
                     { name: '👤 Created By', value: createdBy, inline: false },
                     { name: '🔍 Event Type', value: eventType, inline: true },
                     { name: '🔒 Privacy Level', value: eventPrivacy, inline: true },
-                    { name: '📜 Description', value: event.description || '`No description provided`', inline: false },
+                    { name: '📜 Description', value: `\`\`\`${event.description}\`\`\`` || '```No description provided```', inline: false },
                 )
                 .setFooter({ text: `Event ID: ${event.id}` })
                 .setTimestamp();

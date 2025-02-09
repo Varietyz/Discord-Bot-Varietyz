@@ -1,6 +1,7 @@
 // src/modules/events/ready.js
 
 const logger = require('../../utils/logger');
+const dbUtils = require('../../utils/dbUtils');
 // Since tasks.js is in src/ and this file is in src/modules/events,
 // we go up two directories.
 const tasks = require('../../../tasks');
@@ -14,6 +15,7 @@ module.exports = {
      */
     async execute(client) {
         logger.info(`✅ Online: ${client.user.tag} is now online! 🎉`);
+        dbUtils.setClient(client);
 
         // Execute tasks that need to run on startup.
         for (const task of tasks) {
