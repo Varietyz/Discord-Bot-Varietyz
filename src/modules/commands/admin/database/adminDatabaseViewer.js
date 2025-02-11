@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const dbUtils = require('../../../utils/dbUtils');
 const logger = require('../../../utils/logger');
@@ -57,7 +58,13 @@ module.exports.data = new SlashCommandBuilder()
     .setName('database')
     .setDescription('View information about a database and its tables (Admin only).')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addStringOption((option) => option.setName('database').setDescription('Select the database to view').setRequired(true).addChoices({ name: 'Main', value: 'main' }, { name: 'Messages', value: 'messages' }, { name: 'Images', value: 'images' }))
+    .addStringOption((option) =>
+        option
+            .setName('database')
+            .setDescription('Select the database to view')
+            .setRequired(true)
+            .addChoices({ name: 'Main', value: 'main' }, { name: 'Messages', value: 'messages' }, { name: 'Images', value: 'images' }, { name: 'Guild', value: 'guild' }),
+    )
     .addStringOption((option) => option.setName('table').setDescription('Select a table to preview (autocomplete enabled)').setAutocomplete(true));
 
 module.exports.execute = async (interaction) => {

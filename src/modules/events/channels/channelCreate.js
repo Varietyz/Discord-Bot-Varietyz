@@ -95,7 +95,7 @@ module.exports = {
                 .setColor(0x2ecc71) // Green for channel creations
                 .setTitle('📢 New Channel Created')
                 .addFields(
-                    { name: '🏷️ Channel Name', value: `<#${channel.id}>`, inline: false },
+                    { name: '🏷️ Channel Name', value: `<#${channel.id}> \`${channel.name}\``, inline: false },
                     { name: '🔑 Channel Key', value: `\`${channelKey}\``, inline: true },
                     { name: '📂 Category', value: `\`${channel.parent?.name || 'Uncategorized'}\``, inline: true },
                     { name: '📢 Type', value: `\`${channelType}\``, inline: true },

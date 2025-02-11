@@ -58,11 +58,14 @@ const updateAllTimeLeaderboard = async (client) => {
         `);
 
         const biggestOverallGainer = await db.getOne(`
-            SELECT player_id, rsn, (COALESCE(total_metric_gain_sotw, 0) + COALESCE(total_metric_gain_botw, 0)) AS total_gain
-            FROM users
-            ORDER BY total_gain DESC
-            LIMIT 1
-        `);
+    SELECT player_id, rsn, 
+           COALESCE(total_metric_gain_sotw, 0) AS sotw_gain, 
+           COALESCE(total_metric_gain_botw, 0) AS botw_gain,
+           (COALESCE(total_metric_gain_sotw, 0) + COALESCE(total_metric_gain_botw, 0)) AS total_gain
+    FROM users
+    ORDER BY total_gain DESC
+    LIMIT 1
+`);
 
         const highestSingleGain = await db.getOne(`
             SELECT player_id, rsn, metric_gain
@@ -71,45 +74,64 @@ const updateAllTimeLeaderboard = async (client) => {
             LIMIT 1
         `);
 
+        let overallMetricLabel = 'XP/KC';
+        if (biggestOverallGainer) {
+            if (biggestOverallGainer.sotw_gain > biggestOverallGainer.botw_gain) {
+                overallMetricLabel = 'XP';
+            } else if (biggestOverallGainer.botw_gain > biggestOverallGainer.sotw_gain) {
+                overallMetricLabel = 'KC';
+            }
+        }
+
         /**
          * 🎯 **Formats Leaderboard Entries with Clickable Player Links**
          *
          * @param {Array<Object>} data - Array of player data objects.
          * @param {string} metricEmoji - Emoji representing the metric.
+         * @param metricLabel
          * @returns {string} A formatted string for the leaderboard.
          */
-        const formatLeaderboard = (data, metricEmoji) => {
+        const formatLeaderboard = (data, metricEmoji, metricLabel) => {
             return data.length > 0
                 ? data
                     .map((player, i) => {
                         const playerLink = `https://wiseoldman.net/players/${player.player_id}`;
-                        return `**${i + 1}.** ${metricEmoji} **[${player.rsn}](${playerLink})** — \`${player.total_gain.toLocaleString()}\` XP/KC 🏅 \`${player.total_wins} Wins\``;
+                        return `> **${i + 1}.** **[${player.rsn}](${playerLink})** — \`${player.total_wins} Wins🏅\`\n>  - ${metricEmoji}\`${player.total_gain.toLocaleString()} ${metricLabel}\``;
                     })
-                    .join('\n')
+                    .join('\n\n')
                 : '_No data available_';
         };
 
-        const sotwEmoji = '<:Total_Level:1127669463613976636>';
-        const botwEmoji = '<:Slayer:1127658069984288919>';
+        const sotwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_sotw']);
+        const botwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_botw']);
+        const sotwEmoji = sotwEmojiRow ? sotwEmojiRow.emoji_format : '';
+        const botwEmoji = botwEmojiRow ? botwEmojiRow.emoji_format : '';
 
-        const sotwLeaderboard = formatLeaderboard(topSOTW, sotwEmoji);
-        const botwLeaderboard = formatLeaderboard(topBOTW, botwEmoji);
+        const sotwLeaderboard = formatLeaderboard(topSOTW, sotwEmoji, 'XP');
+        const botwLeaderboard = formatLeaderboard(topBOTW, botwEmoji, 'KC');
 
         const embed = new EmbedBuilder()
-            .setTitle('🏆 **All-Time Top 10 SOTW & BOTW Players** 🏆')
+            .setTitle('🏆 **All-Time Top 10 Players** 🏆')
             .addFields(
-                { name: `${sotwEmoji} **Top 10 SOTW (XP Gained)**`, value: sotwLeaderboard, inline: false },
-                { name: `${botwEmoji} **Top 10 BOTW (Boss Kills)**`, value: botwLeaderboard, inline: false },
+                { name: `__**${sotwEmoji} Skill Of The Week**__`, value: sotwLeaderboard, inline: true },
+                { name: '\u200b', value: '\u200b', inline: true },
+                { name: `__**${botwEmoji} Boss Of The Week**__`, value: botwLeaderboard, inline: true },
                 {
-                    name: '🏅 **Biggest Overall Gainer**',
-                    value: biggestOverallGainer
-                        ? `**[${biggestOverallGainer.rsn}](https://wiseoldman.net/players/${biggestOverallGainer.player_id})** gained \`${biggestOverallGainer.total_gain.toLocaleString()}\` total XP/KC!`
-                        : '_No data available_',
+                    name: '\u200b',
+                    value: `🏅 **Biggest Overall Gainer**\n${
+                        biggestOverallGainer
+                            ? `**[${biggestOverallGainer.rsn}](https://wiseoldman.net/players/${biggestOverallGainer.player_id})** gained \`${biggestOverallGainer.total_gain.toLocaleString()} ${overallMetricLabel}\` in total.`
+                            : '_No data available_'
+                    }`,
                     inline: false,
                 },
                 {
-                    name: '📈 **Highest Single Competition Gain**',
-                    value: highestSingleGain ? `**[${highestSingleGain.rsn}](https://wiseoldman.net/players/${highestSingleGain.player_id})** gained \`${highestSingleGain.metric_gain.toLocaleString()}\` in a single event!` : '_No data available_',
+                    name: '\u200b',
+                    value: `📈 **Highest Single Competition Gain**\n${
+                        highestSingleGain
+                            ? `**[${highestSingleGain.rsn}](https://wiseoldman.net/players/${highestSingleGain.player_id})** gained \`${highestSingleGain.metric_gain.toLocaleString()} ${overallMetricLabel}\` in a single event!`
+                            : '_No data available_'
+                    }`,
                     inline: false,
                 },
             )

@@ -152,7 +152,7 @@ function formatLeaderboardDescription(participants, competitionType, metric, gui
         const playerNameForLink = encodeURIComponent(p.player.displayName);
         const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
 
-        desc += `**${i + 1}.** **[${p.player.displayName}](${profileLink})**\n${metricEmoji}\`${p.progress.gained.toLocaleString()}\`\n\n`;
+        desc += `> **${i + 1}.** **[${p.player.displayName}](${profileLink})**\n>  - ${metricEmoji}\`${p.progress.gained.toLocaleString()}\`\n\n`;
     });
 
     return desc || 'No participants yet.';

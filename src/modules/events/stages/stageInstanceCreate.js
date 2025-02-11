@@ -29,14 +29,14 @@ module.exports = {
             }
 
             // 🏷️ Stage Instance Details
-            const topic = stageInstance.topic || '`No Topic Set`';
+            const topic = stageInstance.topic || 'No Topic Set';
             const privacyLevel = stageInstance.privacyLevel === 2 ? '`🔓 Public`' : '`🔒 Guild Only`';
 
             // 🎙️ Construct Embed
             const embed = new EmbedBuilder()
                 .setColor(0x1f8b4c) // Green for creation events
                 .setTitle('🎙️ Stage Instance Created')
-                .addFields({ name: '📢 Channel', value: `<#${stageInstance.channelId}>`, inline: true }, { name: '📝 Topic', value: topic, inline: true }, { name: '🔒 Privacy', value: privacyLevel, inline: true })
+                .addFields({ name: '📢 Channel', value: `<#${stageInstance.channelId}>`, inline: true }, { name: '📝 Topic', value: `\`${topic}\``, inline: true }, { name: '🔒 Privacy', value: privacyLevel, inline: true })
                 .setFooter({ text: `Channel ID: ${stageInstance.channelId}` })
                 .setTimestamp();
 

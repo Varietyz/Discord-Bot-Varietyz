@@ -29,14 +29,14 @@ module.exports = {
             }
 
             // 🏷️ Stage Instance Details
-            const topic = stageInstance.topic || '`No Topic Set`';
+            const topic = stageInstance.topic || 'No Topic Set';
             const privacyLevel = stageInstance.privacyLevel === 2 ? '`🔓 Public`' : '`🔒 Guild Only`';
 
             // 📌 Build the embed for logging
             const embed = new EmbedBuilder()
                 .setColor(0xff0000) // Red for deletion events
                 .setTitle('🗑️ Stage Instance Deleted')
-                .addFields({ name: '📢 Channel', value: `<#${stageInstance.channelId}>` || '`Unknown Channel`', inline: true }, { name: '📝 Topic', value: topic, inline: true }, { name: '🔒 Privacy', value: privacyLevel, inline: true })
+                .addFields({ name: '📢 Channel', value: `<#${stageInstance.channelId}>` || '`Unknown Channel`', inline: true }, { name: '📝 Topic', value: `\`${topic}\``, inline: true }, { name: '🔒 Privacy', value: privacyLevel, inline: true })
                 .setFooter({ text: `Channel ID: ${stageInstance.channelId || 'Unknown'}` })
                 .setTimestamp();
 

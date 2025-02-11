@@ -59,7 +59,7 @@ module.exports = {
                 .setColor(0x3498db) // Blue for threads
                 .setTitle('🧵 New Thread Created')
                 .addFields(
-                    { name: '📌 Thread', value: `<#${thread.id}> (\`${thread.name}\`)`, inline: true },
+                    { name: '📌 Thread', value: `<#${thread.id}> \`${thread.name}\``, inline: true },
                     { name: '🔍 Type', value: `\`${threadType}\``, inline: true },
                     { name: '📁 Parent Channel', value: parentChannel, inline: true },
                     { name: '👤 Created By', value: creator, inline: true },

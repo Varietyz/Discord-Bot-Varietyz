@@ -152,13 +152,21 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
         .setURL(`https://wiseoldman.net/competitions/${competitionId}`)
         .setDescription(`## ${metricEmoji} [${formattedMetric}](https://oldschool.runescape.wiki/w/${metric})`)
         .addFields(
-            { name: 'Start', value: `\`🕛 ${start.dayOfWeek}, ${start.formattedTime}\n📅 ${start.formattedDate}\``, inline: true },
-            { name: 'Ends', value: `\`🕛 ${end.dayOfWeek}, ${end.formattedTime}\n📅 ${end.formattedDate}\``, inline: true },
+            {
+                name: 'Start',
+                value: `🕛 <t:${start.unixTimestamp}:t>\n📅 <t:${start.unixTimestamp}:D>\n⌛ <t:${start.unixTimestamp}:R>`,
+                inline: true,
+            },
+            {
+                name: 'Ends',
+                value: `🕛 <t:${end.unixTimestamp}:t>\n📅 <t:${end.unixTimestamp}:D>\n⌛ <t:${end.unixTimestamp}:R>`,
+                inline: true,
+            },
         )
+
         .setColor(type === 'SOTW' ? 0x3498db : 0xe74c3c)
         .setThumbnail(`attachment://${metric}.png`)
-        .setImage(type === 'SOTW' ? 'https://i.ibb.co/DP2F5L9/sotw-banner.png' : 'https://i.ibb.co/MGLHPrk/botw-banner.png')
-        .setFooter({ text: 'Timezone (GMT/UTC)' });
+        .setImage(type === 'SOTW' ? 'https://i.ibb.co/DP2F5L9/sotw-banner.png' : 'https://i.ibb.co/MGLHPrk/botw-banner.png');
 
     return { embeds: [embed], files: [imageAttachment] };
 };
@@ -178,6 +186,8 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
  */
 function formatTimestamp(dateString) {
     const date = new Date(dateString);
+    const unixTimestamp = Math.floor(date.getTime() / 1000); // Convert to UNIX time (seconds)
+
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const dayOfWeek = days[date.getUTCDay()];
 
@@ -186,32 +196,7 @@ function formatTimestamp(dateString) {
 
     const formattedDate = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 
-    return { dayOfWeek, formattedTime, formattedDate };
-}
-
-/**
- * 🎯 **Builds a Leaderboard Description**
- *
- * Constructs a text description for a competition leaderboard by listing the top 10 participants,
- * including their display names and progress values.
- *
- * @param {Array<Object>} participations - Array of participation objects with player and progress data.
- * @param {string} competitionType - The competition type (unused here, but reserved for future customization).
- * @param {Discord.Guild} guild - The Discord guild object (can be used to fetch emojis or other info).
- * @returns {string} The formatted leaderboard description.
- *
- * @example
- * const description = buildLeaderboardDescription(participations, 'SOTW', guild);
- */
-function buildLeaderboardDescription(participations, competitionType, guild) {
-    let desc = '';
-    participations.slice(0, 10).forEach((p, idx) => {
-        const gained = p.progress.gained.toLocaleString();
-        const username = p.player.displayName;
-        const userDisplay = username;
-        desc += `**${idx + 1}.** ${userDisplay} — \`${gained}\`\n`;
-    });
-    return desc;
+    return { dayOfWeek, formattedTime, formattedDate, unixTimestamp };
 }
 
 /**
@@ -254,4 +239,4 @@ const createVotingDropdown = (options, type) => {
     return new ActionRowBuilder().addComponents(selectMenu);
 };
 
-module.exports = { createCompetitionEmbed, buildLeaderboardDescription, createVotingDropdown };
+module.exports = { createCompetitionEmbed, createVotingDropdown };

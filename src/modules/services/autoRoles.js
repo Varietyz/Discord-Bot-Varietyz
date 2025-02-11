@@ -303,13 +303,9 @@ async function maybeAssignBossRole(guild, member, bossName, kills, playerName, c
     const role = guild.roles.cache.find((r) => r.name === roleName);
     if (role && !member.roles.cache.has(role.id)) {
         await member.roles.add(role);
-        const embed = new EmbedBuilder()
-            .setTitle('Role Assigned!')
-            .setDescription(`🎉 **Congratulations, <@${member.id}>!**\n🔥 You have defeated \`${bossName}\` **${kills}** times and earned the role <@&${role.id}>. 🏆`)
-            .setColor(0x48de6f)
-            .setTimestamp();
+        const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Congratulations!**\n🔥 You have defeated \`${bossName}\` **${kills}** times and earned the role <@&${role.id}>. 🏆`).setColor(0x48de6f).setTimestamp();
 
-        await channelUpdate.send({ embeds: [embed] });
+        await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
         logger.info(`✅ Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
     }
 }
@@ -347,13 +343,9 @@ async function maybeAssignActivityRole(guild, member, activityName, score, playe
         const role = guild.roles.cache.find((r) => r.name === roleName);
         if (role && !member.roles.cache.has(role.id)) {
             await member.roles.add(role);
-            const embed = new EmbedBuilder()
-                .setTitle('Role Assigned!')
-                .setDescription(`🎉 **Awesome job, <@${member.id}>!**\n🔥 You completed \`${score}\` in \`${activityName}\` and unlocked the role <@&${role.id}>. 🏅`)
-                .setColor(0x48de6f)
-                .setTimestamp();
+            const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Awesome job!**\n🔥 You completed \`${score}\` in \`${activityName}\` and unlocked the role <@&${role.id}>. 🏅`).setColor(0x48de6f).setTimestamp();
 
-            await channelUpdate.send({ embeds: [embed] });
+            await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
             logger.info(`✅ Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
         }
     }
@@ -395,9 +387,9 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
             const role = guild.roles.cache.find((r) => r.name === roleName);
             if (role && !member.roles.cache.has(role.id)) {
                 await member.roles.add(role);
-                const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Well done, <@${member.id}>!**\n🔥 You’ve reached \`${roleName}\` and earned the role <@&${role.id}>. 🎊`).setColor(0x48de6f).setTimestamp();
+                const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Well done!**\n🔥 You’ve reached \`${roleName}\` and earned the role <@&${role.id}>. 🎊`).setColor(0x48de6f).setTimestamp();
 
-                await channelUpdate.send({ embeds: [embed] });
+                await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
                 logger.info(`✅ Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
             }
         }
@@ -410,25 +402,17 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
 
         if (role2277Total && !member.roles.cache.has(role2277Total.id)) {
             await member.roles.add(role2277Total);
-            const embed = new EmbedBuilder()
-                .setTitle('Role Assigned!')
-                .setDescription(`🎉 **Fantastic achievement, <@${member.id}>!**\n🔥 You’ve reached \`2277 Total level\` and earned the role <@&${role2277Total.id}>. 🎊`)
-                .setColor(0x48de6f)
-                .setTimestamp();
+            const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Fantastic achievement!**\n🔥 You’ve reached \`2277 Total level\` and earned the role <@&${role2277Total.id}>. 🎊`).setColor(0x48de6f).setTimestamp();
 
-            await channelUpdate.send({ embeds: [embed] });
+            await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
             logger.info(`✅ Assigned role "2277 Total" to RSN: ${playerName} (User ID: ${member.id})`);
         }
 
         if (roleMaxCape && !member.roles.cache.has(roleMaxCape.id)) {
             await member.roles.add(roleMaxCape);
-            const embed = new EmbedBuilder()
-                .setTitle('Role Assigned!')
-                .setDescription(`🎉 **Incredible work, <@${member.id}>!**\n🔥 You’ve earned the prestigious \`Max Cape\` and the role <@&${roleMaxCape.id}>. 🏆`)
-                .setColor(0x48de6f)
-                .setTimestamp();
+            const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Incredible work!**\n🔥 You’ve earned the prestigious \`Max Cape\` and the role <@&${roleMaxCape.id}>. 🏆`).setColor(0x48de6f).setTimestamp();
 
-            await channelUpdate.send({ embeds: [embed] });
+            await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
             logger.info(`✅ Assigned role "Max Cape" to RSN: ${playerName} (User ID: ${member.id})`);
         }
     }
@@ -439,13 +423,9 @@ async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate)
             const role = guild.roles.cache.find((r) => r.name === roleName);
             if (role) {
                 await member.roles.remove(role);
-                const embed = new EmbedBuilder()
-                    .setTitle('Role Removed!')
-                    .setDescription(`⚠️ **Hey, <@${member.id}>!**\n🔥 It seems the role \`${roleName}\` isn’t supposed to be assigned to you. Removing it now. 🔄`)
-                    .setColor(0xff0000)
-                    .setTimestamp();
+                const embed = new EmbedBuilder().setTitle('Role Removed!').setDescription(`⚠️ Hey! It seems the role \`${roleName}\` isn’t supposed to be assigned to you. Removing it now. 🔄`).setColor(0xff0000).setTimestamp();
 
-                await channelUpdate.send({ embeds: [embed] });
+                await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
                 logger.info(`✅ Removed role "${roleName}" from RSN: ${playerName} (User ID: ${member.id})`);
             }
         }

@@ -37,6 +37,7 @@ async function ensureLoggingCategory(guild) {
             { key: 'stage_logs', name: '📋‣-‣stage-logs', topic: 'Logs stage channel updates.' },
             { key: 'boost_logs', name: '📋‣-‣boost-logs', topic: 'Tracks when members boost the server.' },
             { key: 'bot_logs', name: '📋‣-‣bot-logs', topic: 'Logs bot actions and errors.' },
+            { key: 'database_logs', name: '📋‣-‣database-logs', topic: 'Logs database actions.' },
         ];
 
         // 🔍 **Find or Create the Logging Category**

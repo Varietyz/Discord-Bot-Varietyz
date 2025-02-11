@@ -69,18 +69,20 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
     });
 
     if (rolesToRemove.size > 0) {
-        const removedRoles = rolesToRemove.map((r) => r.name).join(', ');
+        const removedRoles = rolesToRemove.map((r) => `${getRankEmoji(r.name)} <@&${r.id}>`).join('\n- ');
         await member.roles.remove(rolesToRemove);
 
         const roleChannel = await guild.channels.fetch(ROLE_CHANNEL_ID);
         const color = getRankColor(rank);
+        // Get the emoji for the target role (if needed)
+        const targetEmoji = getRankEmoji(rank);
 
         const embed = new EmbedBuilder()
-            .setTitle('Rank Updated!')
-            .setDescription(`<@${member.id}>\n🎉 **Good news!** Your rank has been updated to ${targetRole}.\n\nThe following roles were removed to reflect the change:\n- ${removedRoles}. 🔄`)
+            .setTitle('🔄 Rank Updated!')
+            .setDescription(`🎉 **Good news!**\nYour rank has been updated to ${targetEmoji} ${targetRole}\n\nThe following roles were removed to reflect the change:\n- ${removedRoles}`)
             .setColor(color);
 
-        await roleChannel.send({ embeds: [embed] });
+        await roleChannel.send({ content: `<@${member.id}>`, embeds: [embed] });
         logger.info(`✅ [handleMemberRoles] Removed roles for ${player}: ${removedRoles}`);
     }
 
@@ -125,18 +127,7 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
             const rsn = player.displayName;
             const rank = membership.role || 'Unknown';
             const experience = player.exp || 'N/a';
-            const lastProgressed = player.lastChangedAt
-                ? new Date(player.lastChangedAt)
-                    .toLocaleString('en-US', {
-                        month: 'short',
-                        day: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true,
-                    })
-                    .replace(',', ' -')
-                : 'N/a';
+            const lastProgressed = player.lastChangedAt ? new Date(player.lastChangedAt) : null;
 
             const joinedAt = membership.createdAt ? new Date(membership.createdAt).toISOString() : null;
 
@@ -342,11 +333,28 @@ async function updateClanChannel(client, cachedData) {
         const color = getRankColor(rank);
         const playerNameForLink = encodeURIComponent(player.replace(/ /g, '%20'));
 
+        // ✅ Convert `lastProgressed` to UNIX timestamp if available
+        let lastProgressedTimestamp = null;
+        if (lastProgressed && lastProgressed !== 'N/a') {
+            const parsedDate = new Date(lastProgressed);
+            if (!isNaN(parsedDate.getTime())) {
+                lastProgressedTimestamp = Math.floor(parsedDate.getTime() / 1000);
+            }
+        }
+
         const embed = new EmbedBuilder()
             .setTitle(`${index}. ${rankEmoji} **${player}**`)
             .setURL(`https://wiseoldman.net/players/${playerNameForLink}`)
             .setColor(color)
-            .addFields({ name: '**Rank:**', value: `\`${rank}\``, inline: true }, { name: '**Total Exp:**', value: `\`${formatExp(experience)}\``, inline: true }, { name: '⏳ **Last Progressed:**', value: `\`${lastProgressed}\``, inline: false });
+            .addFields(
+                { name: 'Rank:', value: `**\`${rank}\`**`, inline: true },
+                { name: 'Total Exp:', value: `**\`${formatExp(experience)}\`**`, inline: true },
+                {
+                    name: 'Last Progressed:',
+                    value: lastProgressedTimestamp ? `🕛 <t:${lastProgressedTimestamp}:d> <t:${lastProgressedTimestamp}:t>\n⌛ <t:${lastProgressedTimestamp}:R>` : '`N/a`',
+                    inline: false,
+                },
+            );
 
         embeds.push(embed);
         index++;

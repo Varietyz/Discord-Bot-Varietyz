@@ -32,11 +32,11 @@ module.exports = {
 
             // 🎙️ **Voice Channel Joins/Leaves**
             if (!oldState.channel && newState.channel) {
-                changes.push(`✅ **Joined Channel:** <#${newState.channel.id}>`);
+                changes.push(`✅ **Joined Channel:** <#${newState.channel.id}> \`${newState.channel.name}\``);
             } else if (oldState.channel && !newState.channel) {
-                changes.push(`🚪 **Left Channel:** <#${oldState.channel.id}>`);
+                changes.push(`🚪 **Left Channel:** <#${oldState.channel.id}> \`${oldState.channel.name}\``);
             } else if (oldState.channelId !== newState.channelId) {
-                changes.push(`🔄 **Switched Channel:** <#${oldState.channel.id}> → <#${newState.channel.id}>`);
+                changes.push(`🔄 **Switched Channel:** <#${oldState.channel.id}> \`${oldState.channel.name}\` → <#${newState.channel.id}> \`${newState.channel.name}\``);
             }
 
             // 🔄 **Forced Move Detection (Admin Drag)**
@@ -124,7 +124,7 @@ module.exports = {
                 .setColor(0x7289da) // Discord blue
                 .setTitle('🔊 Voice State Updated')
                 .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 1024 }))
-                .addFields({ name: '👤 Member', value: `<@${member.id}> (${member.user.tag})`, inline: true });
+                .addFields({ name: '👤 Member', value: `<@${member.id}> \`${member.user.tag}\``, inline: true });
             if (changedBy !== `<@${member.id}>`) embed.addFields({ name: '🛠 Updated By', value: changedBy, inline: true });
             embed.addFields({ name: '\u200b', value: changes.join('\n'), inline: false });
             embed.setFooter({ text: `User ID: ${member.id}` }).setTimestamp();

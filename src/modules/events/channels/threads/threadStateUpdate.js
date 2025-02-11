@@ -46,7 +46,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor(0xe67e22) // Orange for updates
                 .setTitle('🔄 Thread State Updated')
-                .addFields({ name: '📌 Thread', value: `<#${newThread.id}> (\`${newThread.name}\`)`, inline: true }, { name: '🔄 Changes', value: changes.join('\n'), inline: false })
+                .addFields({ name: '📌 Thread', value: `<#${newThread.id}> \`${newThread.name}\``, inline: true }, { name: '🔄 Changes', value: changes.join('\n'), inline: false })
                 .setFooter({ text: `Thread ID: ${newThread.id}` })
                 .setTimestamp();
 

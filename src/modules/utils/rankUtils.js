@@ -35,7 +35,8 @@ const { RANKS } = require('../../config/constants');
  * console.log(emoji); // e.g., '👑'
  */
 function getRankEmoji(rank) {
-    const rankData = RANKS[rank.toLowerCase()];
+    const safeRank = String(rank).toLowerCase();
+    const rankData = RANKS[safeRank];
     return rankData ? rankData.emoji : '';
 }
 

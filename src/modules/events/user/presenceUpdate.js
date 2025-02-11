@@ -39,11 +39,11 @@ module.exports = {
             // 🟢 **Status Updates**
             if (oldPresence?.status !== newPresence?.status) {
                 const statusMap = {
-                    online: '🟢 **Online**',
-                    idle: '🌙 **Idle**',
-                    dnd: '⛔ **Do Not Disturb**',
-                    offline: '⚫ **Offline**',
-                    invisible: '⚫ **Invisible**',
+                    online: '🟢 Online',
+                    idle: '🌙 Idle',
+                    dnd: '⛔ Do Not Disturb',
+                    offline: '⚪ Offline',
+                    invisible: '🚫 Invisible',
                 };
                 changes.push(`🟢 **Status Changed:** ${statusMap[oldPresence?.status] || '`Unknown`'} → ${statusMap[newPresence?.status] || '`Unknown`'}`);
             }
@@ -99,7 +99,7 @@ module.exports = {
                 .setColor(0x1abc9c) // Green for presence updates
                 .setTitle('🏆 OSRS Presence Updated')
                 .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 1024 }))
-                .addFields({ name: '👤 User', value: `<@${member.id}> (${member.user.tag})`, inline: false }, { name: '\u200b', value: changes.join('\n'), inline: false })
+                .addFields({ name: '👤 User', value: `<@${member.id}> \`${member.user.tag}\``, inline: false }, { name: '\u200b', value: changes.join('\n'), inline: false })
                 .setFooter({ text: `User ID: ${member.id}` })
                 .setTimestamp();
 

@@ -34,7 +34,7 @@ module.exports = {
             // Detect changes in various properties.
             const changes = [];
             if (oldChannel.name !== newChannel.name) {
-                changes.push(`📛 **Name:** \`${oldChannel.name}\` → <#${newChannel.id}>`);
+                changes.push(`📛 **Name:** \`${oldChannel.name}\` → <#${newChannel.id}> \`${newChannel.name}\``);
             }
             if (oldChannel.topic !== newChannel.topic) {
                 const oldTopic = oldChannel.topic || '`None`';
@@ -83,6 +83,12 @@ module.exports = {
                 if (updateLog) {
                     updatedBy = `<@${updateLog.executor.id}>`; // Mention the user who updated
                     logger.info(`🔄 Channel updated by: ${updatedBy}`);
+
+                    // ✅ Skip logging if the update was done by the excluded user
+                    if (updateLog.executor.id === '1172933457010245762') {
+                        logger.info(`🚫 Skipping log: Channel update by excluded user <@${updateLog.executor.id}>.`);
+                        return; // Exit function early to prevent logging
+                    }
                 } else {
                     logger.warn(`⚠️ No audit log entry found for channel update: "${newChannel.name}"`);
                 }
@@ -114,7 +120,7 @@ module.exports = {
                 .setColor(0xe67e22) // Orange for updates.
                 .setTitle('🔄 Channel Updated')
                 .addFields(
-                    { name: '📌 Channel', value: `<#${newChannel.id}>`, inline: true },
+                    { name: '📌 Channel', value: `<#${newChannel.id}> \`${newChannel.name}\``, inline: true },
                     { name: '🔑 Log Key', value: `\`${logKey}\``, inline: true },
                     { name: '🔍 Channel Type', value: `\`${channelTypeName}\``, inline: true },
                     { name: '📁 Category', value: `\`${newChannel.parent?.name || 'Uncategorized'}\``, inline: true },

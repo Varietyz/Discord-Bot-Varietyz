@@ -21,9 +21,9 @@ module.exports = {
             // 🏷️ Detect Stage Instance Changes
             const changes = [];
             if (oldStageInstance.topic !== newStageInstance.topic) {
-                const oldTopic = oldStageInstance.topic || '`No Topic Set`';
-                const newTopic = newStageInstance.topic || '`No Topic Set`';
-                changes.push(`📝 **Topic:** ${oldTopic} → **${newTopic}**`);
+                const oldTopic = oldStageInstance.topic || 'No Topic Set';
+                const newTopic = newStageInstance.topic || 'No Topic Set';
+                changes.push(`📝 **Topic:** \`${oldTopic}\` → **\`${newTopic}\`**`);
             }
             if (oldStageInstance.privacyLevel !== newStageInstance.privacyLevel) {
                 const oldPrivacy = oldStageInstance.privacyLevel === 2 ? '`🔓 Public`' : '`🔒 Guild Only`';

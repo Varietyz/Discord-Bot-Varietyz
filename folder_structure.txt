@@ -2,6 +2,7 @@
 ├─ 📄 .eslintignore
 ├─ 📄 .eslintrc.js
 ├─ 📂 .vscode
+│   ├─ 📄 launch.json
 │   ├─ 📂 scripts
 │   │   └─ 📄 replaceEphemeral.js
 │   ├─ 📄 settings.json
@@ -24,16 +25,17 @@
 │   │   └─ 📄 easterEggs.js
 │   ├─ 📂 data
 │   │   ├─ 📄 database.sqlite
+│   │   ├─ 📄 guild.db
 │   │   ├─ 📄 image_cache.db
 │   │   ├─ 📄 messages.db
 │   │   ├─ 📄 messages.db-shm
 │   │   ├─ 📄 messages.db-wal
 │   │   └─ 📂 tools
 │   │       └─ 📄 sortDatabase.js
-│   ├─ 📄 main copy.js
 │   ├─ 📄 main.js
 │   ├─ 📂 migrations
-│   │   ├─ 📄 initializeTables.js
+│   │   ├─ 📄 initializeGuildTables.js
+│   │   ├─ 📄 initializeMainTables.js
 │   │   ├─ 📄 migrateEndedCompetitions.js
 │   │   ├─ 📄 migrateRsn.js
 │   │   ├─ 📄 populateSkillsBosses.js
@@ -47,22 +49,31 @@
 │   │   │   ├─ 📄 msgFetcher.js
 │   │   │   └─ 📄 msgReorder.js
 │   │   ├─ 📂 commands
-│   │   │   ├─ 📄 adminAssignRsn.js
-│   │   │   ├─ 📄 adminCheckActivity.js
-│   │   │   ├─ 📄 adminLogManagement.js
-│   │   │   ├─ 📄 adminQueueCompetition.js
-│   │   │   ├─ 📄 adminRemoveRsn.js
-│   │   │   ├─ 📄 adminRenameRsn.js
-│   │   │   ├─ 📄 adminRsnList.js
-│   │   │   ├─ 📄 adminSetRotationPeriod.js
-│   │   │   ├─ 📄 adminSyncMembers.js
-│   │   │   ├─ 📄 adminUpdateClannieChannel.js
-│   │   │   ├─ 📄 analytics.js
-│   │   │   ├─ 📄 help.js
-│   │   │   ├─ 📄 listCompetitions.js
-│   │   │   ├─ 📄 profile.js
-│   │   │   ├─ 📄 removeRsn.js
-│   │   │   └─ 📄 rsn.js
+│   │   │   ├─ 📂 admin
+│   │   │   │   ├─ 📄 adminAssignRsn.js
+│   │   │   │   ├─ 📄 adminCheckActivity.js
+│   │   │   │   ├─ 📄 adminQueueCompetition.js
+│   │   │   │   ├─ 📄 adminRemoveRsn.js
+│   │   │   │   ├─ 📄 adminRenameRsn.js
+│   │   │   │   ├─ 📄 adminRsnList.js
+│   │   │   │   ├─ 📄 adminSetRotationPeriod.js
+│   │   │   │   ├─ 📄 adminSyncMembers.js
+│   │   │   │   ├─ 📄 adminUpdateClannieChannel.js
+│   │   │   │   ├─ 📄 adminUpdateTop10Channel.js
+│   │   │   │   └─ 📂 database
+│   │   │   │       ├─ 📄 adminCompManagement.js
+│   │   │   │       ├─ 📄 adminDatabaseViewer.js
+│   │   │   │       ├─ 📄 adminEditDatabase.js
+│   │   │   │       ├─ 📄 adminInitializeGuild.js
+│   │   │   │       ├─ 📄 adminLogManagement.js
+│   │   │   │       └─ 📄 adminSetupManagement.js
+│   │   │   └─ 📂 user
+│   │   │       ├─ 📄 analytics.js
+│   │   │       ├─ 📄 help.js
+│   │   │       ├─ 📄 listCompetitions.js
+│   │   │       ├─ 📄 profile.js
+│   │   │       ├─ 📄 removeRsn.js
+│   │   │       └─ 📄 rsn.js
 │   │   ├─ 📂 events
 │   │   │   ├─ 📂 boosts
 │   │   │   │   ├─ 📄 memberBoost.js
@@ -71,28 +82,29 @@
 │   │   │   │   ├─ 📄 debug.js
 │   │   │   │   ├─ 📄 error.js
 │   │   │   │   ├─ 📄 rateLimit.js
-│   │   │   │   ├─ 📄 shardDisconnect.js
-│   │   │   │   ├─ 📄 shardError.js
-│   │   │   │   ├─ 📄 shardReady.js
-│   │   │   │   ├─ 📄 shardReconnecting.js
-│   │   │   │   ├─ 📄 shardResume.js
+│   │   │   │   ├─ 📂 shards
+│   │   │   │   │   ├─ 📄 shardDisconnect.js
+│   │   │   │   │   ├─ 📄 shardError.js
+│   │   │   │   │   ├─ 📄 shardReady.js
+│   │   │   │   │   ├─ 📄 shardReconnecting.js
+│   │   │   │   │   └─ 📄 shardResume.js
 │   │   │   │   └─ 📄 warn.js
 │   │   │   ├─ 📂 channels
 │   │   │   │   ├─ 📄 channelCreate.js
 │   │   │   │   ├─ 📄 channelDelete.js
 │   │   │   │   ├─ 📄 channelPinsUpdate.js
 │   │   │   │   ├─ 📄 channelUpdate.js
-│   │   │   │   ├─ 📄 stageInstanceCreate.js
-│   │   │   │   ├─ 📄 stageInstanceDelete.js
-│   │   │   │   ├─ 📄 stageInstanceUpdate.js
-│   │   │   │   ├─ 📄 threadCreate.js
-│   │   │   │   ├─ 📄 threadDelete.js
-│   │   │   │   └─ 📄 threadUpdate.js
+│   │   │   │   └─ 📂 threads
+│   │   │   │       ├─ 📄 threadCreate.js
+│   │   │   │       ├─ 📄 threadDelete.js
+│   │   │   │       ├─ 📄 threadMemberUpdate.js
+│   │   │   │       ├─ 📄 threadStateUpdate.js
+│   │   │   │       └─ 📄 threadUpdate.js
 │   │   │   ├─ 📂 client
 │   │   │   │   ├─ 📄 interactionCreate.js
 │   │   │   │   ├─ 📄 raw.js
 │   │   │   │   ├─ 📄 ready.js
-│   │   │   │   └─ 📄 webhookUpdate.js
+│   │   │   │   └─ 📄 webhooksUpdate.js
 │   │   │   ├─ 📂 emojis
 │   │   │   │   ├─ 📄 emojiCreate.js
 │   │   │   │   ├─ 📄 emojiDelete.js
@@ -104,9 +116,10 @@
 │   │   │   │   ├─ 📄 guildMemberAdd.js
 │   │   │   │   ├─ 📄 guildMemberRemove.js
 │   │   │   │   ├─ 📄 guildMemberUpdate.js
-│   │   │   │   ├─ 📄 guildUpdate
-│   │   │   │   ├─ 📄 inviteCreate.js
-│   │   │   │   └─ 📄 inviteDelete.js
+│   │   │   │   ├─ 📄 guildUpdate.js
+│   │   │   │   └─ 📂 invites
+│   │   │   │       ├─ 📄 inviteCreate.js
+│   │   │   │       └─ 📄 inviteDelete.js
 │   │   │   ├─ 📂 messages
 │   │   │   │   ├─ 📄 messageCreate.js
 │   │   │   │   ├─ 📄 messageDelete.js
@@ -124,9 +137,12 @@
 │   │   │   │   ├─ 📄 scheduledEventUpdate.js
 │   │   │   │   ├─ 📄 scheduledEventUserAdd.js
 │   │   │   │   └─ 📄 scheduledEventUserRemove.js
+│   │   │   ├─ 📂 stages
+│   │   │   │   ├─ 📄 stageInstanceCreate.js
+│   │   │   │   ├─ 📄 stageInstanceDelete.js
+│   │   │   │   └─ 📄 stageInstanceUpdate.js
 │   │   │   └─ 📂 user
 │   │   │       ├─ 📄 presenceUpdate.js
-│   │   │       ├─ 📄 typingStart.js
 │   │   │       └─ 📄 voiceStateUpdate.js
 │   │   ├─ 📂 services
 │   │   │   ├─ 📄 activeMembers.js
@@ -150,11 +166,15 @@
 │   │       ├─ 📄 dateUtils.js
 │   │       ├─ 📄 dbUtils.js
 │   │       ├─ 📄 embedUtils.js
+│   │       ├─ 📄 ensureBasicChannels.js
+│   │       ├─ 📄 ensureCompetitionCategory.js
 │   │       ├─ 📄 ensureLoggingCategory.js
 │   │       ├─ 📄 fetchPlayerData.js
 │   │       ├─ 📄 forceDbNameChange.js
+│   │       ├─ 📄 formatCustomEmoji.js
 │   │       ├─ 📄 lastFetchedTime.js
 │   │       ├─ 📄 logger.js
+│   │       ├─ 📄 normalizeKey.js
 │   │       ├─ 📄 normalizeRsn.js
 │   │       ├─ 📄 purgeChannel.js
 │   │       ├─ 📄 rankUtils.js
@@ -164,8 +184,14 @@
 │   │       └─ 📄 validateRsn.js
 │   ├─ 📂 resources
 │   ├─ 📂 scripts
-│   │   ├─ 📄 create_db.js
-│   │   ├─ 📄 drop_db.js
+│   │   ├─ 📄 createGuildDb.js
+│   │   ├─ 📄 createImgDb.js
+│   │   ├─ 📄 createMainDb.js
+│   │   ├─ 📄 dropCompDb.js
+│   │   ├─ 📄 dropGuildDb.js
+│   │   ├─ 📄 dropImgDb.js
+│   │   ├─ 📄 dropMainDb.js
+│   │   ├─ 📄 dropMsgDb.js
 │   │   └─ 📄 populateImageCache.js
 │   └─ 📄 tasks.js
 ├─ 📄 src.rar

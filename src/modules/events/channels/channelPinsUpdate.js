@@ -59,7 +59,11 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor(0xf1c40f) // Yellow for pin updates
                 .setTitle(actionType)
-                .addFields({ name: '📢 Channel', value: `<#${channel.id}>`, inline: true }, { name: '📁 Category', value: channel.parent?.name || '`Uncategorized`', inline: true }, { name: '🛠 Changed By', value: changedBy, inline: false })
+                .addFields(
+                    { name: '📢 Channel', value: `<#${channel.id}> \`${channel.name}\``, inline: true },
+                    { name: '📁 Category', value: channel.parent?.name || '`Uncategorized`', inline: true },
+                    { name: '🛠 Changed By', value: changedBy, inline: false },
+                )
                 .setFooter({ text: `Channel ID: ${channel.id}` })
                 .setTimestamp();
 

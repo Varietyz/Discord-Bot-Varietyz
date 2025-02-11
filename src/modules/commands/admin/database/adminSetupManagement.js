@@ -2,7 +2,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 const {
-    guild: { runQuery, getOne, getAll },
+    guild: { runQuery, getAll },
 } = require('../../../utils/dbUtils');
 const logger = require('../../../utils/logger');
 const { ensureBasicChannels } = require('../../../utils/ensureBasicChannels');
@@ -15,21 +15,9 @@ module.exports = {
         .addSubcommand((subcommand) =>
             subcommand
                 .setName('set')
-                .setDescription('Assign a basic channel to an event type.')
-                .addStringOption((option) => option.setName('basic_type').setDescription('The type of log to configure.').setRequired(true).setAutocomplete(true))
+                .setDescription('Assign a basic channel.')
+                .addStringOption((option) => option.setName('assign').setDescription('Assign the channels type.').setRequired(true).setAutocomplete(true))
                 .addChannelOption((option) => option.setName('channel').setDescription('The Discord channel to assign.').setRequired(true)),
-        )
-        .addSubcommand((subcommand) =>
-            subcommand
-                .setName('disable')
-                .setDescription('Disable logging for a specific event type.')
-                .addStringOption((option) => option.setName('basic_type').setDescription('The log type to disable.').setRequired(true).setAutocomplete(true)),
-        )
-        .addSubcommand((subcommand) =>
-            subcommand
-                .setName('enable')
-                .setDescription('Enable logging for a specific event type.')
-                .addStringOption((option) => option.setName('basic_type').setDescription('The log type to enable.').setRequired(true).setAutocomplete(true)),
         )
         .addSubcommand((subcommand) => subcommand.setName('list').setDescription('View all assigned basic channels.'))
         .addSubcommand((subcommand) => subcommand.setName('generate').setDescription('Automatically generate all basic channels.'))
@@ -47,7 +35,7 @@ module.exports = {
     async execute(interaction) {
         try {
             const subcommand = interaction.options.getSubcommand();
-            const compType = interaction.options.getString('basic_type');
+            const compType = interaction.options.getString('assign');
             const channel = interaction.options.getChannel('channel');
 
             if (subcommand === 'set') {
@@ -65,29 +53,6 @@ module.exports = {
                     content: `✅ **Success:** The basic channel for \`${compType}\` has been updated to <#${channel.id}>.`,
                     flags: 64,
                 });
-            } else if (subcommand === 'disable') {
-                await runQuery('DELETE FROM setup_channels WHERE setup_key = ?', [compType]);
-
-                logger.info(`🚫 Disabled logging for '${compType}'.`);
-                return await interaction.reply({
-                    content: `🚫 **Success:** Logging for \`${compType}\` has been disabled.`,
-                    flags: 64,
-                });
-            } else if (subcommand === 'enable') {
-                const existingChannel = await getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', [compType]);
-
-                if (!existingChannel) {
-                    return await interaction.reply({
-                        content: `❌ **Error:** No previous channel was assigned to \`${compType}\`. Use \`/basic_channel set\` first.`,
-                        flags: 64,
-                    });
-                }
-
-                logger.info(`🔄 Enabled logging for '${compType}' at <#${existingChannel.channel_id}>.`);
-                return await interaction.reply({
-                    content: `✅ **Success:** \`${compType}\` has been enabled in <#${existingChannel.channel_id}>.`,
-                    flags: 64,
-                });
             } else if (subcommand === 'list') {
                 const logChannels = await getAll('SELECT setup_key, channel_id FROM setup_channels');
 
@@ -99,9 +64,9 @@ module.exports = {
                 }
 
                 const embed = new EmbedBuilder()
-                    .setTitle('📋 Assigned Log Channels')
+                    .setTitle('📋 Assigned Basic Channels')
                     .setColor(0x3498db)
-                    .setDescription(logChannels.map((row) => `🔹 **${row.setup_key}** → <#${row.channel_id}>`).join('\n'))
+                    .setDescription(logChannels.map((row) => `🔹 **\`${row.setup_key}\`** → <#${row.channel_id}>`).join('\n'))
                     .setTimestamp();
 
                 return await interaction.reply({ embeds: [embed], flags: 64 });

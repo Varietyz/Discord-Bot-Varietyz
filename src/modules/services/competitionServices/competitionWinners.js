@@ -109,7 +109,6 @@ const updateFinalLeaderboard = async (competition, client) => {
 
         const sortedParticipants = details.participations.filter((p) => p.progress.gained > 0).sort((a, b) => b.progress.gained - a.progress.gained);
 
-        const biggestGainer = sortedParticipants.length > 0 ? sortedParticipants[0] : null;
         const channelId = constants.HALL_OF_FAME_CHANNEL_ID;
         const channel = await client.channels.fetch(channelId);
         if (!channel) {
@@ -117,30 +116,33 @@ const updateFinalLeaderboard = async (competition, client) => {
             return;
         }
 
+        const sotwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_sotw']);
+        const botwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_botw']);
+        const sotwEmoji = sotwEmojiRow ? sotwEmojiRow.emoji_format : '';
+        const botwEmoji = botwEmojiRow ? botwEmojiRow.emoji_format : '';
+
+        const metricEmoji = competition.type === 'SOTW' ? sotwEmoji : botwEmoji;
+
         const leaderboardText =
             sortedParticipants.length > 0
                 ? sortedParticipants
                     .slice(0, 10)
                     .map((p, i) => {
                         const playerLink = `https://wiseoldman.net/players/${encodeURIComponent(p.player.displayName)}`;
-                        return `**${i + 1}.** **[${p.player.displayName}](${playerLink})** — \`${p.progress.gained.toLocaleString()}\``;
+                        return `> **${i + 1}.** **[${p.player.displayName}](${playerLink})**\n>  - ${metricEmoji}\`${p.progress.gained.toLocaleString()}\``;
                     })
-                    .join('\n')
+                    .join('\n\n')
                 : '_No participants._';
-
-        const biggestGainerField = biggestGainer
-            ? `**[${biggestGainer.player.displayName}](https://wiseoldman.net/players/${encodeURIComponent(biggestGainer.player.displayName)})** gained \`${biggestGainer.progress.gained.toLocaleString()}\``
-            : '_No significant gains._';
 
         const competitionName = competition.title;
         const competitionUrl = `https://wiseoldman.net/competitions/${competition.competition_id}`;
 
         const embed = new EmbedBuilder()
-            .setTitle(`🏆 ${competitionName} - Final Results`)
+            .setTitle(`🏆 ${competitionName}`)
             .setURL(competitionUrl)
-            .addFields({ name: '🏅 **Top 10 Players**', value: leaderboardText, inline: false }, { name: '🚀 **Biggest Gainer**', value: biggestGainerField, inline: true })
+            .addFields({ name: '🏅 **Top 10 Players**', value: leaderboardText, inline: false })
             .setColor(0xffd700)
-            .setFooter({ text: 'Final results based on WOM data' })
+            .setFooter({ text: 'Final results' })
             .setTimestamp();
 
         await channel.send({ embeds: [embed] });

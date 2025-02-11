@@ -37,7 +37,7 @@ module.exports = {
 
             const { action, executor, target, changes } = webhookLog;
             let webhookId = '`Unknown`';
-            const channelMention = `<#${channel.id}>`;
+            const channelMention = `<#${channel.id}> \`${channel.name}\``;
             const performedBy = executor ? `<@${executor.id}>` : '`Unknown`';
             const changesList = changes?.map((change) => `🔄 **${change.key}**: \`${change.old ?? 'None'}\` → \`${change.new ?? 'None'}\``) || ['`No details available.`'];
 

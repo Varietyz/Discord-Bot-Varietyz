@@ -244,8 +244,8 @@ async function updateAllRegisteredRSNs(finalNamesMap, channelManager) {
                     .setTitle('🔄 RSN Name Change')
                     .setColor(0x3498db)
                     .setTimestamp()
-                    .setDescription(`<@${discord_id}>\nYour RSN has been updated:\n` + `📛 **Old Name:** \`${oldRsn}\`\n` + `🔗 **New Name:** \`${newRsn}\``);
-                await channel.send({ embeds: [embed] });
+                    .setDescription('Your RSN has been updated:\n' + `📛 **Old Name:** \`${oldRsn}\`\n` + `🔗 **New Name:** \`${newRsn}\``);
+                await channel.send({ content: `<@${discord_id}>`, embeds: [embed] });
             }
         }
     }
