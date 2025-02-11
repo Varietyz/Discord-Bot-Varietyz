@@ -12,35 +12,25 @@ const {
 const resourcesPath = path.resolve(__dirname, '../resources');
 
 /**
- * Base path for the project, starting at "src".
- * @constant {string}
- */
-const projectBasePath = path.resolve(__dirname, '../');
-
-/**
  * Recursively retrieves all files from a directory and its subdirectories along with metadata.
  *
- * This function scans the specified directory and all nested subdirectories to produce an array
- * of objects. Each object contains:
- * - `fileName`: The lowercase file name without its extension.
- * - `filePath`: The relative path starting with "src/" to the file, with forward slashes as separators.
- *
- * @function getAllFilesWithMetadata
  * @param {string} dir - The directory to scan.
- * @returns {Array<{ fileName: string, filePath: string }>} An array of file metadata objects.
- *
- * @example
- * const files = getAllFilesWithMetadata(resourcesPath);
- * console.log(files);
+ * @returns FileMetadata[] An array of file metadata objects.
  */
 function getAllFilesWithMetadata(dir) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     const files = entries
         .filter((entry) => !entry.isDirectory())
-        .map((entry) => ({
-            fileName: path.basename(entry.name, path.extname(entry.name)).toLowerCase(),
-            filePath: `src/${path.relative(projectBasePath, path.resolve(dir, entry.name)).replace(/\\/g, '/')}`,
-        }));
+        .map((entry) => {
+            const absolutePath = path.resolve(dir, entry.name);
+            // Compute the path relative to the resources directory.
+            const relativeToResources = path.relative(resourcesPath, absolutePath).replace(/\\/g, '/');
+            return {
+                fileName: path.basename(entry.name, path.extname(entry.name)).toLowerCase(),
+                filePath: `src/resources/${relativeToResources}`,
+                relativeToResources, // Always include this property.
+            };
+        });
 
     const folders = entries.filter((entry) => entry.isDirectory());
     for (const folder of folders) {
@@ -72,21 +62,46 @@ function getAllFilesWithMetadata(dir) {
 async function populateImageCache() {
     const files = getAllFilesWithMetadata(resourcesPath);
 
-    await runQuery(`
-        CREATE TABLE IF NOT EXISTS image_cache (
+    // Group files by folder using the relative path from the resources folder.
+    // Group files by folder using the relative path from the resources folder.
+    const groups = {};
+    for (const file of files) {
+        // Use the relative path computed from the resources folder.
+        const relative = file.relativeToResources;
+        // If there is no subfolder (i.e. no "/" in the relative path), group it under "resources"
+        let folder = relative.includes('/') ? relative.split('/')[0] : 'resources';
+        // If the folder name is "src", reassign it to "resources"
+        if (folder === 'src') {
+            folder = 'resources';
+        }
+        if (!groups[folder]) {
+            groups[folder] = [];
+        }
+        groups[folder].push(file);
+    }
+
+    // For each folder, create a table and update/insert file metadata.
+    for (const folderName in groups) {
+        // Sanitize folder name to create a valid table name.
+        const sanitizedFolderName = folderName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const tableName = sanitizedFolderName;
+
+        // Create the table if it doesn't exist.
+        await runQuery(`
+            CREATE TABLE IF NOT EXISTS ${tableName} (
                 idx INTEGER PRIMARY KEY AUTOINCREMENT,
                 file_name TEXT NOT NULL,
                 file_path TEXT NOT NULL
-                );
-    `);
+            );
+        `);
+        logger.info(`✅ Ensured table ${tableName} exists.`);
 
-    logger.info('✅ Ensured image_cache table exists.');
-
-    try {
-        for (const { fileName, filePath } of files) {
+        // Process each file in the group.
+        const groupFiles = groups[folderName];
+        for (const { fileName, filePath } of groupFiles) {
             const updateResult = await runQuery(
                 `
-                UPDATE image_cache
+                UPDATE ${tableName}
                 SET file_path = ?
                 WHERE file_name = ?
                 `,
@@ -96,17 +111,14 @@ async function populateImageCache() {
             if (updateResult.changes === 0) {
                 await runQuery(
                     `
-                    INSERT INTO image_cache (file_name, file_path)
+                    INSERT INTO ${tableName} (file_name, file_path)
                     VALUES (?, ?)
                     `,
                     [fileName, filePath],
                 );
             }
         }
-
-        logger.info('✅ Image cache updated successfully.');
-    } catch (error) {
-        logger.error('❌ Error populating image cache:', error.message);
+        logger.info(`✅ Table ${tableName} updated successfully with ${groupFiles.length} records.`);
     }
 }
 

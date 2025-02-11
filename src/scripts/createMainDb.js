@@ -176,6 +176,12 @@ function createTables(db) {
                 last_selected_at DATETIME
         );`);
     db.run(`
+        CREATE TABLE IF NOT EXISTS hiscores_activities ( 
+                idx INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT CHECK(type IN ('Activity')) NOT NULL
+        );`);
+    db.run(`
         CREATE TABLE IF NOT EXISTS competition_queue ( 
                 idx INTEGER PRIMARY KEY AUTOINCREMENT,
                 type TEXT CHECK(type IN ('SOTW', 'BOTW')) NOT NULL,

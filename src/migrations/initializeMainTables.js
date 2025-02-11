@@ -113,6 +113,10 @@ const initializeMainTables = async () => {
                 type TEXT CHECK(type IN ('Skill', 'Boss')) NOT NULL,
                 last_selected_at DATETIME
             `,
+            hiscores_activities: `        
+                idx INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT CHECK(type IN ('Activity')) NOT NULL`,
             competition_queue: `
                 idx INTEGER PRIMARY KEY AUTOINCREMENT,
                 type TEXT CHECK(type IN ('SOTW', 'BOTW')) NOT NULL,

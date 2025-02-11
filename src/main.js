@@ -31,7 +31,6 @@ const fs = require('fs');
 const path = require('path');
 const initializeMainTables = require('./migrations/initializeMainTables');
 const initializeGuildTables = require('./migrations/initializeGuildTables');
-const populateSkillsBosses = require('./migrations/populateSkillsBosses');
 const CompetitionService = require('./modules/services/competitionServices/competitionService');
 
 const { CLAN_CHAT_CHANNEL_ID } = require('./config/constants');
@@ -148,7 +147,7 @@ client.competitionService = competitionService;
  *
  * This function performs the following steps:
  * 1. Initializes competitions-related tables.
- * 2. Populates the skills_bosses table.
+ * 2. Populates the skills_bosses & activities table.
  * 3. Dynamically loads command and service modules.
  * 4. Registers slash commands with Discord's API.
  * 5. Logs the bot into Discord.
@@ -167,7 +166,6 @@ const initializeBot = async () => {
         await initializeGuildTables();
         await initializeMsgTables();
         await initializeMainTables();
-        await populateSkillsBosses();
 
         const { REST } = require('@discordjs/rest');
         const { Routes } = require('discord-api-types/v10');

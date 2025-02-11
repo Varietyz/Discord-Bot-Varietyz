@@ -66,7 +66,7 @@ function initializeDatabase() {
  * @param {sqlite3.Database} db - The SQLite database instance.
  */
 async function dropTables(db) {
-    const tables = ['image_cache'];
+    const tables = ['emojis', 'elarged_emojis', 'ranks', 'skills_bosses', 'src'];
 
     try {
         for (const table of tables) {

@@ -24,6 +24,7 @@
  * @module src/migrations/populateSkillsBosses
  */
 
+const { EmbedBuilder } = require('discord.js');
 const db = require('../modules/utils/dbUtils');
 const logger = require('../modules/utils/logger');
 const { MetricProps } = require('@wise-old-man/utils');
@@ -61,6 +62,7 @@ const determinePropType = (prop) => {
  * and inserts new entries into the database if they do not already exist.
  * The insertion is performed within a transaction to ensure atomicity.
  *
+ * @param client
  * @async
  * @function populateSkillsBosses
  * @returns {Promise<void>} Resolves when the migration completes successfully.
@@ -69,7 +71,7 @@ const determinePropType = (prop) => {
  * // Run this migration script to update the skills_bosses table:
  * await populateSkillsBosses();
  */
-const populateSkillsBosses = async () => {
+const populateSkillsBosses = async (client) => {
     try {
         await db.runQuery('BEGIN TRANSACTION;');
 
@@ -78,6 +80,7 @@ const populateSkillsBosses = async () => {
 
         let insertedCount = 0;
         let excludedCount = 0;
+        const insertedActivities = [];
 
         for (const [key, value] of Object.entries(MetricProps)) {
             const type = determinePropType(value);
@@ -96,14 +99,41 @@ const populateSkillsBosses = async () => {
 
                 logger.info(`✅ Inserted ${type}: ${key}`);
                 insertedCount += 1;
-
                 existingSet.add(`${key}:${type}`);
+
+                insertedActivities.push(`${key} (${type})`);
             }
         }
 
         await db.runQuery('COMMIT;');
 
         logger.info(`🎉 Migration completed successfully. Inserted: ${insertedCount}, Excluded: ${excludedCount}`);
+        if (insertedActivities.length > 0) {
+            try {
+                // Use the guild database for logging.
+                const logChannelData = await db.guild.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['database_logs']);
+                if (!logChannelData) {
+                    logger.warn('⚠️ No log channel found for "database_logs" in the logging database.');
+                } else {
+                    const logChannel = await client.channels.fetch(logChannelData.channel_id).catch(() => null);
+                    if (!logChannel) {
+                        logger.warn(`⚠️ Could not fetch log channel ID: ${logChannelData.channel_id}`);
+                    } else {
+                        // Build one embed that maps all inserted activities.
+                        const embed = new EmbedBuilder()
+                            .setColor(0xffa500) // Orange for updates
+                            .setTitle('🔑 Skills & Bosses Database Updated')
+                            .setDescription(`Inserted the following Skills & Bosses:\n\`\`\`\n${insertedActivities.join('\n')}\n\`\`\``)
+                            .setFooter({ text: 'Update complete' })
+                            .setTimestamp();
+
+                        await logChannel.send({ embeds: [embed] });
+                    }
+                }
+            } catch (logErr) {
+                logger.error(`Error logging key update: ${logErr.message}`);
+            }
+        }
     } catch (error) {
         await db.runQuery('ROLLBACK;');
         logger.error(`❌ Error populating skills_bosses table: ${error.message}`);

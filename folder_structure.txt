@@ -183,6 +183,155 @@
 │   │       ├─ 📄 tallyVotes.js
 │   │       └─ 📄 validateRsn.js
 │   ├─ 📂 resources
+│   │   └─ 📂 emojis
+│   │       ├─ 📄 abyssal_sire.png
+│   │       ├─ 📄 agility.png
+│   │       ├─ 📄 alchemical_hydra.png
+│   │       ├─ 📄 amoxliatl.png
+│   │       ├─ 📄 araxxor.png
+│   │       ├─ 📄 artio.png
+│   │       ├─ 📄 attack.png
+│   │       ├─ 📄 barrows_chests.png
+│   │       ├─ 📄 bounty_hunter_hunter.png
+│   │       ├─ 📄 bounty_hunter_rogue.png
+│   │       ├─ 📄 branda.png
+│   │       ├─ 📄 bryophyta.png
+│   │       ├─ 📄 callisto.png
+│   │       ├─ 📄 calvarion.png
+│   │       ├─ 📄 cerberus.png
+│   │       ├─ 📄 chambers_of_xeric.png
+│   │       ├─ 📄 chambers_of_xeric_challenge_mode.png
+│   │       ├─ 📄 chaos_elemental.png
+│   │       ├─ 📄 chaos_fanatic.png
+│   │       ├─ 📄 clue_scrolls_all.png
+│   │       ├─ 📄 collections_logged.png
+│   │       ├─ 📄 colosseum_glory.png
+│   │       ├─ 📄 commander_zilyana.png
+│   │       ├─ 📄 construction.png
+│   │       ├─ 📄 cooking.png
+│   │       ├─ 📄 corporeal_beast.png
+│   │       ├─ 📄 crafting.png
+│   │       ├─ 📄 crazy_archaeologist.png
+│   │       ├─ 📄 dagannoth_kings.png
+│   │       ├─ 📄 dagannoth_prime.png
+│   │       ├─ 📄 dagannoth_rex.png
+│   │       ├─ 📄 dagganoth_supreme.png
+│   │       ├─ 📄 defence.png
+│   │       ├─ 📄 deranged_archaeologist.png
+│   │       ├─ 📄 duke_sucellus.png
+│   │       ├─ 📄 eldric.png
+│   │       ├─ 📂 enlarged
+│   │       │   ├─ 📄 abyssal_sire.png
+│   │       │   ├─ 📄 alchemical_hydra.png
+│   │       │   ├─ 📄 amoxliatl.png
+│   │       │   ├─ 📄 araxxor.png
+│   │       │   ├─ 📄 barrows_chests.png
+│   │       │   ├─ 📄 branda.png
+│   │       │   ├─ 📄 bryophyta.png
+│   │       │   ├─ 📄 cerberus.png
+│   │       │   ├─ 📄 chambers_of_xeric.png
+│   │       │   ├─ 📄 commander_zilyana.png
+│   │       │   ├─ 📄 corporeal_beast.png
+│   │       │   ├─ 📄 dagannoth_kings.png
+│   │       │   ├─ 📄 dagannoth_rex.png
+│   │       │   ├─ 📄 eldric.png
+│   │       │   ├─ 📄 general_graardor.png
+│   │       │   ├─ 📄 giant_mole.png
+│   │       │   ├─ 📄 grotesque_guardians.png
+│   │       │   ├─ 📄 hespori.png
+│   │       │   ├─ 📄 kalphite_queen.png
+│   │       │   ├─ 📄 king_black_dragon.png
+│   │       │   ├─ 📄 kraken.png
+│   │       │   ├─ 📄 kreearra.png
+│   │       │   ├─ 📄 kril_tsutsaroth.png
+│   │       │   ├─ 📄 lunar_chests.png
+│   │       │   ├─ 📄 mimic.png
+│   │       │   ├─ 📄 nex.png
+│   │       │   ├─ 📄 nightmare.png
+│   │       │   ├─ 📄 obor.png
+│   │       │   ├─ 📄 phosanis_nightmare.png
+│   │       │   ├─ 📄 sarachnis.png
+│   │       │   ├─ 📄 scurrius.png
+│   │       │   ├─ 📄 skotizo.png
+│   │       │   ├─ 📄 sol_heredit.png
+│   │       │   ├─ 📄 tempoross.png
+│   │       │   ├─ 📄 theatre_of_blood.png
+│   │       │   ├─ 📄 theatre_of_blood_hard_mode.png
+│   │       │   ├─ 📄 thermonuclear_smoke_devil.png
+│   │       │   ├─ 📄 the_corrupted_gauntlet.png
+│   │       │   ├─ 📄 the_gauntlet.png
+│   │       │   ├─ 📄 the_hueycoatl.png
+│   │       │   ├─ 📄 the_royal_titans.png
+│   │       │   ├─ 📄 tztok_jad.png
+│   │       │   ├─ 📄 vorkath.png
+│   │       │   ├─ 📄 wintertodt.png
+│   │       │   ├─ 📄 zalcano.png
+│   │       │   └─ 📄 zulrah.png
+│   │       ├─ 📄 farming.png
+│   │       ├─ 📄 firemaking.png
+│   │       ├─ 📄 fishing.png
+│   │       ├─ 📄 fletching.png
+│   │       ├─ 📄 general_graardor.png
+│   │       ├─ 📄 giant_mole.png
+│   │       ├─ 📄 grotesque_guardians.png
+│   │       ├─ 📄 guardians_of_the_rift.png
+│   │       ├─ 📄 herblore.png
+│   │       ├─ 📄 hespori.png
+│   │       ├─ 📄 hitpoints.png
+│   │       ├─ 📄 hunter.png
+│   │       ├─ 📄 kalphite_queen.png
+│   │       ├─ 📄 king_black_dragon.png
+│   │       ├─ 📄 kraken.png
+│   │       ├─ 📄 kreearra.png
+│   │       ├─ 📄 kril_tsutsaroth.png
+│   │       ├─ 📄 last_man_standing.png
+│   │       ├─ 📄 league_points.png
+│   │       ├─ 📄 lunar_chests.png
+│   │       ├─ 📄 magic.png
+│   │       ├─ 📄 mimic.png
+│   │       ├─ 📄 mining.png
+│   │       ├─ 📄 nex.png
+│   │       ├─ 📄 nightmare.png
+│   │       ├─ 📄 obor.png
+│   │       ├─ 📄 phantom_muspah.png
+│   │       ├─ 📄 phosanis_nightmare.png
+│   │       ├─ 📄 prayer.png
+│   │       ├─ 📄 pvp_arena.png
+│   │       ├─ 📄 ranged.png
+│   │       ├─ 📄 runecrafting.png
+│   │       ├─ 📄 sarachnis.png
+│   │       ├─ 📄 scorpia.png
+│   │       ├─ 📄 scurrius.png
+│   │       ├─ 📄 skotizo.png
+│   │       ├─ 📄 slayer.png
+│   │       ├─ 📄 smithing.png
+│   │       ├─ 📄 sol_heredit.png
+│   │       ├─ 📄 soul_wars_zeal.png
+│   │       ├─ 📄 spindel.png
+│   │       ├─ 📄 strength.png
+│   │       ├─ 📄 tempoross.png
+│   │       ├─ 📄 theatre_of_blood.png
+│   │       ├─ 📄 theatre_of_blood_hard_mode.png
+│   │       ├─ 📄 thermonuclear_smoke_devil.png
+│   │       ├─ 📄 the_corrupted_gauntlet.png
+│   │       ├─ 📄 the_gauntlet.png
+│   │       ├─ 📄 the_hueycoatl.png
+│   │       ├─ 📄 the_leviathan.png
+│   │       ├─ 📄 the_royal_titans.png
+│   │       ├─ 📄 the_whisperer.png
+│   │       ├─ 📄 thieving.png
+│   │       ├─ 📄 tombs_of_amascut.png
+│   │       ├─ 📄 tombs_of_amascut_expert.png
+│   │       ├─ 📄 tzkal_zuk.png
+│   │       ├─ 📄 tztok_jad.png
+│   │       ├─ 📄 vardorvis.png
+│   │       ├─ 📄 venenatis.png
+│   │       ├─ 📄 vetion.png
+│   │       ├─ 📄 vorkath.png
+│   │       ├─ 📄 wintertodt.png
+│   │       ├─ 📄 woodcutting.png
+│   │       ├─ 📄 zalcano.png
+│   │       └─ 📄 zulrah.png
 │   ├─ 📂 scripts
 │   │   ├─ 📄 createGuildDb.js
 │   │   ├─ 📄 createImgDb.js

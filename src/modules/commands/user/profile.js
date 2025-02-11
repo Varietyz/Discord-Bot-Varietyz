@@ -311,7 +311,7 @@ module.exports = {
                 logger.info(`✅ Found user profile for RSN: "${rsnInput}"`);
             }
 
-            const compStats = userProfile ? await getCompetitionStats(userProfile.username) : { total_wins: '\u200b', total_metric_gain_sotw: '\u200b', total_metric_gain_botw: '\u200b' };
+            const compStats = userProfile ? await getCompetitionStats(userProfile.rsn) : { total_wins: '\u200b', total_metric_gain_sotw: '\u200b', total_metric_gain_botw: '\u200b' };
 
             const liveData = await womApi.request('players', 'getPlayerDetails', normalizedInput);
             if (!liveData) {
@@ -338,7 +338,7 @@ module.exports = {
                 `:crossed_swords: Combat Level: **\`${combatLevel || 'Unranked'}\`**\n` +
                     `:gear: Account Type: **\`${capitalizeWords(accountType)} | ${capitalizeWords(build)}\`**\n` +
                     `${statusEmoji} Status: **\`${capitalizeWords(status)}\`**\n` +
-                    `:globe_with_meridians: Country: ${getCountryDisplay(country) || '\u200b'} ${country || 'N/A'}`,
+                    `:globe_with_meridians: Country: ${getCountryDisplay(country) || '<#802680940835897384>'}`,
                 1024,
             );
 
