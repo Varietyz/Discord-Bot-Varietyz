@@ -99,6 +99,8 @@ async function syncClanRankEmojis(guild, activeRanksParam) {
             });
             logger.info(`🎉 Uploaded rank emoji: ${uploadedEmoji.name}`);
 
+            const emojiFormat = uploadedEmoji.animated ? `<a:${uploadedEmoji.name}:${uploadedEmoji.id}>` : `<:${uploadedEmoji.name}:${uploadedEmoji.id}>`;
+
             // Store the emoji in the guild_emojis table with the final key.
             await db.guild.runQuery(
                 `INSERT INTO guild_emojis (emoji_id, emoji_key, emoji_name, emoji_format, animated)
@@ -109,7 +111,7 @@ async function syncClanRankEmojis(guild, activeRanksParam) {
                     uploadedEmoji.id,
                     finalEmojiKey, // e.g., "emoji_mod"
                     uploadedEmoji.name, // e.g., "mod"
-                    `<:${uploadedEmoji.name}:${uploadedEmoji.id}>`,
+                    emojiFormat,
                     uploadedEmoji.animated ? 1 : 0,
                 ],
             );

@@ -82,7 +82,9 @@ module.exports = {
                         attachment: fileFullPath,
                         name: baseName, // Actual emoji name in the guild is the base name.
                     });
+
                     logger.info(`🎉 Uploaded skill/boss emoji: ${uploadedEmoji.name}`);
+                    const emojiFormat = uploadedEmoji.animated ? `<a:${uploadedEmoji.name}:${uploadedEmoji.id}>` : `<:${uploadedEmoji.name}:${uploadedEmoji.id}>`;
 
                     // Update the guild_emojis table using the final key.
                     await db.guild.runQuery(
@@ -94,7 +96,7 @@ module.exports = {
                             uploadedEmoji.id,
                             finalEmojiKey, // Store the key as "emoji_mod"
                             uploadedEmoji.name, // This should be the base name ("mod")
-                            `<:${uploadedEmoji.name}:${uploadedEmoji.id}>`,
+                            emojiFormat,
                             uploadedEmoji.animated ? 1 : 0,
                         ],
                     );
