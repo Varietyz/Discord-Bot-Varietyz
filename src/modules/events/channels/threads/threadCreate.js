@@ -1,8 +1,7 @@
 const { EmbedBuilder, ChannelType } = require('discord.js');
-const {
-    guild: { getOne, runQuery },
-} = require('../../../utils/dbUtils');
-const logger = require('../../../utils/logger');
+const db = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
+const { normalizeKey } = require('../../../utils/normalizing/normalizeKey'); // ✅ Ensure we use the normalization function
 
 const THREAD_TYPES = {
     [ChannelType.PublicThread]: '💬 Public Thread',
@@ -25,7 +24,7 @@ module.exports = {
             logger.info(`🧵 [ThreadCreate] Thread "${thread.name}" (ID: ${thread.id}) created in channel: ${thread.parent?.name || 'Unknown'}`);
 
             // 🔍 Fetch thread log channel from database (`thread_logs`)
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['thread_logs']);
+            const logChannelData = await db.guild.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['thread_logs']);
             if (!logChannelData) return;
 
             const logChannel = await thread.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
@@ -38,15 +37,31 @@ module.exports = {
             const archiveDuration = `\`${thread.autoArchiveDuration} minutes\``;
             const memberCount = `\`${thread.memberCount || 0}\` members`;
 
+            // 🔍 **Check if the thread already exists in the database**
+            const existingThread = await db.guild.getOne('SELECT channel_id, channel_key FROM guild_channels WHERE channel_id = ?', [thread.id]);
+
+            let threadKey;
+            if (existingThread) {
+                // ✅ Keep the same `channel_key` if the `channel_id` already exists
+                threadKey = existingThread.channel_key;
+                logger.info(`🔄 Existing thread detected, keeping channel_key: ${threadKey}`);
+            } else {
+                threadKey = normalizeKey(thread.name, 'thread', db); // ✅ Use normalizeKey function
+                logger.info(`🆕 New thread detected, assigned channel_key: ${threadKey}`);
+            }
+
             // 🔄 **Insert into Database (`guild_channels` for consistency)**
-            await runQuery(
+            await db.guild.runQuery(
                 `INSERT INTO guild_channels (channel_id, channel_key, name, type, category, permissions) 
                  VALUES (?, ?, ?, ?, ?, ?) 
-                 ON CONFLICT(channel_id) DO UPDATE SET 
-                 name = excluded.name, type = excluded.type, category = excluded.category, permissions = excluded.permissions`,
+                 ON CONFLICT(channel_id) DO UPDATE 
+                 SET name = excluded.name, 
+                     type = excluded.type, 
+                     category = excluded.category, 
+                     permissions = excluded.permissions`,
                 [
                     thread.id,
-                    `thread_${thread.name.replace(/\s+/g, '_').toLowerCase()}`, // Normalized key
+                    threadKey, // ✅ Correctly assigned key
                     thread.name,
                     thread.type,
                     thread.parent?.name || 'general',

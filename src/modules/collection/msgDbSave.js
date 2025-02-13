@@ -16,7 +16,7 @@
  */
 const { dbPromise, systemTables, emojiCleanupTypes } = require('./msgDbConstants');
 const { reformatText, isChatMessage, cleanupEmojiSystemMessage, cleanupKeysRow, cleanupTasksRow, cleanupChatRow, combineExtraName, detectSystemMessage } = require('./msgDbUtils');
-const logger = require('../utils/logger');
+const logger = require('../utils/essentials/logger');
 
 /**
  * 🎯 **Saves a Message**

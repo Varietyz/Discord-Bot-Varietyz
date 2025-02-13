@@ -1,8 +1,8 @@
-const logger = require('../../utils/logger');
+const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder } = require('discord.js');
 const {
     guild: { getOne },
-} = require('../../utils/dbUtils');
+} = require('../../utils/essentials/dbUtils');
 
 module.exports = {
     name: 'guildIntegrationsUpdate',

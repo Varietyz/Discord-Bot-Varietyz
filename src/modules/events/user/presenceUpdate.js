@@ -1,8 +1,8 @@
 const { EmbedBuilder } = require('discord.js');
 const {
     guild: { getOne },
-} = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+} = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 
 const deviceStates = new Map(); // Tracks last known device state to reduce spam
 
@@ -30,8 +30,8 @@ module.exports = {
             if (!logChannel) return;
 
             // 🔍 Fetch OSRS & RuneLite Emojis
-            const emojiRL = (await getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_runeliteclient']))?.emoji_format || '🎮';
-            const emojiOSRS = (await getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_osrsofficialclient']))?.emoji_format || '🏆';
+            const emojiRL = (await getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_runeliteclient']))?.emoji_format || '🎮';
+            const emojiOSRS = (await getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_osrsofficialclient']))?.emoji_format || '🏆';
 
             // 🚀 **Determine Changes**
             const changes = [];

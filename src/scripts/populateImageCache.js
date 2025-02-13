@@ -1,9 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const logger = require('../modules/utils/logger');
+const logger = require('../modules/utils/essentials/logger');
 const {
     image: { runQuery },
-} = require('../modules/utils/dbUtils');
+} = require('../modules/utils/essentials/dbUtils');
 
 /**
  * Path to the resources directory.

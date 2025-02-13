@@ -24,11 +24,11 @@
  */
 
 const { EmbedBuilder } = require('discord.js');
-const logger = require('../utils/logger.js');
+const logger = require('../utils/essentials/logger.js');
 const { ROLE_CHANNEL_ID } = require('../../config/constants.js');
-const { getAll } = require('../utils/dbUtils.js');
-const { normalizeRsn } = require('../utils/normalizeRsn.js');
-const { cleanupInactiveUsers } = require('../utils/cleanupInactiveUsers');
+const { getAll } = require('../utils/essentials/dbUtils.js');
+const { normalizeRsn } = require('../utils/normalizing/normalizeRsn.js');
+const { cleanupInactiveUsers } = require('../utils/helpers/cleanupInactiveUsers');
 
 /**
  * 🎯 **Maps a Boss Name to Its Corresponding Discord Role Name**

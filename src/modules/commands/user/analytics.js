@@ -19,9 +19,9 @@
  */
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const db = require('../../utils/dbUtils'); // Handles `database.sqlite` and `messages.db`
-const logger = require('../../utils/logger');
-const { normalizeRsn } = require('../../utils/normalizeRsn');
+const db = require('../../utils/essentials/dbUtils'); // Handles `database.sqlite` and `messages.db`
+const logger = require('../../utils/essentials/logger');
+const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
 
 const SYSTEM_TABLES = {
     CHAT_MESSAGES: { table: 'chat_messages', display: 'CC Messages 💬' },

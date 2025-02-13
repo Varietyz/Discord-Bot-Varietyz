@@ -22,15 +22,15 @@
  *
  * **Usage Example:**
  * ```javascript
- * const { cleanupInactiveUsers } = require('../utils/cleanupInactiveUsers');
+ * const { cleanupInactiveUsers } = require('../utils/helpers/cleanupInactiveUsers');
  * await cleanupInactiveUsers(guild);
  * ```
  *
  * @module utils/cleanupInactiveUsers
  */
 
-const { getAll, runTransaction } = require('./dbUtils');
-const logger = require('./logger');
+const { getAll, runTransaction } = require('../essentials/dbUtils');
+const logger = require('../essentials/logger');
 
 /**
  * 🎯 **Removes Inactive Users from the Database**

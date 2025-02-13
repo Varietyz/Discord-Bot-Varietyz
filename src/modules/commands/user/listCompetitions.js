@@ -22,8 +22,8 @@
  */
 
 const { SlashCommandBuilder } = require('discord.js');
-const db = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+const db = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 
 module.exports = {
     data: new SlashCommandBuilder().setName('list_competitions').setDescription('List all upcoming, ongoing, and queued competitions.'),

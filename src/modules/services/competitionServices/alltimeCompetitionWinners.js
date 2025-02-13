@@ -1,6 +1,6 @@
 // @ts-nocheck
-const db = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+const db = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder } = require('discord.js');
 const { TOP_TEN_CHANNEL_ID } = require('../../../config/constants');
 
@@ -96,14 +96,14 @@ const updateAllTimeLeaderboard = async (client) => {
                 ? data
                     .map((player, i) => {
                         const playerLink = `https://wiseoldman.net/players/${player.player_id}`;
-                        return `> **${i + 1}.** **[${player.rsn}](${playerLink})** — \`${player.total_wins} Wins🏅\`\n>  - ${metricEmoji}\`${player.total_gain.toLocaleString()} ${metricLabel}\``;
+                        return `> **${i + 1}.** **[${player.rsn}](${playerLink})** — \`${player.total_wins} Wins🏅\`\n>  ${metricEmoji}\`${player.total_gain.toLocaleString()} ${metricLabel}\``;
                     })
                     .join('\n\n')
                 : '_No data available_';
         };
 
-        const sotwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_sotw']);
-        const botwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_botw']);
+        const sotwEmojiRow = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_overall']);
+        const botwEmojiRow = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_slayer']);
         const sotwEmoji = sotwEmojiRow ? sotwEmojiRow.emoji_format : '';
         const botwEmoji = botwEmojiRow ? botwEmojiRow.emoji_format : '';
 

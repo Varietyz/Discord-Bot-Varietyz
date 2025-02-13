@@ -19,7 +19,7 @@
  * @module competitionService/competitionValidator
  */
 
-const logger = require('../../utils/logger');
+const logger = require('../../utils/essentials/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 
 /**

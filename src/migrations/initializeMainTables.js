@@ -8,8 +8,8 @@
  * @module src/migrations/initializeTables
  */
 
-const { runQuery } = require('../modules/utils/dbUtils');
-const logger = require('../modules/utils/logger');
+const { runQuery } = require('../modules/utils/essentials/dbUtils');
+const logger = require('../modules/utils/essentials/logger');
 
 /**
  * 🎯 **Initializes Main Competition Tables**

@@ -31,10 +31,10 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const logger = require('./logger');
 
-const mainDbPath = path.join(__dirname, '../../data/database.sqlite');
-const messagesDbPath = path.join(__dirname, '../../data/messages.db');
-const imageDbPath = path.join(__dirname, '../../data/image_cache.db');
-const guildDbPath = path.join(__dirname, '../../data/guild.db');
+const mainDbPath = path.join(__dirname, '../../../data/database.sqlite');
+const messagesDbPath = path.join(__dirname, '../../../data/messages.db');
+const imageDbPath = path.join(__dirname, '../../../data/image_cache.db');
+const guildDbPath = path.join(__dirname, '../../../data/guild.db');
 
 let mainDb, messagesDb, imageDb, guildDb;
 
@@ -47,7 +47,7 @@ function openDatabases() {
             if (err) {
                 handleDbError(err, 'Main Database');
                 return reject(err);
-            } else console.log(`✅ SQLite Main Database connected: ${mainDbPath}`);
+            } else logger.info(`✅ SQLite Main Database connected: ${mainDbPath}`);
         });
     }
 
@@ -56,7 +56,7 @@ function openDatabases() {
             if (err) {
                 handleDbError(err, 'Message Database');
                 return reject(err);
-            } else console.log(`✅ SQLite Messages Database connected: ${messagesDbPath}`);
+            } else logger.info(`✅ SQLite Messages Database connected: ${messagesDbPath}`);
         });
     }
 
@@ -65,7 +65,7 @@ function openDatabases() {
             if (err) {
                 handleDbError(err, 'Image Database');
                 return reject(err);
-            } else console.log(`✅ SQLite Image Cache Database connected: ${imageDbPath}`);
+            } else logger.info(`✅ SQLite Image Cache Database connected: ${imageDbPath}`);
         });
     }
 
@@ -74,7 +74,7 @@ function openDatabases() {
             if (err) {
                 handleDbError(err, 'Guild Database');
                 return reject(err);
-            } else console.log(`✅ SQLite Guild Database connected: ${guildDbPath}`);
+            } else logger.info(`✅ SQLite Guild Database connected: ${guildDbPath}`);
         });
     }
 }
@@ -470,21 +470,21 @@ const getOneSync = (query, params = []) => {
     try {
         openDatabases(); // Ensure database is open before running query
 
-        console.log(`🔍 DEBUG: Running getOneSync with query: ${query} | Params: ${JSON.stringify(params)}`);
+        logger.info(`🔍 DEBUG: Running getOneSync with query: ${query} | Params: ${JSON.stringify(params)}`);
 
         const stmt = mainDb.prepare(query); // Prepare statement
         const row = stmt.get(...params); // Execute query with parameters
         stmt.finalize(); // Free memory
 
         if (!row) {
-            console.error('🚨 getOneSync ERROR: Query returned NO RESULT.');
+            logger.error('🚨 getOneSync ERROR: Query returned NO RESULT.');
             return null;
         }
 
-        console.log('✅ getOneSync SUCCESS: Retrieved Row →', row);
+        logger.info('✅ getOneSync SUCCESS: Retrieved Row →', row);
         return row;
     } catch (err) {
-        console.error(`🚨 getOneSync ERROR: ${err.message}`);
+        logger.error(`🚨 getOneSync ERROR: ${err.message}`);
         return null;
     }
 };

@@ -11,7 +11,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const logger = require('../../utils/logger');
+const logger = require('../../utils/essentials/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()

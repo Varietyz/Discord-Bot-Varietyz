@@ -1,6 +1,6 @@
 // src/modules/events/client/raw.js
 
-const logger = require('../../utils/logger');
+const logger = require('../../utils/essentials/logger');
 
 module.exports = {
     name: 'raw',

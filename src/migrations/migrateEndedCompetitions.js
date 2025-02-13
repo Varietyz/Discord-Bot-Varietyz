@@ -19,8 +19,8 @@
  * @module src/migrations/migrateEndedCompetitions
  */
 
-const db = require('../modules/utils/dbUtils');
-const logger = require('../modules/utils/logger');
+const db = require('../modules/utils/essentials/dbUtils');
+const logger = require('../modules/utils/essentials/logger');
 
 /**
  * 🎯 **Migrates Ended Competitions**

@@ -2,11 +2,11 @@
 
 // @ts-nocheck
 
-const db = require('../../utils/dbUtils');
-const { sleep } = require('../../utils/sleepUtil');
-const { calculateEndDate } = require('../../utils/dateUtils');
-const { purgeChannel } = require('../../utils/purgeChannel');
-const logger = require('../../utils/logger');
+const db = require('../../utils/essentials/dbUtils');
+const { sleep } = require('../../utils/helpers/sleepUtil');
+const { calculateEndDate } = require('../../utils/helpers/dateUtils');
+const { purgeChannel } = require('../../utils/helpers/purgeChannel');
+const logger = require('../../utils/essentials/logger');
 const constants = require('../../../config/constants');
 require('dotenv').config();
 
@@ -17,7 +17,7 @@ const { createCompetition } = require('./competitionCreator');
 const { removeInvalidCompetitions } = require('./competitionValidator');
 const { updateActiveCompetitionEmbed } = require('./embedHandler');
 const { scheduleRotation, scheduleRotationsOnStartup } = require('./scheduler');
-const { tallyVotesAndRecordWinner } = require('../../utils/tallyVotes');
+const { tallyVotesAndRecordWinner } = require('../../utils/helpers/tallyVotes');
 const { buildPollDropdown } = require('./embedHandler');
 const { recordCompetitionWinner, updateFinalLeaderboard } = require('./competitionWinners');
 const { updateAllTimeLeaderboard } = require('./alltimeCompetitionWinners');

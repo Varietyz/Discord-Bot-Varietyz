@@ -1,7 +1,7 @@
 // @ts-nocheck
 // competitionService/competitionCreator.js
 
-const logger = require('../../utils/logger');
+const logger = require('../../utils/essentials/logger');
 const { Metric } = require('@wise-old-man/utils');
 
 /**

@@ -80,8 +80,8 @@
 const { EmbedBuilder } = require("discord.js");
 const logger = require("./logger");
 const { ROLE_CHANNEL_ID } = require("../../config/constants");
-const { getAll } = require("../../utils/dbUtils");
-const { standardizeName } = require("../../utils/normalizeRsn.js");
+const { getAll } = require("../../utils/essentials/dbUtils");
+const { standardizeName } = require("../../utils/normalizing/normalizeRsn.js");
 
 /**
  * Get all RSNs for a given Discord user from the registered_rsn table.

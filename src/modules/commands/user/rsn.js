@@ -24,12 +24,12 @@
  */
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const logger = require('../../utils/logger');
-const { runQuery, getOne } = require('../../utils/dbUtils');
+const logger = require('../../utils/essentials/logger');
+const { runQuery, getOne } = require('../../utils/essentials/dbUtils');
 const { easterEggs } = require('../../../config/easterEggs');
-const { normalizeRsn } = require('../../utils/normalizeRsn');
-const { validateRsn } = require('../../utils/validateRsn');
-const { fetchPlayerData } = require('../../utils/fetchPlayerData');
+const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
+const { validateRsn } = require('../../utils/helpers/validateRsn');
+const { fetchPlayerData } = require('../../utils/fetchers/fetchPlayerData');
 
 const RATE_LIMIT = 5;
 const RATE_LIMIT_DURATION = 60 * 1000;

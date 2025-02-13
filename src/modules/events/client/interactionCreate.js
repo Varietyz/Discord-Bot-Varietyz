@@ -1,6 +1,6 @@
 // src/modules/events/interactionCreate.js
 
-const { handleAutocomplete, handleSlashCommand } = require('../../utils/slashCommandHandler');
+const { handleAutocomplete, handleSlashCommand } = require('../../utils/essentials/slashCommandHandler');
 
 module.exports = {
     name: 'interactionCreate', // Event name

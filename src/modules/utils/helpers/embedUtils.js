@@ -7,8 +7,8 @@
 
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
 const path = require('path');
-const logger = require('./logger');
-const db = require('./dbUtils');
+const logger = require('../essentials/logger');
+const db = require('../essentials/dbUtils');
 
 /**
  * 🎯 **Normalizes a String for Comparison**
@@ -93,17 +93,22 @@ async function getImagePath(metric) {
  * const { embeds, files } = await createCompetitionEmbed(client, 'SOTW', 'mining', '2023-03-01T12:00:00Z', '2023-03-08T23:59:00Z', 123);
  */
 const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, competitionId) => {
-    const competitionTitle = type === 'SOTW' ? '<:Total_Level:1127669463613976636> Skill of the Week' : '<:Slayer:1127658069984288919> Boss of the Week';
-    const titleFallback = type === 'SOTW' ? '⚔️ Skill of the Week' : '🐉 Boss of the Week';
+    // Await the queries to get the emoji formats.
+    let emojiFormat;
+    if (type === 'SOTW') {
+        // getAll returns an array; extract the first result.
+        const overallEmojis = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_overall']);
+        emojiFormat = overallEmojis.length > 0 ? overallEmojis[0].emoji_format : '';
+    } else {
+        const slayerEmojis = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_slayer']);
+        emojiFormat = slayerEmojis.length > 0 ? slayerEmojis[0].emoji_format : '';
+    }
+    const competitionTitle = type === 'SOTW' ? `${emojiFormat} Skill of the Week` : `${emojiFormat} Boss of the Week`;
+    const titleFallback = type === 'SOTW' ? '📊 Skill of the Week' : '🐉 Boss of the Week';
     const displayedTitle = competitionTitle.includes('<:') ? competitionTitle : titleFallback;
 
-    //logger.debug(`🔍 Creating competition embed for metric: "${metric}"`);
-    //logger.debug(`ℹ️ Competition type: "${type}", Starts: "${startsAt}", Ends: "${endsAt}"`);
-
-    const resourcesFolder = path.resolve(__dirname, '../../resources');
-
+    const resourcesFolder = path.resolve(__dirname, '../../../resources');
     const imagePath = path.join(resourcesFolder, 'skills_bosses', `${metric.toLowerCase()}.png`);
-    //logger.debug(`📁 Resolved local image path: "${imagePath}"`);
 
     let imageAttachment;
     try {
@@ -116,7 +121,6 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
     let guild;
     try {
         guild = await client.guilds.fetch(process.env.GUILD_ID);
-        //logger.debug(`✅ Successfully fetched guild: ${guild.name}`);
     } catch (err) {
         logger.warn(`⚠️ Failed to fetch guild. Reason: ${err.message}`);
         guild = null;
@@ -130,12 +134,13 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
         if (foundEmoji && foundEmoji.available) {
             metricEmoji = foundEmoji.toString();
         } else {
-            metricEmoji = type === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️';
+            // Fallback if emoji is not found.
+            metricEmoji = type === 'SOTW' ? emojiFormat : '⚔️';
             logger.warn(`⚠️ Custom emoji "${normalizedMetric}" not found or unavailable. Using fallback ${metricEmoji}`);
         }
     } else {
         logger.warn(`⚠️ Guild is undefined; cannot fetch emoji for metric: ${metric}`);
-        metricEmoji = type === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️';
+        metricEmoji = type === 'SOTW' ? emojiFormat : '⚔️';
     }
 
     const formattedMetric = metric
@@ -163,7 +168,6 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
                 inline: true,
             },
         )
-
         .setColor(type === 'SOTW' ? 0x3498db : 0xe74c3c)
         .setThumbnail(`attachment://${metric}.png`)
         .setImage(type === 'SOTW' ? 'https://i.ibb.co/DP2F5L9/sotw-banner.png' : 'https://i.ibb.co/MGLHPrk/botw-banner.png');

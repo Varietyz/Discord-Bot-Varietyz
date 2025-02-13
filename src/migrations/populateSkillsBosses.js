@@ -25,8 +25,8 @@
  */
 
 const { EmbedBuilder } = require('discord.js');
-const db = require('../modules/utils/dbUtils');
-const logger = require('../modules/utils/logger');
+const db = require('../modules/utils/essentials/dbUtils');
+const logger = require('../modules/utils/essentials/logger');
 const { MetricProps } = require('@wise-old-man/utils');
 
 /**

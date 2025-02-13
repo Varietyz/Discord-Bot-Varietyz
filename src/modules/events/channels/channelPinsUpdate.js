@@ -1,15 +1,15 @@
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 const {
     guild: { getOne },
-} = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+} = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 
 module.exports = {
     name: 'channelPinsUpdate',
     once: false,
 
     /**
-     * Triggered when the pinned messages in a channel are updated.
+     * Triggered when a message is pinned in a channel.
      * @param channel - The channel where pins were updated.
      */
     async execute(channel) {
@@ -25,47 +25,72 @@ module.exports = {
             const logChannel = await channel.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;
 
-            // 🕵️ Fetch audit logs to determine who updated the pins
+            // 🕵️ Fetch pinned messages after change
+            const updatedPinnedMessages = await channel.messages.fetchPinned().catch(() => null);
+
+            // Wait for audit logs to update
             logger.info('🔎 Checking audit logs for pin changes...');
-            await new Promise((resolve) => setTimeout(resolve, 3000)); // ⏳ Wait 3 seconds for logs to update
+            await new Promise((resolve) => setTimeout(resolve, 3000));
 
-            const fetchedLogs = await channel.guild.fetchAuditLogs({
-                type: AuditLogEvent.MessagePin,
-                limit: 5,
-            });
-
-            const pinLog = fetchedLogs.entries.find((entry) => entry.extra.channel.id === channel.id && Date.now() - entry.createdTimestamp < 10000);
-
+            // 🔍 Fetch audit logs for pin actions
             let changedBy = '`Unknown`';
-            if (pinLog) {
-                changedBy = `<@${pinLog.executor.id}>`; // Mention the user
-                logger.info(`📌 Pin change detected by: ${changedBy}`);
-            } else {
-                logger.warn(`⚠️ No audit log entry found for pin update in "${channel.name}"`);
+            let pinLog = null;
+            try {
+                const fetchedLogs = await channel.guild.fetchAuditLogs({
+                    type: AuditLogEvent.MessagePin,
+                    limit: 5,
+                });
+
+                pinLog = fetchedLogs.entries.find(
+                    (entry) => entry.extra.channel.id === channel.id && Date.now() - entry.createdTimestamp < 15000, // Extended to 15s
+                );
+
+                if (pinLog) {
+                    changedBy = `<@${pinLog.executor.id}>`;
+                    logger.info(`📌 Pin action detected by: ${changedBy}`);
+                } else {
+                    logger.warn(`⚠️ No audit log entry found for pin update in "${channel.name}". Assuming self-pin.`);
+                }
+            } catch (auditError) {
+                logger.warn(`⚠️ Could not fetch audit log for pin update: ${auditError.message}`);
             }
 
-            // 🚨 **Detect whether a message was pinned or unpinned**
-            let actionType = '📌 **Message Pinned**';
-            try {
-                const pinnedMessages = await channel.messages.fetchPinned().catch(() => null);
-                if (pinnedMessages && pinnedMessages.size < 50) {
-                    actionType = '📌 **Message Unpinned**'; // If there are fewer than 50 pinned messages, assume one was removed
+            // 🕵️ Identify the most recently pinned message
+            let messageDetails = '`Unknown Message`';
+            let authorTag = '`Unknown`';
+            let messageUrl = '`No Link Available`';
+            let threadDetails = '`N/A`';
+
+            if (updatedPinnedMessages && updatedPinnedMessages.size > 0) {
+                const lastMessage = Array.from(updatedPinnedMessages.values()).pop();
+                if (lastMessage) {
+                    messageDetails = lastMessage.content ? `\`${lastMessage.content.slice(0, 100)}\`` : '`[Embed/Attachment]`';
+                    authorTag = lastMessage.author ? `<@${lastMessage.author.id}>` : '`Unknown`';
+                    messageUrl = `${lastMessage.url}`;
+
+                    if (lastMessage.channel.isThread()) {
+                        threadDetails = `🧵 **Thread:** <#${lastMessage.channel.id}> \`${lastMessage.channel.name}\``;
+                    }
                 }
-            } catch (fetchError) {
-                logger.warn(`⚠️ Unable to fetch pinned messages: ${fetchError.message}`);
             }
 
             // 📌 Build the embed for logging
-            const embed = new EmbedBuilder()
-                .setColor(0xf1c40f) // Yellow for pin updates
-                .setTitle(actionType)
-                .addFields(
-                    { name: '📢 Channel', value: `<#${channel.id}> \`${channel.name}\``, inline: true },
-                    { name: '📁 Category', value: channel.parent?.name || '`Uncategorized`', inline: true },
-                    { name: '🛠 Changed By', value: changedBy, inline: false },
-                )
-                .setFooter({ text: `Channel ID: ${channel.id}` })
-                .setTimestamp();
+            const embed = new EmbedBuilder(); // Yellow for pin events
+            if (changedBy === '`Unknown`') {
+                embed.setTitle('📌 **Pin Removed**').setColor(0xff0000);
+            } else {
+                embed.setTitle('📌 **Message Pinned**').setColor(0x00ff00);
+            }
+            embed.addFields(
+                { name: '📢 Channel', value: `<#${channel.id}> \`${channel.name}\``, inline: true },
+                { name: '📁 Category', value: channel.parent?.name || '`Uncategorized`', inline: true },
+                { name: '👤 Message Author', value: authorTag, inline: true },
+                { name: '📌 Pinned Message', value: messageDetails, inline: false },
+                { name: '🔗 Message Link', value: messageUrl, inline: false },
+            );
+            if (changedBy !== '`Unknown`') embed.addFields({ name: '🛠 Changed By', value: changedBy, inline: false });
+            if (threadDetails !== '`N/A`') embed.addFields({ name: '🧵 Thread Info', value: threadDetails, inline: false });
+            embed.setFooter({ text: `Channel ID: ${channel.id}` }).setTimestamp();
 
             // 📤 Send the embed to the log channel
             await logChannel.send({ embeds: [embed] });

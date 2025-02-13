@@ -27,8 +27,8 @@ const { processNameChanges } = require('./modules/services/nameChanges');
 const { fetchAndUpdatePlayerData } = require('./modules/services/playerDataExtractor');
 const { fetchAndProcessMember } = require('./modules/services/autoRoles');
 const { updateVoiceChannel } = require('./modules/services/activeMembers');
-const { getAll } = require('./modules/utils/dbUtils');
-const logger = require('./modules/utils/logger');
+const { getAll } = require('./modules/utils/essentials/dbUtils');
+const logger = require('./modules/utils/essentials/logger');
 require('dotenv').config();
 
 /**
@@ -53,28 +53,28 @@ module.exports = [
             const competitionService = new CompetitionService(client);
             await competitionService.startNextCompetitionCycle();
         },
-        interval: 600 * 3, // Runs every 30 minutes
+        interval: 60 * 30, // Runs every 30 minutes
         runOnStart: true,
         runAsTask: true,
     },
     {
         name: 'updateData',
         func: async (client) => await updateData(client),
-        interval: 600 * 3, // Runs every 30 minutes
-        runOnStart: true,
+        interval: 60 * 30, // Runs every 30 minutes
+        runOnStart: false,
         runAsTask: true,
     },
     {
         name: 'processNameChanges',
         func: async (client) => await processNameChanges(client),
-        interval: 3600 * 3, // Runs every 3 hours
+        interval: 60 * 180, // Runs every 3 hours
         runOnStart: true,
         runAsTask: true,
     },
     {
         name: 'fetchAndUpdatePlayerData',
         func: async () => await fetchAndUpdatePlayerData(),
-        interval: 3600 * 1, // Runs every 1 hour
+        interval: 60 * 60, // Runs every 1 hour
         runOnStart: true,
         runAsTask: true,
     },
@@ -91,14 +91,14 @@ module.exports = [
                 await fetchAndProcessMember(guild, userId);
             }
         },
-        interval: 3600 * 1, // Runs every 1 hour
+        interval: 60 * 60, // Runs every 1 hour
         runOnStart: true,
         runAsTask: true,
     },
     {
         name: 'updateVoiceChannel',
         func: async (client) => await updateVoiceChannel(client),
-        interval: 3600 * 3, // Runs every 3 hours
+        interval: 60 * 180, // Runs every 3 hours
         runOnStart: true,
         runAsTask: true,
     },

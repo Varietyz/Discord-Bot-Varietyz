@@ -18,7 +18,7 @@
  * @module utils/lastFetchedTime
  */
 
-const { getAll, runQuery } = require('./dbUtils');
+const { getAll, runQuery } = require('../essentials/dbUtils');
 
 /**
  * 🎯 **Ensures the Player Fetch Times Table Exists**

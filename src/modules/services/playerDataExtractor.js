@@ -20,10 +20,10 @@
  */
 
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
-const logger = require('../utils/logger');
-const { runQuery, getAll } = require('../utils/dbUtils');
-const { sleep } = require('../utils/sleepUtil');
-const { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable } = require('../utils/lastFetchedTime');
+const logger = require('../utils/essentials/logger');
+const { runQuery, getAll } = require('../utils/essentials/dbUtils');
+const { sleep } = require('../utils/helpers/sleepUtil');
+const { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable } = require('../utils/fetchers/lastFetchedTime');
 
 /**
  * 🎯 **Formats and Flattens Player Data for SQL Storage**

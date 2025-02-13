@@ -1,7 +1,7 @@
 const {
     guild: { getOne, runQuery },
-} = require('../../../utils/dbUtils');
-const logger = require('../../../utils/logger');
+} = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
 const { EmbedBuilder } = require('discord.js');
 
 const deletedThreads = new Set(); // 🔄 Tracks deleted threads

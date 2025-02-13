@@ -2,7 +2,7 @@
 
 require('dotenv').config();
 const { dbPromise, systemTables } = require('./msgDbConstants');
-const logger = require('../utils/logger');
+const logger = require('../utils/essentials/logger');
 
 /**
  * 🎯 **Initializes the Database**

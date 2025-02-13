@@ -3,8 +3,8 @@
 const { EmbedBuilder, AuditLogEvent, ChannelType } = require('discord.js');
 const {
     guild: { getOne, runQuery },
-} = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+} = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 
 const CHANNEL_TYPES = {
     [ChannelType.GuildText]: '📃 Text Channel',
@@ -75,6 +75,19 @@ module.exports = {
             const channelRecord = await getOne('SELECT channel_key FROM guild_channels WHERE channel_id = ?', [channel.id]);
             const logKey = channelRecord ? channelRecord.channel_key : '`Not Found`';
 
+            let ensuredChannelKey = null;
+            const setupChannel = await getOne('SELECT setup_key FROM setup_channels WHERE channel_id = ?', [channel.id]);
+            const logChannelEntry = await getOne('SELECT log_key FROM log_channels WHERE channel_id = ?', [channel.id]);
+            const compChannel = await getOne('SELECT comp_key FROM comp_channels WHERE channel_id = ?', [channel.id]);
+
+            if (setupChannel) {
+                ensuredChannelKey = setupChannel.setup_key;
+            } else if (logChannelEntry) {
+                ensuredChannelKey = logChannelEntry.log_key;
+            } else if (compChannel) {
+                ensuredChannelKey = compChannel.comp_key;
+            }
+
             // 🔄 **Remove the deleted channel from the database.**
             await runQuery('DELETE FROM guild_channels WHERE channel_id = ?', [channel.id]);
 
@@ -83,12 +96,20 @@ module.exports = {
                 .setColor(0xff0000) // Red for deletions.
                 .setTitle('🗑️ Channel Deleted')
                 .addFields(
-                    { name: '📌 Channel Name', value: `\`${channel.name}\``, inline: true },
-                    { name: '🔑 Log Key', value: `\`${logKey}\``, inline: true },
-                    { name: '🔍 Channel Type', value: `\`${channelTypeName}\``, inline: true },
+                    { name: '🏷️ Channel', value: `\`${channel.name}\``, inline: true },
+                    { name: '\u200b', value: '\u200b', inline: true },
                     { name: '📁 Category', value: `\`${channel.parent?.name || 'Uncategorized'}\``, inline: true },
-                    { name: '🛠 Deleted By', value: deletedBy, inline: false },
-                )
+                    { name: '🔑 Generated Channel Key', value: `\`${logKey}\``, inline: true },
+                    { name: '\u200b', value: '\u200b', inline: true },
+                );
+
+            if (ensuredChannelKey) {
+                embed.addFields({ name: ':closed_lock_with_key: Static Key', value: `\`${ensuredChannelKey}\``, inline: true });
+            } else {
+                embed.addFields({ name: '\u200b', value: '\u200b', inline: true });
+            }
+            embed
+                .addFields({ name: '🔍 Channel Type', value: `\`${channelTypeName}\``, inline: true }, { name: '\u200b', value: '\u200b', inline: true }, { name: '🛠 Deleted By', value: deletedBy, inline: true })
                 .setFooter({ text: `Channel ID: ${channel.id}` })
                 .setTimestamp();
 

@@ -1,8 +1,9 @@
-const db = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+const db = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 const { EmbedBuilder } = require('discord.js');
 const constants = require('../../../config/constants');
+const { getMetricEmoji } = require('../../utils/fetchers/getCompMetricEmoji');
 
 /**
  * 🎯 **Records the Competition Winner (Includes `player_id`)**
@@ -92,13 +93,14 @@ const recordCompetitionWinner = async (competition) => {
  * @async
  * @function updateFinalLeaderboard
  * @param {Object} competition - The ended competition object.
+ * @param guild
  * @param {Object} client - The Discord client instance.
  *
  * @example
  * // 📌 Update the final leaderboard for a competition:
  * await updateFinalLeaderboard(competition, client);
  */
-const updateFinalLeaderboard = async (competition, client) => {
+const updateFinalLeaderboard = async (competition, guild, client) => {
     try {
         const details = await WOMApiClient.request('competitions', 'getCompetitionDetails', competition.competition_id);
 
@@ -116,12 +118,12 @@ const updateFinalLeaderboard = async (competition, client) => {
             return;
         }
 
-        const sotwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_sotw']);
-        const botwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_name = ?', ['emoji_botw']);
-        const sotwEmoji = sotwEmojiRow ? sotwEmojiRow.emoji_format : '';
-        const botwEmoji = botwEmojiRow ? botwEmojiRow.emoji_format : '';
+        let metricEmoji = await getMetricEmoji(guild, competition.metric, competition.type); // ✅ Await the function
 
-        const metricEmoji = competition.type === 'SOTW' ? sotwEmoji : botwEmoji;
+        if (!metricEmoji) {
+            logger.warn(`⚠️ **Warning:** Metric emoji is undefined for \`${competition.metric}\`.`);
+            metricEmoji = competition.type === 'SOTW' ? '📊' : '🐲'; // Default fallbacks
+        }
 
         const leaderboardText =
             sortedParticipants.length > 0
@@ -129,7 +131,7 @@ const updateFinalLeaderboard = async (competition, client) => {
                     .slice(0, 10)
                     .map((p, i) => {
                         const playerLink = `https://wiseoldman.net/players/${encodeURIComponent(p.player.displayName)}`;
-                        return `> **${i + 1}.** **[${p.player.displayName}](${playerLink})**\n>  - ${metricEmoji}\`${p.progress.gained.toLocaleString()}\``;
+                        return `> **${i + 1}.** **[${p.player.displayName}](${playerLink})**\n>  ${metricEmoji}\`${p.progress.gained.toLocaleString()}\``;
                     })
                     .join('\n\n')
                 : '_No participants._';

@@ -1,10 +1,10 @@
-const { AuditLogEvent, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { AuditLogEvent, EmbedBuilder, PermissionsBitField, TextChannel, NewsChannel, ThreadChannel } = require('discord.js');
 const {
     guild: { runQuery, getOne, getAll },
-} = require('../../utils/dbUtils');
+} = require('../../utils/essentials/dbUtils');
 
-const logger = require('../../utils/logger');
-const { normalizeKey } = require('../../utils/normalizeKey');
+const logger = require('../../utils/essentials/logger');
+const { normalizeKey } = require('../../utils/normalizing/normalizeKey');
 
 module.exports = {
     name: 'webhooksUpdate',
@@ -28,7 +28,7 @@ module.exports = {
                 return;
             }
 
-            // Introduce a small delay before fetching audit logs to allow Discord to update them
+            // Fetch recent webhook audit logs
             const webhookLog = await fetchRecentWebhookAuditLog(channel.guild, channel.id);
             if (!webhookLog) {
                 logger.warn('⚠️ No relevant webhook audit log entry found. Attempting to compare stored webhooks.');
@@ -36,7 +36,7 @@ module.exports = {
             }
 
             const { action, executor, target, changes } = webhookLog;
-            let webhookId = '`Unknown`';
+            const webhookId = target?.id || '`Unknown`';
             const channelMention = `<#${channel.id}> \`${channel.name}\``;
             const performedBy = executor ? `<@${executor.id}>` : '`Unknown`';
             const changesList = changes?.map((change) => `🔄 **${change.key}**: \`${change.old ?? 'None'}\` → \`${change.new ?? 'None'}\``) || ['`No details available.`'];
@@ -44,20 +44,26 @@ module.exports = {
             // Fetch all webhooks from the guild
             const webhooks = await channel.guild.fetchWebhooks();
             const webhook = webhooks.find((w) => w.id === target?.id);
-            webhookId = webhook ? webhook.id : target?.id || '`Unknown`';
 
             let actionType;
             let embedColor;
 
-            let webhookUrl = '`Not Available`'; // Default value if URL is missing
-            let webhookName = '`Unknown`'; // Default name if not set
+            let webhookUrl = '`Not Available`';
+            let webhookName = '`Unknown`';
 
-            // Fetch existing webhook names to ensure uniqueness
-            const existingWebhookNames = new Set((await getAll('SELECT webhook_name FROM guild_webhooks WHERE channel_id = ?', [channel.id]))?.map((row) => row.webhook_name) || []);
+            // **🔍 Check if webhook already exists in database**
+            const webhookKeyEntry = await getOne('SELECT webhook_key FROM guild_webhooks WHERE webhook_id = ?', [webhook?.id]);
+            let webhookKey = webhookKeyEntry ? webhookKeyEntry.webhook_key : null;
 
-            if (webhook?.url) {
+            if (webhook) {
                 webhookUrl = webhook.url;
-                webhookName = webhook.name ? normalizeKey(webhook.name, 'webhook', existingWebhookNames) : normalizeKey(channel.name, 'webhook', existingWebhookNames);
+                webhookName = webhook.name || channel.name;
+
+                // ✅ **If webhook is new, assign a unique static key**
+                if (!webhookKey) {
+                    webhookKey = await normalizeKey(webhookName, 'webhook', { guild: { getAll } });
+                    logger.info(`🆕 Assigned new static webhook key: ${webhookKey}`);
+                }
             }
 
             switch (action) {
@@ -65,11 +71,13 @@ module.exports = {
                 actionType = '📡 **Webhook Created**';
                 embedColor = 0x2ecc71;
                 if (webhook) {
-                    try {
-                        await runQuery('INSERT INTO guild_webhooks (webhook_key, webhook_name, webhook_url, channel_id) VALUES (?, ?, ?, ?) ON CONFLICT(webhook_key) DO NOTHING', [webhook.id, webhookName, webhook.url, channel.id]);
-                    } catch (err) {
-                        logger.error(`❌ Failed to insert webhook (ID: ${webhookId}) into DB: ${err.message}`);
-                    }
+                    await runQuery('INSERT INTO guild_webhooks (webhook_key, webhook_id, webhook_name, webhook_url, channel_id) VALUES (?, ?, ?, ?, ?) ON CONFLICT(webhook_key) DO NOTHING', [
+                        webhookKey,
+                        webhook.id,
+                        webhook.name,
+                        webhook.url,
+                        channel.id,
+                    ]);
                 }
                 break;
 
@@ -77,22 +85,14 @@ module.exports = {
                 actionType = '🔄 **Webhook Updated**';
                 embedColor = 0xf1c40f;
                 if (webhook) {
-                    try {
-                        await runQuery('UPDATE guild_webhooks SET webhook_name = ?, webhook_url = ?, channel_id = ? WHERE webhook_key = ?', [webhookName, webhook.url, channel.id, webhook.id]);
-                    } catch (err) {
-                        logger.error(`❌ Failed to update webhook (ID: ${webhookId}) in DB: ${err.message}`);
-                    }
+                    await runQuery('UPDATE guild_webhooks SET webhook_name = ?, webhook_url = ?, channel_id = ? WHERE webhook_key = ?', [webhook.name, webhook.url, channel.id, webhookKey]);
                 }
                 break;
 
             case AuditLogEvent.WebhookDelete:
                 actionType = '🗑️ **Webhook Deleted**';
                 embedColor = 0xff0000;
-                try {
-                    await runQuery('DELETE FROM guild_webhooks WHERE webhook_key = ?', [webhookId]);
-                } catch (err) {
-                    logger.error(`❌ Failed to delete webhook (ID: ${webhookId}) from DB: ${err.message}`);
-                }
+                await runQuery('DELETE FROM guild_webhooks WHERE webhook_key = ?', [webhookKey]);
                 break;
 
             default:
@@ -100,28 +100,24 @@ module.exports = {
                 return;
             }
 
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['server_logs']);
-            if (!logChannelData) return;
+            const logChannel = await getWebhookLogChannel(channel.guild);
+            if (!logChannel) return;
 
-            const logChannel = await channel.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
-            if (logChannel && 'send' in logChannel) {
-                const embed = new EmbedBuilder()
-                    .setColor(embedColor)
-                    .setTitle(actionType)
-                    .addFields(
-                        { name: '📁 Channel', value: channelMention, inline: true },
-                        { name: '👤 Performed By', value: performedBy, inline: true },
-                        { name: '🆔 Webhook ID', value: `\`${webhookId}\``, inline: true },
-                        { name: '🏷️ Webhook Name', value: `\`${webhookName}\``, inline: false }, // Shows readable name
-                        { name: '🔗 Webhook URL', value: `\`\`\`${webhookUrl}\`\`\``, inline: false }, // Shows URL in all cases
-                        { name: '🔄 Changes', value: changesList.join('\n'), inline: false },
-                    )
-                    .setTimestamp();
+            const embed = new EmbedBuilder()
+                .setColor(embedColor)
+                .setTitle(actionType)
+                .addFields(
+                    { name: '📁 Channel', value: channelMention, inline: true },
+                    { name: '👤 Performed By', value: performedBy, inline: true },
+                    { name: '🆔 Webhook ID', value: `\`${webhookId}\``, inline: true },
+                    { name: '🔑 Webhook Key', value: `\`${webhookKey}\``, inline: true },
+                    { name: '🏷️ Webhook Name', value: `\`${webhookName}\``, inline: true },
+                    { name: '🔗 Webhook URL', value: `\`\`\`${webhookUrl}\`\`\``, inline: false },
+                    { name: '🔄 Changes', value: changesList.join('\n'), inline: false },
+                )
+                .setTimestamp();
 
-                await logChannel.send({ embeds: [embed] });
-            } else {
-                logger.warn(`⚠️ Attempted to log webhook event in an invalid channel (ID: ${logChannelData.channel_id})`);
-            }
+            await logChannel.send({ embeds: [embed] });
 
             logger.info(`✅ Successfully logged webhook action: ${actionType}`);
         } catch (error) {
@@ -129,6 +125,27 @@ module.exports = {
         }
     },
 };
+
+/**
+ * Retrieves the log channel for webhook events.
+ * Ensures the returned channel is a `TextChannel`, `NewsChannel`, or `ThreadChannel`.
+ *
+ * @param {import('discord.js').Guild} guild - The Discord guild instance.
+ * @returns {Promise<import('discord.js').TextChannel | import('discord.js').NewsChannel | import('discord.js').ThreadChannel | null>}
+ */
+async function getWebhookLogChannel(guild) {
+    const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['webhook_logs']);
+    if (!logChannelData) return null;
+
+    const channel = await guild.channels.fetch(logChannelData.channel_id).catch(() => null);
+
+    // **Ensure the fetched channel is strictly a text-based channel**
+    if (channel instanceof TextChannel || channel instanceof NewsChannel || channel instanceof ThreadChannel) {
+        return channel;
+    }
+
+    return null; // Return null if it's not a valid text-based channel
+}
 
 /**
  * Fetches the most recent webhook-related audit log entry, with retries.

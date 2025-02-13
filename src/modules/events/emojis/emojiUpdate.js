@@ -1,9 +1,7 @@
-// src/modules/events/emojiUpdate.js
-
 const {
     guild: { getOne, runQuery },
-} = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+} = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 
 module.exports = {
@@ -24,8 +22,33 @@ module.exports = {
         try {
             logger.info(`✏️ [EmojiUpdate] Emoji updated in guild ${newEmoji.guild.name}: "${oldEmoji.name}" → "${newEmoji.name}"`);
 
-            // ✅ Update the emoji name in the database
-            await runQuery('UPDATE guild_emojis SET emoji_name = ?, emoji_format = ? WHERE emoji_id = ?', [newEmoji.name, formatEmoji(newEmoji), newEmoji.id]);
+            // Fetch the existing emoji key from the database
+            const existingEmoji = await getOne('SELECT emoji_key FROM guild_emojis WHERE emoji_id = ?', [newEmoji.id]);
+
+            // **If no existing emoji is found, log an error and return**
+            if (!existingEmoji) {
+                logger.warn(`⚠️ [EmojiUpdate] No existing key found for emoji "${newEmoji.name}". Skipping update.`);
+                return;
+            }
+
+            // **Keep the existing emoji key (DO NOT CHANGE IT)**
+            const uniqueKey = existingEmoji.emoji_key;
+
+            // **STOP UNNECESSARY RENAMES**
+            if (newEmoji.name === uniqueKey) {
+                logger.info(`✅ [EmojiUpdate] Emoji "${newEmoji.name}" already has correct key, skipping rename.`);
+                return;
+            }
+
+            // **Update only the emoji name, NOT the key**
+            await runQuery(
+                `UPDATE guild_emojis 
+                 SET emoji_name = ?, emoji_format = ?
+                 WHERE emoji_id = ?`,
+                [newEmoji.name, formatEmoji(newEmoji), newEmoji.id],
+            );
+
+            logger.info(`📌 [EmojiUpdate] Successfully updated emoji name: "${oldEmoji.name}" → "${newEmoji.name}" (Key: "${uniqueKey}")`);
 
             // 🔍 Fetch the logging channel
             const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['server_logs']);
@@ -50,10 +73,11 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor(0xf1c40f) // Yellow for updated emojis
                 .setTitle('✏️ Emoji Updated')
+                .setDescription('# ' + newEmoji.toString())
                 .addFields(
-                    { name: '\u200b', value: newEmoji.toString(), inline: false },
                     { name: '📌 Old Name', value: `\`${oldEmoji.name}\``, inline: true },
                     { name: '📌 New Name', value: `\`${newEmoji.name}\``, inline: true },
+                    { name: '🔑 Assigned Key', value: `\`${uniqueKey}\``, inline: true },
                     { name: '🛠 Updated By', value: updatedBy, inline: false },
                 )
                 .setTimestamp();

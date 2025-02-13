@@ -19,7 +19,7 @@
  */
 
 const { DateTime } = require('luxon');
-const { getAll } = require('./dbUtils');
+const { getAll } = require('../essentials/dbUtils');
 
 /**
  * 🎯 **Calculates the Number of Active Players**

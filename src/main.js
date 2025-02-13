@@ -26,7 +26,7 @@
 
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 require('dotenv').config();
-const logger = require('./modules/utils/logger');
+const logger = require('./modules/utils/essentials/logger');
 const fs = require('fs');
 const path = require('path');
 const initializeMainTables = require('./migrations/initializeMainTables');

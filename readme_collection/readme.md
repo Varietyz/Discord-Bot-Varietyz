@@ -1,176 +1,161 @@
-### **📌 Key Features & How Varietyz Bot Works**
+# **📌 Varietyz Bot - OSRS Clan Management Made Easy**
 
-**Varietyz Bot** is a **Discord bot** designed to **automate OSRS clan management** by tracking player stats, managing roles, and keeping the community organized. Below, I’ll explain **all the features** it offers and **how it works**.
+**Varietyz Bot** is a powerful **Discord bot** designed to automate and streamline **Old School RuneScape (OSRS) clan management**. It tracks player stats, manages roles, organizes competitions, and keeps your community engaged.
 
 ---
 
-## **✨ Key Features of Varietyz Bot**
+## **✨ Key Features**
 
 ### **📋 1. RuneScape Name (RSN) Management**
 
-- Players can **register their in-game name** directly in Discord.
-- The bot **checks their stats** using a RuneScape tracking website called **Wise Old Man (WOM) API**.
-- Admins can **see a list of all registered players** in the Discord server.
-- If a player **changes their RSN**, the bot **updates it automatically**.
-- **If a player leaves the clan, their RSN is removed**, keeping the database clean.
+- Players can **register their in-game name (RSN)** directly in Discord.
+- The bot **syncs their stats** via the **Wise Old Man (WOM) API**.
+- **Auto-updates RSNs** when a player changes their in-game name.
+- **Cleans up inactive RSNs** to maintain an accurate database.
+- **Admins can view all registered players** in the clan.
 
-✅ **Example**: If you register your RSN as "Zezima", the bot will remember it and update your stats daily.
+✅ _Example_: If you register your RSN as "Knight123", the bot will track your stats and update them daily.
 
 ---
 
 ### **🛡️ 2. Automatic Role Assignments**
 
-- The bot **automatically gives roles** based on achievements in the game.
-- Roles are assigned for **skill milestones, boss kills, and general activity**.
-- When a player **reaches a new milestone**, the bot **updates their role**.
-- **Old roles are removed** to ensure players only have the ones they qualify for.
+- The bot **assigns roles** based on **skill milestones, boss kills, and achievements**.
+- **Old roles are removed**, ensuring members only have relevant roles.
+- **Custom role mappings** for activities like Clue Scrolls, PvP Arena, and Theatre of Blood.
+- **Role updates are logged and trackable by admins.**
 
-✅ **Example**: If you reach **99 Attack**, the bot will assign you a "Master of Attack" role in Discord.
-
----
-
-### **📈 3. Player Activity Tracking**
-
-- The bot keeps track of **who is active and who is inactive** in RuneScape.
-- It can **update a Discord voice channel name** to show how many players are active.
-- **Admins can check** the activity of all members using a simple command.
-
-✅ **Example**: If a player hasn’t logged in for **21+ days**, the bot marks them as **inactive**.
+✅ _Example_: Reach **99 Attack**? The bot grants you the **"Master of Attack"** role!
 
 ---
 
-### **🔄 4. Scheduled Updates & Automation**
+### **😀 3. Emoji & Role Normalization**
 
-- The bot **updates player stats daily** without admins having to do anything.
-- It **removes inactive players** from the database automatically.
-- The bot **fetches new data every few hours** to keep everything updated.
-- It **detects name changes** and updates them instantly.
+- **Newly created emojis and roles are automatically renamed** based on predefined naming conventions.
+- **Ensures unique identifiers** for emojis, roles, and other guild assets.
+- **Prevents name collisions** by appending numerical suffixes (\_1, \_2, etc.).
+- **Logs emoji and role changes** so admins can track updates.
 
-✅ **Example**: If a player changes their RSN from "Knight123" to "DragonLord", the bot will update it in **real-time**.
-
----
-
-### **🛠️ 5. Admin Commands & Clan Management**
-
-- Admins can **manually add or remove RSNs**.
-- Admins can **check who’s active and who isn’t**.
-- Admins can **queue competitions** for clan events.
-- Admins can **sync player data** if there’s a sudden change.
-- Admins can **force an update** if they need immediate information.
-
-✅ **Example**: If an admin wants to **see a list of all active players**, they can use the bot to generate it instantly.
+✅ _Example_: If an emoji named `fireball` is added, the bot ensures it gets a unique name like `emoji_fireball`.
 
 ---
 
-### **📊 6. Clan Competitions & Leaderboards**
+### **📈 4. Player Activity Tracking**
 
-- The bot **tracks competitions** like "Skill of the Week" or "Boss of the Week".
-- It **automatically queues competitions** based on admin settings.
-- The bot **fetches leaderboards** and posts results in Discord.
-- Admins can **customize competition types** (e.g., "Who got the most XP in a week?").
+- Detects **active & inactive players** based on OSRS data.
+- **Voice channel updates** display the number of active players in-game.
+- Admins can **fetch a list of active/inactive members**.
 
-✅ **Example**: The bot can **announce winners** of a competition and assign them a **special role** in Discord.
-
----
-
-### **📚 7. Message & Chat Logging**
-
-- The bot **saves important messages** in the database.
-- It can **track player activity in chat**.
-- The bot **detects and removes duplicate messages** to keep logs clean.
-
-✅ **Example**: If a player registers their RSN multiple times, the bot **prevents duplicates**.
+✅ _Example_: If a player hasn’t logged in for **21+ days**, the bot marks them as **inactive**.
 
 ---
 
-### **⏳ 8. Voice Channel Syncing**
+### **🔄 5. Automated Data Updates & Maintenance**
 
-- The bot **updates the name of a voice channel** to show how many players are active.
-- This helps **clan members instantly see how many people are online** in OSRS.
+- **Daily stat updates** ensure player data is always current.
+- **Detects RSN changes** and updates them automatically.
+- **Removes inactive players** from the database.
+- **Backs up important data** for reliability.
+- **Logs errors and system failures**, alerting admins of critical issues.
 
-✅ **Example**: If 10 players are active, the bot might rename the channel to **"Active Players: 10"**.
-
----
-
-### **🔍 9. Wise Old Man API Integration (Player Stats Tracking)**
-
-- The bot **connects to an external website** (Wise Old Man API) to **fetch player stats**.
-- It tracks **XP gains, boss kills, clue scrolls, and more**.
-- It uses **rate limiting** to **avoid overloading the website**.
-- The bot **automatically retries** if there’s a problem fetching data.
-
-✅ **Example**: If a player wants to see their **total experience and boss kills**, the bot can **fetch that data instantly**.
+✅ _Example_: If a player changes their RSN from "DragonLord" to "FireMage", the bot updates it instantly!
 
 ---
 
-### **🎯 10. Auto Cleanup & Database Maintenance**
+### **🛠️ 6. Admin Commands & Clan Management**
 
-- The bot **removes inactive players** from the database.
-- It **cleans up old competition results**.
-- It **prevents duplicate entries**.
-- The bot **automatically backs up important data**.
+- **Add or remove RSNs manually**.
+- **View clan members & their stats**.
+- **Sync player data on demand**.
+- **Configure channels & logging settings**.
+- **Automate competition setups**.
+- **Ban and unban users, tracking audit logs**.
 
-✅ **Example**: If a player leaves the clan, their **RSN is removed** so that the database stays clean.
-
----
-
-### **📊 11. Analytics & Detailed Reports**
-
-- The bot can **generate reports** about the clan’s activity.
-- It can **display stats like most active players, best boss killers, and XP leaders**.
-- The bot uses **visual embeds** to make reports easy to read in Discord.
-
-✅ **Example**: Admins can request a **list of the top 10 players in the clan** with a simple command.
+✅ _Example_: Want to see a list of all **active** members? Admins can generate it instantly!
 
 ---
 
-## **🛠️ How Varietyz Bot Works (Explained Simply)**
+### **🏆 7. Clan Competitions & Leaderboards**
 
-1️⃣ **Players Interact with the Bot**
+- **Tracks weekly competitions** like "Skill of the Week" (SOTW) & "Boss of the Week" (BOTW).
+- **Automatic competition rotations** keep things fresh.
+- **Fetches & posts leaderboards** in Discord.
+- **Announces winners & awards special roles**.
 
-- Players register their **RuneScape Name (RSN)** using **slash commands** (e.g., `/rsn`).
-- Admins manage the bot using **special admin commands**.
-
-2️⃣ **The Bot Fetches Data**
-
-- It **connects to the Wise Old Man API** to fetch **player stats, activity, and achievements**.
-- It **checks for RSN changes** and updates them automatically.
-
-3️⃣ **It Processes the Data**
-
-- It **assigns roles** based on **XP, boss kills, and activity**.
-- It **marks inactive players** if they haven’t played for **21+ days**.
-- It **updates leaderboards** for clan competitions.
-
-4️⃣ **The Bot Updates the Discord Server**
-
-- It **renames voice channels** to show active players.
-- It **assigns or removes roles** based on achievements.
-- It **sends competition results** in a fancy leaderboard format.
-
-5️⃣ **It Runs Scheduled Tasks Automatically**
-
-- The bot **fetches updates every few hours**.
-- It **removes inactive players** and **cleans the database**.
-- It **logs all actions** for admins to review.
+✅ _Example_: "Who gained the most XP this week?"—the bot posts the top players automatically!
 
 ---
 
-## **🎉 Summary of What Varietyz Bot Can Do**
+### **📚 8. Message & Chat Logging**
 
-✅ **Tracks players’ RuneScape names**  
-✅ **Assigns roles automatically based on achievements**  
-✅ **Shows active & inactive members**  
-✅ **Fetches stats and leaderboards for competitions**  
-✅ **Keeps Discord organized with automated updates**  
-✅ **Removes inactive players to keep the database clean**  
-✅ **Updates voice channels to show active members**  
-✅ **Sends detailed reports and analytics in chat**
+- **Saves important messages** in a database.
+- **Detects & removes duplicate messages**.
+- **Tracks player activity in chat** for admins.
+- **Logs moderation actions, bans, and unbans**.
+
+✅ _Example_: If someone tries to register an RSN multiple times, the bot **prevents duplication**.
 
 ---
 
-### **💡 Final Thoughts (No Technical Knowledge Needed!)**
+### **📊 9. Automated Analytics & Reports**
+
+- **Generates clan activity reports**.
+- **Tracks XP leaders, boss killers, & top players**.
+- **Displays statistics in an easy-to-read format** using embeds.
+
+✅ _Example_: Need a **Top 10 XP Gains** leaderboard? The bot generates it in seconds!
+
+---
+
+### **🔍 10. Wise Old Man API Integration**
+
+- **Fetches OSRS player stats**, including XP gains, boss kills, and activities.
+- **Uses rate-limiting & retries** for reliability.
+- **Auto-syncs player data** to avoid outdated stats.
+
+✅ _Example_: Players can check their **total XP, kills, and clue scroll completions** instantly!
+
+---
+
+### **📂 11. Automated Database Management**
+
+- **Maintains structured databases** for clan members, competitions, and messages.
+- **Stores & retrieves messages, RSNs, competition history, and activity logs**.
+- **Removes outdated data** automatically to optimize performance.
+- **Ensures that renamed roles, emojis, and webhooks maintain database integrity**.
+
+✅ _Example_: Left the clan? The bot **removes your RSN** to keep records clean.
+
+---
+
+## **🛠️ How Varietyz Bot Works (Simplified)**
+
+1️⃣ **Players interact with the bot** using slash commands (e.g., `/register` for RSN tracking).
+2️⃣ **The bot fetches data** from the Wise Old Man API & stores it in a database.
+3️⃣ **It processes stats & assigns roles** based on milestones, competitions, & activity.
+4️⃣ **The bot updates Discord**, renaming voice channels, posting leaderboards, & syncing roles.
+5️⃣ **Tasks run automatically**, updating data, cleaning the database, and managing competitions.
+6️⃣ **Admin commands provide full control** over role updates, competition settings, and data integrity.
+
+---
+
+## **🎉 Why Use Varietyz Bot?**
+
+✅ **Automates RSN tracking & role management** 🔄  
+✅ **Runs clan competitions automatically** 🏆  
+✅ **Cleans up inactive users** 🚫  
+✅ **Provides real-time leaderboards & analytics** 📊  
+✅ **Fully customizable for your clan** ⚙️  
+✅ **Easy to use with powerful admin commands** 👑  
+✅ **Ensures unique emoji & role names for better organization** 😀  
+✅ **Logs all server updates, bans, and major changes** 🔍
+
+---
+
+## **💡 Final Thoughts**
 
 - **If you're a clan leader**, this bot makes managing members **super easy**!
-- **If you're a player**, it **tracks your progress automatically** and **gives you cool roles**!
+- **If you're a player**, it **tracks your progress automatically** and **grants special roles**!
 - **If you're an admin**, you **don’t have to do manual work**—everything runs on its own!
+
+🚀 **Ready to automate your OSRS clan? Let Varietyz Bot handle it for you!**

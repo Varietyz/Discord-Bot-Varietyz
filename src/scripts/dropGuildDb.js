@@ -27,7 +27,7 @@
 
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const logger = require('../modules/utils/logger'); // Import the logger
+const logger = require('../modules/utils/essentials/logger'); // Import the logger
 
 /**
  * Path to the SQLite database file.
@@ -66,7 +66,19 @@ function initializeDatabase() {
  * @param {sqlite3.Database} db - The SQLite database instance.
  */
 async function dropTables(db) {
-    const tables = ['log_channels', 'guild_channels', 'guild_roles', 'guild_webhooks', 'guild_emojis', 'guild_permissions', 'guild_members', 'guild_events', 'error_logs', 'comp_channels', 'setup_channels'];
+    const tables = [
+        //'log_channels',
+        'guild_channels',
+        'guild_roles',
+        'guild_webhooks',
+        'guild_emojis',
+        'guild_permissions',
+        'guild_members',
+        'guild_events',
+        //'error_logs',
+        //'comp_channels',
+        //'setup_channels'
+    ];
 
     try {
         for (const table of tables) {

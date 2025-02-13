@@ -1,7 +1,7 @@
 // src/modules/events/ready.js
 
-const logger = require('../../utils/logger');
-const dbUtils = require('../../utils/dbUtils');
+const logger = require('../../utils/essentials/logger');
+const dbUtils = require('../../utils/essentials/dbUtils');
 const tasks = require('../../../tasks');
 
 const populateSkillsBosses = require('../../../migrations/populateSkillsBosses');

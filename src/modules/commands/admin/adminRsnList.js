@@ -1,10 +1,10 @@
 /* eslint-disable jsdoc/require-returns */
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { getRankEmoji } = require('../../utils/rankUtils');
-const logger = require('../../utils/logger');
-const { getAll } = require('../../utils/dbUtils');
-const { normalizeRsn } = require('../../utils/normalizeRsn');
+const { getRankEmoji } = require('../../utils/helpers/rankUtils');
+const logger = require('../../utils/essentials/logger');
+const { getAll } = require('../../utils/essentials/dbUtils');
+const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
 const { rankHierarchy } = require('../../../config/constants');
 
 const PAGE_SIZE = 10; // Max users per embed
@@ -40,20 +40,22 @@ const loadClanMembers = async () => {
  * @param rsns
  * @param clanMembers
  */
-function prepareUserContent(userId, rsns, clanMembers) {
+async function prepareUserContent(userId, rsns, clanMembers) {
     const userTag = `\n<@${userId}>`;
-    const rsnContent = rsns
-        .map((rsn) => {
+
+    // Use Promise.all to ensure all async calls to getRankEmoji() resolve
+    const rsnContentArray = await Promise.all(
+        rsns.map(async (rsn) => {
             const normalizedRSN = normalizeRsn(rsn);
             const member = clanMembers.find((member) => normalizeRsn(member.rsn) === normalizedRSN);
             const rank = member ? member.rank : '';
-            const emoji = member ? getRankEmoji(rank) : '❔';
+            const emoji = member ? await getRankEmoji(rank) : '❔'; // ✅ Await async call
             const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(rsn.replace(/ /g, '%20').toLowerCase())}`;
             return rank ? `- ${emoji} [${rsn}](${profileLink}) (**${rank}**)` : `- [${rsn}](${profileLink})`;
-        })
-        .join('\n');
+        }),
+    );
 
-    return `${userTag}\n${rsnContent}\n`;
+    return `${userTag}\n${rsnContentArray.join('\n')}\n`;
 }
 
 module.exports.data = new SlashCommandBuilder().setName('rsnlist').setDescription('View all registered RSNs and their associated ranks for clan members.').setDefaultMemberPermissions(0);
@@ -82,19 +84,15 @@ module.exports.execute = async (interaction) => {
         let currentPage = 0;
 
         // Function to generate an embed for a given page
-        const generateEmbed = (page) => {
+        const generateEmbed = async (page) => {
             const startIdx = page * PAGE_SIZE;
             const endIdx = startIdx + PAGE_SIZE;
             const userChunk = users.slice(startIdx, endIdx);
+            const descriptions = await Promise.all(userChunk.map(([userId, rsns]) => prepareUserContent(userId, rsns, clanMembers)));
 
             const embed = new EmbedBuilder().setTitle(`Registered RSNs - Page ${page + 1}/${totalPages}`).setColor('Green');
 
-            let description = '';
-            for (const [userId, rsns] of userChunk) {
-                description += prepareUserContent(userId, rsns, clanMembers) + '\n';
-            }
-
-            embed.setDescription(description);
+            embed.setDescription(descriptions.join('\n'));
             return embed;
         };
 
@@ -117,7 +115,7 @@ module.exports.execute = async (interaction) => {
         };
 
         const replyMessage = await interaction.editReply({
-            embeds: [generateEmbed(currentPage)],
+            embeds: [await generateEmbed(currentPage)],
             components: [createPaginationButtons(currentPage)],
         });
 
@@ -136,7 +134,7 @@ module.exports.execute = async (interaction) => {
             }
 
             await buttonInteraction.update({
-                embeds: [generateEmbed(currentPage)],
+                embeds: [await generateEmbed(currentPage)],
                 components: [createPaginationButtons(currentPage)],
             });
         });

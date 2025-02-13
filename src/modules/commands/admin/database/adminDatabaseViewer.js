@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const dbUtils = require('../../../utils/dbUtils');
-const logger = require('../../../utils/logger');
+const dbUtils = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
 
 const PAGE_SIZE = 10; // Number of rows per page
 

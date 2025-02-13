@@ -10,9 +10,9 @@
 
 const {
     guild: { runQuery },
-} = require('../modules/utils/dbUtils');
+} = require('../modules/utils/essentials/dbUtils');
 
-const logger = require('../modules/utils/logger');
+const logger = require('../modules/utils/essentials/logger');
 
 /**
  * 🎯 **Initializes Main Competition Tables**
@@ -59,6 +59,7 @@ const initializeGuildTables = async () => {
             `,
             guild_webhooks: `
                 webhook_key TEXT PRIMARY KEY,
+                webhook_id TEXT NOT NULL UNIQUE,
                 webhook_url TEXT NOT NULL UNIQUE,
                 channel_id TEXT DEFAULT NULL,
                 webhook_name TEXT DEFAULT 'Unnamed Webhook',
@@ -66,6 +67,7 @@ const initializeGuildTables = async () => {
             `,
             guild_emojis: `
                 emoji_id TEXT PRIMARY KEY,
+                emoji_key TEXT NOT NULL UNIQUE,
                 emoji_name TEXT NOT NULL,
                 emoji_format TEXT NOT NULL,
                 animated INTEGER DEFAULT 0

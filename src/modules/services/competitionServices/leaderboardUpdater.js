@@ -19,8 +19,10 @@
  */
 
 const { EmbedBuilder } = require('discord.js');
-const logger = require('../../utils/logger');
+const logger = require('../../utils/essentials/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
+const db = require('../../utils/essentials/dbUtils');
+const { getMetricEmoji } = require('../../utils/fetchers/getCompMetricEmoji');
 
 /**
  * 🎯 **Updates the Competition Leaderboard**
@@ -73,9 +75,9 @@ async function updateLeaderboard(competitionType, db, client, constants) {
 
         const sortedParticipants = participations.sort((a, b) => b.progress.gained - a.progress.gained);
 
-        const embedDescription = formatLeaderboardDescription(sortedParticipants, competitionType, metric, channel.guild);
+        const embedDescription = await formatLeaderboardDescription(sortedParticipants, competitionType, metric, channel.guild);
 
-        const embed = buildLeaderboardEmbed(competitionType, embedDescription, competition.competition_id);
+        const embed = await buildLeaderboardEmbed(competitionType, embedDescription, competition.competition_id);
 
         await sendOrUpdateEmbed(channel, competition, embed, db);
         logger.info(`✅ **Success:** Updated \`${competitionType}\` leaderboard with WOM data.`);
@@ -129,33 +131,34 @@ async function getActiveCompetition(competitionType, db) {
  * // 📌 Format the leaderboard description:
  * const description = formatLeaderboardDescription(participants, 'SOTW', 'Mining', guild);
  */
-function formatLeaderboardDescription(participants, competitionType, metric, guild) {
-    const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_');
+async function formatLeaderboardDescription(participants, competitionType, metric, guild) {
+    try {
+        let metricEmoji = await getMetricEmoji(guild, metric, competitionType); // ✅ Await the function
 
-    let metricEmoji = '';
-    if (guild) {
-        const foundEmoji = guild.emojis.cache.find((e) => e.name.toLowerCase() === normalizedMetric);
-        if (foundEmoji && foundEmoji.available) {
-            metricEmoji = foundEmoji.toString();
-        } else {
-            metricEmoji = competitionType === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️';
-            logger.warn(`⚠️ **Warning:** Custom emoji \`${normalizedMetric}\` not found or unavailable. Fallback emoji \`${metricEmoji}\` is used.`);
+        if (!metricEmoji) {
+            logger.warn(`⚠️ **Warning:** Metric emoji is undefined for \`${metric}\`.`);
+            metricEmoji = competitionType === 'SOTW' ? '📊' : '🐲'; // Default fallbacks
         }
-    } else {
-        logger.warn(`⚠️ **Warning:** Guild is undefined; cannot fetch emoji for metric: \`${metric}\`.`);
-        metricEmoji = competitionType === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '⚔️'; // Default fallback when guild is null
+
+        let desc = '';
+
+        if (!participants || participants.length === 0) {
+            logger.warn(`⚠️ **Warning:** No participants found for \`${competitionType}\`.`);
+            return 'No participants yet.';
+        }
+
+        participants.slice(0, 10).forEach((p, i) => {
+            const playerNameForLink = encodeURIComponent(p.player.displayName);
+            const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
+
+            desc += `> **${i + 1}.** **[${p.player.displayName}](${profileLink})**\n>  ${metricEmoji}\`${p.progress.gained.toLocaleString()}\`\n\n`;
+        });
+
+        return desc || 'No participants yet.';
+    } catch (error) {
+        logger.error(`🚫 **Error in formatLeaderboardDescription:** ${error.message}`);
+        return '⚠️ Error generating leaderboard.';
     }
-
-    let desc = '';
-
-    participants.slice(0, 10).forEach((p, i) => {
-        const playerNameForLink = encodeURIComponent(p.player.displayName);
-        const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
-
-        desc += `> **${i + 1}.** **[${p.player.displayName}](${profileLink})**\n>  - ${metricEmoji}\`${p.progress.gained.toLocaleString()}\`\n\n`;
-    });
-
-    return desc || 'No participants yet.';
 }
 
 /**
@@ -173,11 +176,19 @@ function formatLeaderboardDescription(participants, competitionType, metric, gui
  * // 📌 Build a BOTW leaderboard embed:
  * const embed = buildLeaderboardEmbed('BOTW', description, competition.competition_id);
  */
-function buildLeaderboardEmbed(competitionType, description, competitionId) {
-    const typeEmoji = competitionType === 'SOTW' ? '<:Total_Level:1127669463613976636>' : '<:Slayer:1127658069984288919>';
+async function buildLeaderboardEmbed(competitionType, description, competitionId) {
+    let emojiFormat;
+    if (competitionType === 'SOTW') {
+        // getAll returns an array; extract the first result.
+        const overallEmojis = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_overall']);
+        emojiFormat = overallEmojis.length > 0 ? overallEmojis[0].emoji_format : '';
+    } else {
+        const slayerEmojis = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_slayer']);
+        emojiFormat = slayerEmojis.length > 0 ? slayerEmojis[0].emoji_format : '';
+    }
 
     return new EmbedBuilder()
-        .setTitle(`${typeEmoji} ${competitionType} Leaderboard`)
+        .setTitle(`${emojiFormat} ${competitionType} Leaderboard`)
         .setURL(`https://wiseoldman.net/competitions/${competitionId}/top-5`)
         .setColor(competitionType === 'SOTW' ? 0x3498db : 0xe74c3c)
         .setDescription(description)

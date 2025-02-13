@@ -1,9 +1,9 @@
 const { EmbedBuilder } = require('discord.js');
 const {
     guild: { getOne },
-} = require('../../utils/dbUtils');
+} = require('../../utils/essentials/dbUtils');
 
-const logger = require('../../utils/logger');
+const logger = require('../../utils/essentials/logger');
 
 module.exports = {
     name: 'stageInstanceUpdate',

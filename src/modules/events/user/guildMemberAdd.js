@@ -3,8 +3,8 @@
 const { EmbedBuilder, UserFlagsBitField, Events } = require('discord.js');
 const {
     guild: { getOne },
-} = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+} = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 
 module.exports = {
     name: 'guildMemberAdd',

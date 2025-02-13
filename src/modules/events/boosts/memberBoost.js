@@ -2,8 +2,8 @@
 
 const {
     guild: { getOne, runQuery },
-} = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+} = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 
 module.exports = {

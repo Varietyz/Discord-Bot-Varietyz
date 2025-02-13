@@ -25,9 +25,9 @@
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, EmbedBuilder } = require('discord.js');
-const logger = require('../../utils/logger');
-const { runQuery, getAll } = require('../../utils/dbUtils');
-const { normalizeRsn } = require('../../utils/normalizeRsn');
+const logger = require('../../utils/essentials/logger');
+const { runQuery, getAll } = require('../../utils/essentials/dbUtils');
+const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
 
 module.exports = {
     data: new SlashCommandBuilder()

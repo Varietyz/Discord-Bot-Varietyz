@@ -23,9 +23,9 @@
 
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, PermissionsBitField, ButtonStyle } = require('discord.js');
 const { DateTime } = require('luxon');
-const logger = require('../../utils/logger');
-const { calculateProgressCount, calculateInactivity } = require('../../utils/calculateActivity');
-const { getAll } = require('../../utils/dbUtils');
+const logger = require('../../utils/essentials/logger');
+const { calculateProgressCount, calculateInactivity } = require('../../utils/helpers/calculateActivity');
+const { getAll } = require('../../utils/essentials/dbUtils');
 const { updateActivityData } = require('../../services/activeMembers');
 
 module.exports = {

@@ -2,7 +2,7 @@
 
 const { CLAN_CHAT_CHANNEL_ID } = require('../../../config/constants');
 const { saveMessage } = require('../../collection/msgDbSave');
-const logger = require('../../utils/logger');
+const logger = require('../../utils/essentials/logger');
 
 module.exports = {
     name: 'messageCreate', // Event name

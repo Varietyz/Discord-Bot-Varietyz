@@ -1,15 +1,15 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
-const dbUtils = require('../../../utils/dbUtils');
-const logger = require('../../../utils/logger');
+const dbUtils = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
 
 const IMPORTANT_KEYS = {
     log_channels: 'log_key',
     setup_channels: 'setup_key',
     comp_channels: 'comp_key',
     guild_channels: 'channel_key',
-    guild_emoji: 'emoji_name',
+    guild_emojis: 'emoji_key',
     guild_roles: 'role_key',
-    guild_webhooks: 'webhook_name',
+    guild_webhooks: 'webhook_key',
 };
 
 module.exports.data = new SlashCommandBuilder()
@@ -225,7 +225,7 @@ module.exports.autocomplete = async (interaction) => {
             tableNames = Object.keys(IMPORTANT_KEYS);
         } else if (subcommand === 'change' && focused.name === 'table') {
             // In change, dynamically retrieve table names from the selected database.
-            const tables = await dbHandler.getAll('SELECT name FROM sqlite_master WHERE type=\'table\' AND name NOT LIKE \'sqlite_%\' LIMIT 100');
+            const tables = await dbHandler.getAll('SELECT name FROM sqlite_master WHERE type=\'table\' AND name NOT LIKE \'sqlite_%\'');
             tableNames = tables.map((row) => row.name);
         }
 
@@ -258,7 +258,7 @@ module.exports.autocomplete = async (interaction) => {
             const tableChoice = interaction.options.getString('table');
             const column = interaction.options.getString('column');
             if (!tableChoice || !column) return interaction.respond([]);
-            const fields = await dbHandler.getAll(`SELECT DISTINCT ${column} FROM ${tableChoice} LIMIT 100`);
+            const fields = await dbHandler.getAll(`SELECT DISTINCT ${column} FROM ${tableChoice}`);
             return interaction.respond(
                 fields
                     .map((row) => row[column])
@@ -272,9 +272,12 @@ module.exports.autocomplete = async (interaction) => {
         if (focused.name === 'key' && subcommand === 'change_keys') {
             const tableChoice = interaction.options.getString('table');
             if (!tableChoice) return interaction.respond([]);
-            const keyColumn = IMPORTANT_KEYS[tableChoice];
+
+            // Try the tableChoice as given, or remove a trailing "s" if present
+            const keyColumn = IMPORTANT_KEYS[tableChoice] || IMPORTANT_KEYS[tableChoice.replace(/s$/, '')];
             if (!keyColumn) return interaction.respond([]);
-            const keys = await dbHandler.getAll(`SELECT DISTINCT ${keyColumn} FROM ${tableChoice} LIMIT 100`);
+
+            const keys = await dbHandler.getAll(`SELECT DISTINCT ${keyColumn} FROM ${tableChoice}`);
             return interaction.respond(
                 keys
                     .map((row) => row[keyColumn])

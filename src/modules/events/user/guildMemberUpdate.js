@@ -1,7 +1,7 @@
 const {
     guild: { getOne },
-} = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+} = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 
 // Store queued updates for members
@@ -76,7 +76,7 @@ module.exports = {
                 logger.info(`✅ Processing queued update for ${newMember.user.tag}...`);
 
                 // 🕵️ Fetch audit logs to check who performed the update
-                await new Promise((resolve) => setTimeout(resolve, 3000)); // ⏳ Wait for logs
+                await new Promise((resolve) => setTimeout(resolve, 5000)); // ⏳ Wait for logs
                 const fetchedLogs = await newMember.guild.fetchAuditLogs({
                     type: AuditLogEvent.MemberUpdate,
                     limit: 5,

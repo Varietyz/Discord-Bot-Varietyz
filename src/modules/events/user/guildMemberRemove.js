@@ -3,9 +3,9 @@
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 const {
     guild: { getOne },
-} = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
-const { recentBans } = require('./guildBanAdd'); // Import recentBans set
+} = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
+const { recentBans } = require('../guild/guildBanAdd'); // Import recentBans set
 
 module.exports = {
     name: 'guildMemberRemove',

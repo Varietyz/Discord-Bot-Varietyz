@@ -1,10 +1,8 @@
-// src/modules/events/bot/error.js
-
-const logger = require('../../utils/logger');
+const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder, WebhookClient } = require('discord.js');
 const {
     guild: { getOne, getAll, runQuery },
-} = require('../../utils/dbUtils');
+} = require('../../utils/essentials/dbUtils');
 
 module.exports = {
     name: 'error',
@@ -24,7 +22,7 @@ module.exports = {
         // Fetch webhook URL and management role ID from the database.
         const webhookData = await getOne('SELECT webhook_url FROM guild_webhooks WHERE webhook_name = ?', ['webhook_critical_state']);
         if (!webhookData || !webhookData.webhook_url) {
-            logger.warn('⚠️ No webhook URL found for critical errors, please create a webhook integration in your staff channel & name it **```Critical State```**.\nOnce you have do that, critical alerts will be sent to the channel of choice.');
+            logger.warn('⚠️ No webhook URL found for critical errors.');
             return;
         }
         const webhookURL = webhookData.webhook_url;
@@ -38,17 +36,17 @@ module.exports = {
 
         // Ensure error_logs table exists.
         await runQuery(`
-      CREATE TABLE IF NOT EXISTS error_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        error_message TEXT NOT NULL,
-        error_stack TEXT,
-        occurrences INTEGER DEFAULT 1,
-        last_occurred TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reported INTEGER DEFAULT 0
-      )
-    `);
+          CREATE TABLE IF NOT EXISTS error_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            error_message TEXT NOT NULL,
+            error_stack TEXT,
+            occurrences INTEGER DEFAULT 1,
+            last_occurred TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            reported INTEGER DEFAULT 0
+          )
+        `);
 
-        // Check if this error occurred recently.
+        // Check if this error already exists in recent logs.
         const existingError = await getOne(`SELECT * FROM error_logs WHERE error_message = ? AND last_occurred > DATETIME('now', '-${ERROR_TRACK_TIME} seconds')`, [error.message]);
 
         if (existingError) {
@@ -59,17 +57,17 @@ module.exports = {
             await runQuery('INSERT INTO error_logs (error_message, error_stack) VALUES (?, ?)', [error.message, error.stack || null]);
         }
 
-        // Fetch unreported database errors.
-        const dbErrors = await getAll('SELECT * FROM error_logs WHERE reported = 0');
+        // **Fetch unreported errors only if they are NOT the same as the current error**
+        const dbErrors = await getAll('SELECT * FROM error_logs WHERE reported = 0 AND error_message != ?', [error.message]);
 
-        // Fetch the log channel data from the database.
+        // Fetch log channel from database.
         const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['bot_logs']);
         if (!logChannelData) {
-            logger.warn('⚠️ No log channel found in database. Ensure the "bot_logs" entry exists.');
+            logger.warn('⚠️ No log channel found in database.');
             return;
         }
 
-        // Attempt to fetch the Discord channel.
+        // Fetch the log channel.
         const logChannel = await client.channels.fetch(logChannelData.channel_id).catch((err) => {
             logger.warn(`⚠️ Could not fetch log channel: ${err.message}`);
             return null;
@@ -79,21 +77,20 @@ module.exports = {
             return;
         }
 
-        // Create an embed for the error.
-        const embed = new EmbedBuilder()
-            .setColor(0xe74c3c)
-            .setTitle('❌ Bot Error Detected')
-            .setDescription(`\`\`\`${error.stack || error.message}\`\`\``)
-            .addFields({ name: 'Occurrences', value: existingError ? `${existingError.occurrences + 1}` : '1', inline: true }, { name: 'Last Occurred', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true })
-            .setTimestamp();
+        // **Send "Bot Error Detected" embed only if it's NOT a duplicate error**
+        if (!existingError) {
+            const embed = new EmbedBuilder()
+                .setColor(0xe74c3c)
+                .setTitle('❌ Bot Error Detected')
+                .setDescription(`\`\`\`${error.stack || error.message}\`\`\``)
+                .addFields({ name: 'Occurrences', value: '1', inline: true }, { name: 'Last Occurred', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true })
+                .setTimestamp();
 
-        // Mention management if the error is severe.
-        const managementMention = existingError && existingError.occurrences >= 3 ? `<@&${managementRoleID}>` : '';
+            await logChannel.send({ embeds: [embed] });
+            logger.info('📋 Logged new error in bot_logs.');
+        }
 
-        await logChannel.send({ content: managementMention, embeds: [embed] });
-        logger.info(`📋 Logged error in bot_logs. Occurrences: ${existingError ? existingError.occurrences + 1 : 1}`);
-
-        // Report all unreported database errors.
+        // **Report all unreported database errors (excluding the current error)**
         for (const dbError of dbErrors) {
             const dbEmbed = new EmbedBuilder()
                 .setColor(0xe74c3c)
@@ -119,7 +116,7 @@ module.exports = {
             await runQuery('UPDATE error_logs SET reported = 1 WHERE id = ?', [dbError.id]);
         }
 
-        // If the error is urgent, send a webhook alert.
+        // **Send webhook alert if error frequency exceeds the threshold**
         if (existingError && existingError.occurrences >= ERROR_ALERT_THRESHOLD) {
             const webhookClient = new WebhookClient({ url: webhookURL });
             const webhookEmbed = new EmbedBuilder()

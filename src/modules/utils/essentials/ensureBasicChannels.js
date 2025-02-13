@@ -76,8 +76,8 @@ async function ensureBasicChannels(guild) {
 
         // 🔍 **Ensure All Log Channels Exist and Store in DB**
         for (const { key, name } of basicVoiceChannels) {
-            let channel = guild.channels.cache.find((ch) => ch.name === name);
             const storedChannel = await getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', [key]);
+            let channel = storedChannel ? guild.channels.cache.get(storedChannel.channel_id) : null;
 
             if (!channel) {
                 channel = await guild.channels.create({

@@ -1,11 +1,11 @@
 // src/modules/events/roleUpdate.js
 
 const {
-    guild: { getOne, runQuery },
-} = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
+    guild: { getOne, runQuery, getAll },
+} = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
-const { normalizeKey } = require('../../utils/normalizeKey');
+const { normalizeKey } = require('../../utils/normalizing/normalizeKey');
 
 module.exports = {
     name: 'roleUpdate',
@@ -17,24 +17,23 @@ module.exports = {
      */
     async execute(oldRole, newRole) {
         try {
-            // ⏳ **Ignore updates for newly created roles**
+            // Ignore updates for roles created within the last 30 seconds.
             const roleCreatedTimestamp = newRole.createdTimestamp;
             if (Date.now() - roleCreatedTimestamp < 30000) {
-                // 30-second threshold
                 logger.info(`⚠️ [RoleUpdate] Ignoring update for recently created role: "${newRole.name}" (ID: ${newRole.id})`);
                 return;
             }
 
-            // ✅ Normalize role name for database storage
-            const existingKeys = new Set();
-            const roleKey = normalizeKey(newRole.name, 'role', existingKeys);
-
-            // ✅ Detect changes
+            // Determine what has changed.
             const changes = [];
             if (oldRole.name !== newRole.name) changes.push(`📛 **Name:** *\`${oldRole.name}\`* → **\`${newRole.name}\`**`);
-            if (oldRole.color !== newRole.color) changes.push(`🎨 **Color:** *\`#${oldRole.color.toString(16).padStart(6, '0')}\`* → **\`#${newRole.color.toString(16).padStart(6, '0')}\`**`);
-            if (oldRole.mentionable !== newRole.mentionable) changes.push(`📢 **Mentionable:** ${newRole.mentionable ? '*`❌ No`* → **`✅ Yes`**' : '*`✅ Yes`* → **`❌ No`**'}`);
-            if (oldRole.hoist !== newRole.hoist) changes.push(`👁 **Hoisted:** ${newRole.hoist ? '*`❌ No`* → **`✅ Yes`**' : '*`✅ Yes`* → **`❌ No`**'}`);
+            if (oldRole.color !== newRole.color) {
+                const oldColor = oldRole.color ? `#${oldRole.color.toString(16).padStart(6, '0')}` : '`Default`';
+                const newColor = newRole.color ? `#${newRole.color.toString(16).padStart(6, '0')}` : '`Default`';
+                changes.push(`🎨 **Color:** *\`${oldColor}\`* → **\`${newColor}\`**`);
+            }
+            if (oldRole.mentionable !== newRole.mentionable) changes.push(`📢 **Mentionable:** ${oldRole.mentionable ? '*`✅ Yes`*' : '*`❌ No`*'} → ${newRole.mentionable ? '**`✅ Yes`**' : '**`❌ No`**'}`);
+            if (oldRole.hoist !== newRole.hoist) changes.push(`👁 **Hoisted:** ${oldRole.hoist ? '*`✅ Yes`*' : '*`❌ No`*'} → ${newRole.hoist ? '**`✅ Yes`**' : '**`❌ No`**'}`);
             if (oldRole.permissions.bitfield !== newRole.permissions.bitfield) changes.push('**`⚙️ Permissions Updated`**');
 
             if (changes.length === 0) {
@@ -42,51 +41,61 @@ module.exports = {
                 return;
             }
 
-            // ✅ Update the role in the database
-            await runQuery('UPDATE guild_roles SET role_key = ?, permissions = ? WHERE role_id = ?', [
-                roleKey,
-                parseInt(newRole.permissions.bitfield.toString(), 10) || 0, // Store as INTEGER
-                newRole.id,
-            ]);
+            // Retrieve the existing role record from the database.
+            const roleRecord = await getOne('SELECT role_key FROM guild_roles WHERE role_id = ?', [newRole.id]);
+            let roleKey;
+            if (roleRecord && roleRecord.role_key) {
+                // Use the stored key so that it remains static.
+                roleKey = roleRecord.role_key;
+            } else {
+                // If no record exists, generate a new unique key.
+                roleKey = await normalizeKey(newRole.name, 'role', { getAll });
+            }
 
-            logger.info(`✏️ [RoleUpdate] Role "${newRole.name}" (ID: ${newRole.id}) was updated in guild: ${newRole.guild.name}`);
+            // Update the role record in the database.
+            // We deliberately do not change role_key if it already exists.
+            await runQuery(
+                `UPDATE guild_roles 
+                 SET permissions = ? 
+                 WHERE role_id = ?`,
+                [parseInt(newRole.permissions.bitfield.toString(), 10) || 0, newRole.id],
+            );
 
-            // 🔍 Fetch the logging channel from the database
+            logger.info(`✏️ [RoleUpdate] Role "${newRole.name}" (ID: ${newRole.id}) updated in guild: ${newRole.guild.name}`);
+
+            // Retrieve the logging channel from the database.
             const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['role_logs']);
             if (!logChannelData) return;
-
             const logChannel = newRole.guild.channels.cache.get(logChannelData.channel_id);
             if (!logChannel) return;
 
-            // 🏆 Role Properties
-            const mentionable = newRole.mentionable ? '`✅ Yes`' : '`❌ No`';
-            const hoist = newRole.hoist ? '`✅ Yes`' : '`❌ No`';
-            const roleColor = newRole.color ? `#${newRole.color.toString(16).padStart(6, '0')}` : '`Default`';
-            const position = `\`#${newRole.position}\``;
-
-            // 🔍 **Retrieve the action performer from the audit logs**
+            // Retrieve the executor from the audit logs.
             let executor = 'Unknown User';
             try {
                 const fetchedLogs = await newRole.guild.fetchAuditLogs({
                     type: AuditLogEvent.RoleUpdate,
                     limit: 5,
                 });
-
                 const logEntry = fetchedLogs.entries.find((entry) => entry.target.id === newRole.id);
                 if (logEntry) {
-                    executor = `<@${logEntry.executor.id}>`; // Mention the user
+                    executor = `<@${logEntry.executor.id}>`;
                 }
             } catch (auditError) {
                 logger.warn(`⚠️ Could not fetch audit log for role update: ${auditError.message}`);
             }
 
-            // 🛠️ Construct Embed
+            // Prepare role properties for the embed.
+            const mentionable = newRole.mentionable ? '`✅ Yes`' : '`❌ No`';
+            const hoist = newRole.hoist ? '`✅ Yes`' : '`❌ No`';
+            const roleColor = newRole.color ? `#${newRole.color.toString(16).padStart(6, '0')}` : '`Default`';
+            const position = `\`#${newRole.position}\``;
+
+            // Build the embed message.
             const embed = new EmbedBuilder()
-                .setColor(newRole.color || 0xe67e22) // Use role color if available, else orange
+                .setColor(newRole.color || 0xe67e22)
                 .setTitle('✏️ Role Updated')
                 .addFields(
                     { name: '\u200b', value: changes.join('\n'), inline: false },
-                    { name: '\u200b', value: '\u200b', inline: false },
                     { name: '📌 Role', value: `<@&${newRole.id}>`, inline: true },
                     { name: '🔑 Role Key', value: `\`${roleKey}\``, inline: true },
                     { name: '👁️ Hoisted', value: hoist, inline: true },
@@ -97,9 +106,8 @@ module.exports = {
                 )
                 .setTimestamp();
 
-            // 🔍 Send the log message
+            // Send the embed to the log channel.
             await logChannel.send({ embeds: [embed] });
-
             logger.info(`📋 Successfully logged role update: ${newRole.name}`);
         } catch (error) {
             logger.error(`❌ Error logging role update: ${error.message}`);

@@ -3,9 +3,9 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 const {
     guild: { runQuery, getAll },
-} = require('../../../utils/dbUtils');
-const logger = require('../../../utils/logger');
-const { ensureLoggingCategory } = require('../../../utils/ensureLoggingCategory');
+} = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
+const { ensureLoggingCategory } = require('../../../utils/essentials/ensureLoggingCategory');
 
 module.exports = {
     data: new SlashCommandBuilder()

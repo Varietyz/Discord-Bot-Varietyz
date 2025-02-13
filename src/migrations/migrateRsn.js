@@ -1,9 +1,9 @@
 /* eslint-disable jsdoc/require-returns */
 const fs = require('fs');
 const path = require('path');
-const db = require('../modules/utils/dbUtils');
-const logger = require('../modules/utils/logger');
-const { sleep } = require('../modules/utils/sleepUtil');
+const db = require('../modules/utils/essentials/dbUtils');
+const logger = require('../modules/utils/essentials/logger');
+const { sleep } = require('../modules/utils/helpers/sleepUtil');
 const WOMApiClient = require('../api/wise_old_man/apiClient');
 
 const BACKUP_PATH = path.join(__dirname, 'registered_rsn_backup.json');

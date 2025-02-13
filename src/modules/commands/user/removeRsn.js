@@ -23,9 +23,9 @@
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const logger = require('../../utils/logger');
-const { runQuery, getAll } = require('../../utils/dbUtils');
-const { normalizeRsn } = require('../../utils/normalizeRsn');
+const logger = require('../../utils/essentials/logger');
+const { runQuery, getAll } = require('../../utils/essentials/dbUtils');
+const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
 
 const RATE_LIMIT = 5;
 const RATE_LIMIT_DURATION = 60 * 1000;

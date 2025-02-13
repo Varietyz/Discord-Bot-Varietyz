@@ -62,7 +62,7 @@ async function ensureCompetitionCategory(guild) {
 
         // 🔍 **Ensure All Log Channels Exist and Store in DB**
         for (const { key, name, topic } of compChannels) {
-            const storedChannel = await getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', [key]);
+            const storedChannel = await getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', [key]);
 
             // ✅ Fetch channel by ID instead of name & parent category
             let channel = storedChannel ? guild.channels.cache.get(storedChannel.channel_id) : null;

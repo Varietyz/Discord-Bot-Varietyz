@@ -24,11 +24,11 @@
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, EmbedBuilder } = require('discord.js');
-const logger = require('../../utils/logger');
-const { runQuery, getOne } = require('../../utils/dbUtils');
-const { normalizeRsn } = require('../../utils/normalizeRsn');
-const { validateRsn } = require('../../utils/validateRsn');
-const { fetchPlayerData } = require('../../utils/fetchPlayerData');
+const logger = require('../../utils/essentials/logger');
+const { runQuery, getOne } = require('../../utils/essentials/dbUtils');
+const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
+const { validateRsn } = require('../../utils/helpers/validateRsn');
+const { fetchPlayerData } = require('../../utils/fetchers/fetchPlayerData');
 
 module.exports = {
     data: new SlashCommandBuilder()

@@ -23,11 +23,11 @@
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
-const logger = require('../../utils/logger');
-const { updateAllTimeLeaderboard } = require('../../services/competitionServices/alltimeCompetitionWinners');
+const logger = require('../../../utils/essentials/logger');
+const { updateData } = require('../../../services/memberChannel');
 
 module.exports = {
-    data: new SlashCommandBuilder().setName('update_toptenchannel').setDescription('Manually update the top 10 channel with the latest data.').setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
+    data: new SlashCommandBuilder().setName('update_clanchannel').setDescription('Manually update the clan channel with the latest data.').setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
 
     /**
      * 🎯 **Executes the /update_clanchannel Command**
@@ -57,18 +57,18 @@ module.exports = {
         }
 
         await interaction.deferReply({ flags: 64 });
-        logger.info(`👮 Administrator \`${interaction.user.id}\` initiated a manual top 10 channel update.`);
+        logger.info(`👮 Administrator \`${interaction.user.id}\` initiated a manual clan channel update.`);
 
         try {
-            await updateAllTimeLeaderboard(interaction.client);
+            await updateData(interaction.client, { forceChannelUpdate: true });
 
-            const successEmbed = new EmbedBuilder().setColor(0x00ff00).setTitle('✅ **Channel Update Successful**').setDescription('The top10 channel has been updated with the latest member data.').setTimestamp();
+            const successEmbed = new EmbedBuilder().setColor(0x00ff00).setTitle('✅ **Channel Update Successful**').setDescription('The clan channel has been updated with the latest member data.').setTimestamp();
 
             await interaction.editReply({ embeds: [successEmbed] });
         } catch (error) {
-            logger.error(`❌ Error executing /update_toptenchannel: ${error.message}`);
+            logger.error(`❌ Error executing /update_clanchannel: ${error.message}`);
             await interaction.editReply({
-                content: '❌ **Error:** An error occurred while updating the top10 channel. Please try again later.',
+                content: '❌ **Error:** An error occurred while updating the clan channel. Please try again later.',
             });
         }
     },

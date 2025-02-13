@@ -1,7 +1,7 @@
 /* eslint-disable node/no-unpublished-require */
 require('dotenv').config();
 const { WOMClient } = require('@wise-old-man/utils');
-const logger = require('../../modules/utils/logger');
+const logger = require('../../modules/utils/essentials/logger');
 
 /**
  * @fileoverview 🌍 **Wise Old Man API Client**

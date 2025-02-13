@@ -1,5 +1,5 @@
-const db = require('./dbUtils');
-const logger = require('./logger');
+const db = require('../essentials/dbUtils');
+const logger = require('../essentials/logger');
 
 /**
  * 🎯 **Tallies Votes and Determines the Winning Metric for a Competition**

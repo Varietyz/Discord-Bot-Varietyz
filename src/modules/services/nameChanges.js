@@ -19,14 +19,14 @@
 
 const WOMApiClient = require('../../api/wise_old_man/apiClient'); // from @wise-old-man/utils or custom
 const { EmbedBuilder } = require('discord.js');
-const logger = require('../utils/logger');
+const logger = require('../utils/essentials/logger');
 const { NAME_CHANGE_CHANNEL_ID } = require('../../config/constants');
-const { globalHistoricalRenameFromRecentChanges } = require('../utils/forceDbNameChange'); // Force messages.db Name Changes
+const { globalHistoricalRenameFromRecentChanges } = require('../utils/essentials/forceDbNameChange'); // Force messages.db Name Changes
 
-const { getAll, runQuery, getOne } = require('../utils/dbUtils');
+const { getAll, runQuery, getOne } = require('../utils/essentials/dbUtils');
 const {
     messages: { getAll: getAllMessages, runQuery: runMessagesQuery },
-} = require('../utils/dbUtils');
+} = require('../utils/essentials/dbUtils');
 
 /**
  * ### fetchNameChanges

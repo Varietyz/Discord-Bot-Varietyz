@@ -29,11 +29,11 @@
  */
 
 const { DateTime } = require('luxon');
-const logger = require('../utils/logger');
+const logger = require('../utils/essentials/logger');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const { VOICE_CHANNEL_ID } = require('../../config/constants');
-const { getAll, runQuery } = require('../utils/dbUtils');
-const { calculateInactivity, calculateProgressCount } = require('../utils/calculateActivity');
+const { getAll, runQuery } = require('../utils/essentials/dbUtils');
+const { calculateInactivity, calculateProgressCount } = require('../utils/helpers/calculateActivity');
 
 /**
  * 🗂️ **Player Progress Tracker**

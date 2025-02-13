@@ -17,7 +17,7 @@
  * @module utils/fetchPlayerData
  */
 
-const logger = require('./logger');
+const logger = require('../essentials/logger');
 const axios = require('axios');
 
 /**

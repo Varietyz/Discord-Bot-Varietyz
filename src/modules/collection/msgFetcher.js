@@ -6,7 +6,7 @@ const { dbPromise } = require('./msgDbConstants');
 const { getRecentMessages, detectSystemMessage } = require('./msgDbUtils');
 const { saveMessage } = require('./msgDbSave');
 const { reorderAllTables } = require('./msgReorder');
-const logger = require('../utils/logger');
+const logger = require('../utils/essentials/logger');
 
 /**
  * 🎯 **Determines if a Snowflake ID is Newer**

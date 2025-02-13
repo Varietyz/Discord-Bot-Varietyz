@@ -26,11 +26,13 @@
 
 const { EmbedBuilder } = require('discord.js');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
-const logger = require('../utils/logger');
-const { RANKS, MEMBER_CHANNEL_ID, ROLE_CHANNEL_ID, rankHierarchy } = require('../../config/constants');
-const { getRankEmoji, formatExp, formatRank, getRankColor } = require('../utils/rankUtils');
-const { purgeChannel } = require('../utils/purgeChannel');
-const { getAll, runQuery, getOne } = require('../utils/dbUtils');
+const logger = require('../utils/essentials/logger');
+const { MEMBER_CHANNEL_ID, ROLE_CHANNEL_ID, rankHierarchy } = require('../../config/constants');
+const { getRankEmoji, formatExp, formatRank, getRankColor } = require('../utils/helpers/rankUtils');
+const { getRanks } = require('../utils/fetchers/fetchRankEmojis');
+const { purgeChannel } = require('../utils/helpers/purgeChannel');
+const { getAll, runQuery, getOne } = require('../utils/essentials/dbUtils');
+const { syncClanRankEmojis } = require('../utils/essentials/syncClanRanks');
 require('dotenv').config();
 
 /**
@@ -69,13 +71,14 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
     });
 
     if (rolesToRemove.size > 0) {
-        const removedRoles = rolesToRemove.map((r) => `${getRankEmoji(r.name)} <@&${r.id}>`).join('\n- ');
+        const removedRoles = await Promise.all(rolesToRemove.map(async (r) => `${await getRankEmoji(r.name)} <@&${r.id}>`));
+
         await member.roles.remove(rolesToRemove);
 
         const roleChannel = await guild.channels.fetch(ROLE_CHANNEL_ID);
-        const color = getRankColor(rank);
+        const color = await getRankColor(rank);
         // Get the emoji for the target role (if needed)
-        const targetEmoji = getRankEmoji(rank);
+        const targetEmoji = await getRankEmoji(rank);
 
         const embed = new EmbedBuilder()
             .setTitle('🔄 Rank Updated!')
@@ -115,6 +118,13 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
         }
 
         const guild = await client.guilds.fetch(process.env.GUILD_ID);
+        const activeRanks = new Set(groupData.memberships.map((m) => m.role.toLowerCase()));
+        logger.info(`Active roles from API: ${[...activeRanks].join(', ')}`);
+
+        // Now, pass the activeRanks set into your sync function:
+        const { addedEmojis, deletedEmojis } = await syncClanRankEmojis(guild, activeRanks);
+        logger.info(`Synced ${addedEmojis} clan rank emojis, and deleted ${deletedEmojis} outdated emojis.`);
+
         const newData = [];
         const cachedData = [];
         const discordIdCache = {};
@@ -142,8 +152,13 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
                 joinedAt: joinedAt,
             });
 
+            const RANKS = await getRanks(); // ✅ Ensure RANKS is loaded
+
             const roleName = RANKS[formattedRank.toLowerCase()]?.role;
-            if (!roleName) continue;
+            if (!roleName) {
+                logger.warn(`⚠️ Rank '${formattedRank}' not found in RANKS. Available keys: ${Object.keys(RANKS).join(', ')}`);
+                continue; // Skip processing if rank is unknown
+            }
 
             if (!discordIdCache[rsn.toLowerCase()]) {
                 const result = await getAll('SELECT discord_id FROM registered_rsn WHERE LOWER(rsn) = LOWER(?)', [rsn]);
@@ -329,8 +344,8 @@ async function updateClanChannel(client, cachedData) {
 
     for (const { player, rank, experience, lastProgressed } of cachedData) {
         if (!player || rank.toLowerCase() === 'private') continue;
-        const rankEmoji = getRankEmoji(rank);
-        const color = getRankColor(rank);
+        const rankEmoji = await getRankEmoji(rank);
+        const color = await getRankColor(rank);
         const playerNameForLink = encodeURIComponent(player.replace(/ /g, '%20'));
 
         // ✅ Convert `lastProgressed` to UNIX timestamp if available

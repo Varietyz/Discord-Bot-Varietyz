@@ -18,8 +18,8 @@
  * - `updateLeaderboard` from leaderboard updater
  */
 
-const logger = require('../../utils/logger');
-const { createCompetitionEmbed, createVotingDropdown } = require('../../utils/embedUtils');
+const logger = require('../../utils/essentials/logger');
+const { createCompetitionEmbed, createVotingDropdown } = require('../../utils/helpers/embedUtils');
 const { chunkArray } = require('./helpers');
 const { updateLeaderboard } = require('./leaderboardUpdater');
 

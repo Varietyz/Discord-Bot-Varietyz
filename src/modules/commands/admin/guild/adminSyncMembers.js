@@ -24,9 +24,9 @@
  */
 
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const db = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
-const { fetchAndProcessMember } = require('../../services/autoRoles');
+const db = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
+const { fetchAndProcessMember } = require('../../../services/autoRoles');
 
 module.exports = {
     data: new SlashCommandBuilder().setName('sync_members').setDescription('Manually synchronize clan members with the WOM API and update roles.').setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),

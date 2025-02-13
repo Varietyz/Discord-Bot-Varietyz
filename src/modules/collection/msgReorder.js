@@ -19,7 +19,7 @@
 
 require('dotenv').config();
 const { dbPromise } = require('./msgDbConstants');
-const logger = require('../utils/logger');
+const logger = require('../utils/essentials/logger');
 
 const systemTables = {
     DROP: 'drops',

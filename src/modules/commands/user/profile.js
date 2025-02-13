@@ -20,11 +20,11 @@
  */
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const db = require('../../utils/dbUtils');
-const logger = require('../../utils/logger');
-const { normalizeRsn } = require('../../utils/normalizeRsn');
+const db = require('../../utils/essentials/dbUtils');
+const logger = require('../../utils/essentials/logger');
+const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
 const womApi = require('../../../api/wise_old_man/apiClient');
-const { getRankEmoji } = require('../../utils/rankUtils');
+const { getRankEmoji } = require('../../utils/helpers/rankUtils');
 
 /**
  * 🎯 **Safely Truncates a String**
@@ -341,8 +341,10 @@ module.exports = {
                     `:globe_with_meridians: Country: ${getCountryDisplay(country) || '<#802680940835897384>'}`,
                 1024,
             );
+            const overallEmojis = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_overall']);
+            const emoji = overallEmojis.length > 0 ? overallEmojis[0].emoji_format : '';
 
-            let experienceInfo = `<:Total_Level:1127669463613976636> Total Exp: **\`${exp.toLocaleString()}\`**\n`;
+            let experienceInfo = `${emoji} Total Exp: **\`${exp.toLocaleString()}\`**\n`;
             if (exp >= 500_000_000) {
                 experienceInfo += ':trophy: Over **`500M EXP`** achieved!\n';
             }
@@ -360,7 +362,9 @@ module.exports = {
                     });
                 }
                 if (maxedSkills.length === skillKeys.length) {
-                    experienceInfo += '<:Max_cape:1127651723264147507> Achieved **`Level 99`** in all Skills!\n';
+                    const overallEmojis = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_max_cape']);
+                    const emoji = overallEmojis.length > 0 ? overallEmojis[0].emoji_format : '';
+                    experienceInfo += `${emoji} Achieved **\`Level 99\`** in all Skills!\n`;
                 }
             }
 
@@ -393,7 +397,9 @@ module.exports = {
                 });
             }
             if (snapshot && snapshot.bosses && snapshot.bosses.tzkal_zuk && snapshot.bosses.tzkal_zuk.kills >= 1) {
-                experienceInfo += '<a:InfernalCape:1272671557399089233> **`Infernal Cape`** achieved!\n';
+                const overallEmojis = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_infernal_cape']);
+                const emoji = overallEmojis.length > 0 ? overallEmojis[0].emoji_format : '';
+                experienceInfo += `${emoji} **\`Infernal Cape\`** achieved!\n`;
             }
             const leftBosses = [];
             const rightBosses = [];
@@ -416,22 +422,33 @@ module.exports = {
 
             let compInfo = '';
             if (profileSource === 'users' || profileSource === 'both') {
+                const overallEmoji = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_overall']);
+                const emojiSotw = overallEmoji.length > 0 ? overallEmoji[0].emoji_format : '';
+                const slayerEmoji = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_slayer']);
+                const emojiBotw = slayerEmoji.length > 0 ? slayerEmoji[0].emoji_format : '';
                 compInfo += safeTruncate(
                     `:trophy: Competition Wins: **\`${compStats.total_wins}\`**\n` +
-                        `<:Total_Level:1127669463613976636> SOTW - Total Exp: **\`${compStats.total_metric_gain_sotw.toLocaleString()}\`**\n` +
-                        `<:Slayer:1127658069984288919> BOTW - Total Kills: **\`${compStats.total_metric_gain_botw.toLocaleString()}\`**\n`,
+                        `${emojiSotw} SOTW - Total Exp: **\`${compStats.total_metric_gain_sotw.toLocaleString()}\`**\n` +
+                        `${emojiBotw} BOTW - Total Kills: **\`${compStats.total_metric_gain_botw.toLocaleString()}\`**\n`,
                     1024,
                 );
             }
 
             let clanInfo = '';
             if (profileSource === 'clan' || profileSource === 'both') {
-                const clanRankEmoji = getRankEmoji(clanMemberProfile.rank) || '';
+                const rawRank = clanMemberProfile.rank;
+                const normalizedRank = rawRank.trim();
+                logger.debug(`Profile command: raw rank is "${rawRank}", normalized rank is "${normalizedRank}", lowercased: "${normalizedRank.toLowerCase()}"`);
+
+                const clanRankEmoji = await getRankEmoji(normalizedRank);
+                logger.debug(`Profile command: Retrieved rank emoji "${clanRankEmoji}" for rank "${normalizedRank}"`);
+
+                const clanEmoji = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_clan_logo']);
+                const clansEmoji = clanEmoji.length > 0 ? clanEmoji[0].emoji_format : '';
                 clanInfo +=
                     '\n' +
                     safeTruncate(
-                        `<:VarietyzLogo:1271778132566872064> Ranked: ${clanRankEmoji} **\`${clanMemberProfile.rank}\`**\n` +
-                            `:ballot_box_with_check: Joined: **\`${new Date(clanMemberProfile.joined_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}\`**`,
+                        `${clansEmoji} Ranked: ${clanRankEmoji} **\`${clanMemberProfile.rank}\`**\n` + `:ballot_box_with_check: Joined: **\`${new Date(clanMemberProfile.joined_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}\`**`,
                         1024,
                     );
             }

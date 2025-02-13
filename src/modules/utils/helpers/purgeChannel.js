@@ -19,7 +19,7 @@
  * @module utils/purgeChannel
  */
 
-const logger = require('./logger');
+const logger = require('../essentials/logger');
 const { sleep } = require('./sleepUtil');
 
 /**
