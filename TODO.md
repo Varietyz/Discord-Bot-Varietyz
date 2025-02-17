@@ -1,5 +1,9 @@
 # **To-Do List for Varietyz Bot**
 
+- Guided setup (tutorial, auto-initialisation, slashcommand execution, channel setups)
+- Tutorials
+- FaQ Command
+
 ### **Centralized Code Management**
 
 - **Daily Code Reviews:**
@@ -197,3 +201,14 @@
         - WoM API request failures
         - Discord rate-limit handling
     - Notify admins in Discord of critical bot issues.
+
+# CLAN CHAT GENERATION
+
+- Generate the Clan Chat channel '💬clan-chat'
+- Generate a webhook url for that channel named '💬OSRS | Clan Chat'
+- Append image from image_cache 'hook_avatars' table under the file_name 'cc_webhook_avatar'
+- Send message to channel collected from guild.db channel_key 'channel_staff_chat' informing user of clanchat generation and prompting them with modal to register the cc webhook
+    - set modal title to: Register Clanchat Webhook
+    - implement fields: secret key, clan name, endpoint url (end point url default = https://clanchat.net)
+    - add a message prompting them to click the register webhook button on the message that was sent if the modal gets cancelled, informing them its necessary to register the secret key for guaranteed functionality.
+      the embed with the current created webhook and channel with a permanent button to quickly re-open the modal to register it should be sent to the channel in log_channels table under log_key 'critical_alerts'

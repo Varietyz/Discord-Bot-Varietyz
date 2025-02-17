@@ -6,6 +6,7 @@ const tasks = require('../../../tasks');
 
 const populateSkillsBosses = require('../../../migrations/populateSkillsBosses');
 const populateHiscoreActivities = require('../../../migrations/populateHiscoreActivities');
+const { populateImageCache } = require('../../../migrations/populateImageCache');
 
 module.exports = {
     name: 'ready', // Event name
@@ -20,6 +21,7 @@ module.exports = {
 
         await populateSkillsBosses(client);
         await populateHiscoreActivities(client);
+        await populateImageCache();
 
         // Execute tasks that need to run on startup.
         for (const task of tasks) {

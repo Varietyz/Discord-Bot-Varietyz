@@ -36,16 +36,32 @@ const { getMetricEmoji } = require('../../utils/fetchers/getCompMetricEmoji');
  * @param {string} competitionType - The competition type, either `SOTW` or `BOTW`.
  * @param {Object} db - The database utility object.
  * @param {Object} client - The Discord client instance.
- * @param {Object} constants - Configuration constants (e.g., channel IDs).
  * @returns {Promise<void>} Resolves when the leaderboard has been updated.
  *
  * @example
  * // 📌 Update the SOTW leaderboard:
  * await updateLeaderboard('SOTW', db, client, constants);
  */
-async function updateLeaderboard(competitionType, db, client, constants) {
+async function updateLeaderboard(competitionType, db, client) {
     try {
-        const channelId = competitionType === 'SOTW' ? constants.SOTW_CHANNEL_ID : constants.BOTW_CHANNEL_ID;
+        let channelKey;
+        if (competitionType === 'SOTW') {
+            channelKey = 'sotw_channel';
+        } else if (competitionType === 'BOTW') {
+            channelKey = 'botw_channel';
+        } else {
+            logger.info(`⚠️ Unknown competition type: ${competitionType}.`);
+            return;
+        }
+
+        // Query the database for the corresponding channel ID
+        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', [channelKey]);
+        if (!row) {
+            logger.info(`⚠️ No channel_id is configured in comp_channels for ${channelKey}.`);
+            return;
+        }
+
+        const channelId = row.channel_id;
         const channel = await client.channels.fetch(channelId);
 
         if (!channel) {

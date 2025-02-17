@@ -53,21 +53,21 @@ const initializeGuildTables = async () => {
                 permissions INTEGER DEFAULT 0
             `,
             guild_roles: `
-                role_key TEXT PRIMARY KEY,
-                role_id TEXT NOT NULL UNIQUE,
+                role_id TEXT PRIMARY KEY,             
+                role_key TEXT UNIQUE,                  
                 permissions INTEGER DEFAULT 0
             `,
             guild_webhooks: `
-                webhook_key TEXT PRIMARY KEY,
-                webhook_id TEXT NOT NULL UNIQUE,
-                webhook_url TEXT NOT NULL UNIQUE,
+                webhook_id TEXT PRIMARY KEY,           
+                webhook_key TEXT UNIQUE,               
+                webhook_url TEXT NOT NULL,             
                 channel_id TEXT DEFAULT NULL,
                 webhook_name TEXT DEFAULT 'Unnamed Webhook',
                 FOREIGN KEY (channel_id) REFERENCES guild_channels(channel_id) ON DELETE SET NULL
             `,
             guild_emojis: `
                 emoji_id TEXT PRIMARY KEY,
-                emoji_key TEXT NOT NULL UNIQUE,
+                emoji_key TEXT,
                 emoji_name TEXT NOT NULL,
                 emoji_format TEXT NOT NULL,
                 animated INTEGER DEFAULT 0

@@ -7,7 +7,7 @@ const { getRecentMessages, detectSystemMessage } = require('./msgDbUtils');
 const { saveMessage } = require('./msgDbSave');
 const { reorderAllTables } = require('./msgReorder');
 const logger = require('../utils/essentials/logger');
-
+const db = require('../utils/essentials/dbUtils');
 /**
  * 🎯 **Determines if a Snowflake ID is Newer**
  *
@@ -47,7 +47,14 @@ function isNewerSnowflake(idA, idB) {
  * // Fetch and store history for a channel:
  * await fetchAndStoreChannelHistory(client, '123456789012345678');
  */
-async function fetchAndStoreChannelHistory(client, channelId) {
+async function fetchAndStoreChannelHistory(client) {
+    const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['clanchat_channel']);
+    if (!row) {
+        logger.info('⚠️ No channel_id is configured in setup_channels for clanchat_channel.');
+        return;
+    }
+
+    const channelId = row.channel_id;
     const channel = await client.channels.fetch(channelId);
     if (!channel || !channel.isTextBased()) {
         logger.info(`⚠️ Invalid text channel: ${channelId}`);

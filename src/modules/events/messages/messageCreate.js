@@ -1,8 +1,8 @@
 // src/modules/events/messageCreate.js
 
-const { CLAN_CHAT_CHANNEL_ID } = require('../../../config/constants');
 const { saveMessage } = require('../../collection/msgDbSave');
 const logger = require('../../utils/essentials/logger');
+const db = require('../../utils/essentials/dbUtils');
 
 module.exports = {
     name: 'messageCreate', // Event name
@@ -12,8 +12,18 @@ module.exports = {
      * @param message - The Discord message object.
      */
     async execute(message) {
-        // Only process messages from the designated channel.
-        if (message.channel.id !== CLAN_CHAT_CHANNEL_ID) return;
+        const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['clanchat_channel']);
+
+        if (!row) {
+            // No channel configured => do nothing or log
+            return;
+        }
+
+        // 2) Extract the actual string ID
+        const ccChannelId = row.channel_id;
+
+        // 3) Compare it properly
+        if (message.channel.id !== ccChannelId) return;
 
         try {
             await saveMessage(message.author.username, message.content, message.id, message.createdTimestamp);

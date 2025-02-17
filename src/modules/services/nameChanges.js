@@ -20,10 +20,9 @@
 const WOMApiClient = require('../../api/wise_old_man/apiClient'); // from @wise-old-man/utils or custom
 const { EmbedBuilder } = require('discord.js');
 const logger = require('../utils/essentials/logger');
-const { NAME_CHANGE_CHANNEL_ID } = require('../../config/constants');
 const { globalHistoricalRenameFromRecentChanges } = require('../utils/essentials/forceDbNameChange'); // Force messages.db Name Changes
 
-const { getAll, runQuery, getOne } = require('../utils/essentials/dbUtils');
+const db = require('../utils/essentials/dbUtils');
 const {
     messages: { getAll: getAllMessages, runQuery: runMessagesQuery },
 } = require('../utils/essentials/dbUtils');
@@ -58,11 +57,11 @@ async function fetchNameChanges() {
  */
 async function appendNameChangesToDb(nameChanges) {
     if (!nameChanges || !nameChanges.length) return;
-    await runQuery(`
+    await db.runQuery(`
         DROP TABLE IF EXISTS recent_name_changes
         `);
 
-    await runQuery(`
+    await db.runQuery(`
         CREATE TABLE recent_name_changes (
   idx INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id INTEGER NOT NULL,
@@ -80,7 +79,7 @@ async function appendNameChangesToDb(nameChanges) {
     try {
         let insertedCount = 0;
         for (const { player_id, oldRsn, newRsn, resolvedAt } of nameChanges) {
-            const result = await runQuery(insertSQL, [player_id, oldRsn, newRsn, resolvedAt]);
+            const result = await db.runQuery(insertSQL, [player_id, oldRsn, newRsn, resolvedAt]);
             if (result.changes === 1) {
                 insertedCount++;
             }
@@ -97,7 +96,7 @@ async function appendNameChangesToDb(nameChanges) {
  * picking the row with the largest resolvedAt from recent_name_changes
  */
 async function getFinalNamesMap() {
-    const rows = await getAll(`
+    const rows = await db.getAll(`
     SELECT player_id, old_rsn, new_rsn, resolved_at
     FROM recent_name_changes
   `);
@@ -166,7 +165,7 @@ async function userHasRsnInHistory(knownRsn, finalRsn) {
  * False if we block the rename.
  */
 async function resolveConflictByNameHistory(requestingPlayerId, oldRsn, finalRsn) {
-    const conflict = await getOne(
+    const conflict = await db.getOne(
         `
     SELECT player_id, rsn 
     FROM registered_rsn
@@ -184,7 +183,7 @@ async function resolveConflictByNameHistory(requestingPlayerId, oldRsn, finalRsn
 
     const userOwnsName = await userHasRsnInHistory(oldRsn, finalRsn);
     if (userOwnsName) {
-        await runQuery('DELETE FROM registered_rsn WHERE player_id = ?', [conflict.player_id]);
+        await db.runQuery('DELETE FROM registered_rsn WHERE player_id = ?', [conflict.player_id]);
         logger.info(`✅ Freed up RSN '${finalRsn}' from #${conflict.player_id} in favor of #${requestingPlayerId}.`);
         return true;
     } else {
@@ -206,7 +205,7 @@ async function resolveConflictByNameHistory(requestingPlayerId, oldRsn, finalRsn
  */
 async function updateAllRegisteredRSNs(finalNamesMap, channelManager) {
     const changedRecords = [];
-    const registeredRows = await getAll(`
+    const registeredRows = await db.getAll(`
     SELECT player_id, discord_id, rsn
     FROM registered_rsn
   `);
@@ -231,13 +230,20 @@ async function updateAllRegisteredRSNs(finalNamesMap, channelManager) {
             continue;
         }
 
-        await runQuery('UPDATE registered_rsn SET rsn = ? WHERE player_id = ?', [finalRsn, playerId]);
+        await db.runQuery('UPDATE registered_rsn SET rsn = ? WHERE player_id = ?', [finalRsn, playerId]);
         logger.info(`✅ Updated #${playerId} RSN: '${oldRsn}' → '${finalRsn}'`);
         changedRecords.push({ discord_id, oldRsn, newRsn: finalRsn });
     }
 
     if (channelManager && changedRecords.length) {
-        const channel = await channelManager.fetch(NAME_CHANGE_CHANNEL_ID).catch(() => null);
+        const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['name_change_channel']);
+        if (!row) {
+            logger.info('⚠️ No channel_id is configured in comp_channels for name_change_channel.');
+            return;
+        }
+
+        const channelId = row.channel_id;
+        const channel = await channelManager.fetch(channelId).catch(() => null);
         if (channel) {
             for (const { discord_id, oldRsn, newRsn } of changedRecords) {
                 const embed = new EmbedBuilder()
@@ -290,13 +296,13 @@ async function updateNamesInMainDB(changedRecords) {
     if (!changedRecords.length) return;
 
     const excludeTables = ['recent_name_changes', 'skills_bosses'];
-    const tables = await getAll('SELECT name FROM sqlite_master WHERE type=\'table\'');
+    const tables = await db.getAll('SELECT name FROM sqlite_master WHERE type=\'table\'');
     if (!tables.length) return;
 
     for (const { name: tableName } of tables) {
         if (excludeTables.includes(tableName)) continue;
 
-        const columns = await getAll(`PRAGMA table_info(${tableName})`);
+        const columns = await db.getAll(`PRAGMA table_info(${tableName})`);
         if (!columns) continue;
 
         const rsnCol = columns.find((c) => c.name.toLowerCase() === 'rsn');
@@ -304,7 +310,7 @@ async function updateNamesInMainDB(changedRecords) {
 
         for (const { oldRsn, newRsn } of changedRecords) {
             const sql = `UPDATE ${tableName} SET rsn = ? WHERE LOWER(rsn) = LOWER(?)`;
-            const result = await runQuery(sql, [newRsn, oldRsn]);
+            const result = await db.runQuery(sql, [newRsn, oldRsn]);
             if (result.changes > 0) {
                 logger.info(`✅ [updateNamesInMainDB] '${tableName}': replaced '${oldRsn}' -> '${newRsn}' in ${result.changes} row(s).`);
             }

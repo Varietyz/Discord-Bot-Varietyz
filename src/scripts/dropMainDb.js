@@ -73,8 +73,9 @@ async function dropTables(db) {
         //'clan_members',
         //'active_inactive',
         //'registered_rsn',
-        'hiscores_activities',
-        'skills_bosses',
+        //'hiscores_activities',
+        //'skills_bosses',
+        //'clanchat_config',
     ];
 
     try {

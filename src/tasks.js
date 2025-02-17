@@ -61,7 +61,7 @@ module.exports = [
         name: 'updateData',
         func: async (client) => await updateData(client),
         interval: 60 * 30, // Runs every 30 minutes
-        runOnStart: false,
+        runOnStart: true,
         runAsTask: true,
     },
     {

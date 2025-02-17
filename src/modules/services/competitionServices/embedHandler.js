@@ -57,7 +57,24 @@ async function updateActiveCompetitionEmbed(competitionType, db, client, constan
             [competitionType, nowISO, nowISO],
         );
 
-        const channelId = competitionType === 'SOTW' ? constants.SOTW_CHANNEL_ID : constants.BOTW_CHANNEL_ID;
+        let channelKey;
+        if (competitionType === 'SOTW') {
+            channelKey = 'sotw_channel';
+        } else if (competitionType === 'BOTW') {
+            channelKey = 'botw_channel';
+        } else {
+            logger.info(`⚠️ Unknown competition type: ${competitionType}.`);
+            return;
+        }
+
+        // Query the database for the corresponding channel ID
+        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', [channelKey]);
+        if (!row) {
+            logger.info(`⚠️ No channel_id is configured in comp_channels for ${channelKey}.`);
+            return;
+        }
+
+        const channelId = row.channel_id;
 
         const channel = await client.channels.fetch(channelId);
         if (!channel) {

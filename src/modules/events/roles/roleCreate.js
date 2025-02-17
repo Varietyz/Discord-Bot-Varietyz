@@ -1,5 +1,3 @@
-// src/modules/events/roleCreate.js
-
 const {
     guild: { getOne, runQuery, getAll },
 } = require('../../utils/essentials/dbUtils');
@@ -17,24 +15,31 @@ module.exports = {
      */
     async execute(role) {
         try {
-            logger.info(`⏳ Waiting 1 minute for updates before logging role creation: "${role.name}" (ID: ${role.id}) in guild: ${role.guild.name}`);
+            const client = role.guild.client;
+            client.setMaxListeners(Math.max(client.getMaxListeners() || 10, 15)); // Adjust listener limits safely
+
+            // Using a WeakSet to prevent duplicate listeners
+            if (!client.activeRoleListeners) client.activeRoleListeners = new WeakSet();
+            if (client.activeRoleListeners.has(role)) return; // Avoid duplicate processing
+            client.activeRoleListeners.add(role);
+
+            logger.info(`⏳ Waiting 15 seconds for updates before logging role creation: "${role.name}" (ID: ${role.id}) in guild: ${role.guild.name}`);
 
             let updatedRole = role;
             let roleDeleted = false;
-            const timeoutDuration = 60000; // 1-minute timeout
+            const timeoutDuration = 15000; // Reduce wait time to 15 seconds
 
-            // Wait for up to 1 minute to catch any role updates or deletions.
             await new Promise((resolve) => {
                 const timeout = setTimeout(() => {
-                    logger.warn(`⚠️ [RoleCreate] No updates detected for role "${role.name}" (ID: ${role.id}). Logging creation.`);
+                    logger.warn(`⚠️ No updates detected for role "${role.name}" (ID: ${role.id}). Logging creation.`);
                     resolve(updatedRole);
                 }, timeoutDuration);
 
                 const updateListener = (oldRole, newRole) => {
                     if (newRole.id === role.id) {
                         clearTimeout(timeout);
-                        role.guild.client.off(Events.GuildRoleUpdate, updateListener);
-                        role.guild.client.off(Events.GuildRoleDelete, deleteListener);
+                        client.off(Events.GuildRoleUpdate, updateListener);
+                        client.off(Events.GuildRoleDelete, deleteListener);
                         updatedRole = newRole;
                         resolve(updatedRole);
                     }
@@ -43,41 +48,36 @@ module.exports = {
                 const deleteListener = (deletedRole) => {
                     if (deletedRole.id === role.id) {
                         clearTimeout(timeout);
-                        role.guild.client.off(Events.GuildRoleUpdate, updateListener);
-                        role.guild.client.off(Events.GuildRoleDelete, deleteListener);
+                        client.off(Events.GuildRoleUpdate, updateListener);
+                        client.off(Events.GuildRoleDelete, deleteListener);
                         roleDeleted = true;
                         logger.warn(`🗑️ Role "${role.name}" (ID: ${role.id}) was deleted before logging.`);
                         resolve(null);
                     }
                 };
 
-                role.guild.client.on(Events.GuildRoleUpdate, updateListener);
-                role.guild.client.on(Events.GuildRoleDelete, deleteListener);
+                client.on(Events.GuildRoleUpdate, updateListener);
+                client.on(Events.GuildRoleDelete, deleteListener);
             });
 
-            // If the role was deleted or is no longer available, stop processing.
             if (roleDeleted || !updatedRole) return;
+            client.activeRoleListeners.delete(role); // Cleanup WeakSet
 
-            // Generate a unique role key.
-            // IMPORTANT: We pass { guild: { getAll } } so that normalizeKey can use db.guild.getAll(...)
             const baseKey = await normalizeKey(updatedRole.name, 'role', { guild: { getAll } });
 
-            // Insert (or update) the role into the database.
             await runQuery(
                 `INSERT INTO guild_roles (role_key, role_id, permissions) VALUES (?, ?, ?)
                  ON CONFLICT(role_id) DO UPDATE SET role_key = excluded.role_key, permissions = excluded.permissions`,
                 [baseKey, updatedRole.id, parseInt(updatedRole.permissions.bitfield.toString(), 10) || 0],
             );
 
-            logger.info(`🆕 [RoleCreate] Role "${updatedRole.name}" (ID: ${updatedRole.id}) was created in guild: ${updatedRole.guild.name}`);
+            logger.info(`🆕 [RoleCreate] Role "${updatedRole.name}" (ID: ${updatedRole.id}) created in guild: ${updatedRole.guild.name}`);
 
-            // Retrieve the logging channel for roles.
             const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['role_logs']);
             if (!logChannelData) return;
             const logChannel = updatedRole.guild.channels.cache.get(logChannelData.channel_id);
             if (!logChannel) return;
 
-            // Retrieve the action performer from the audit logs.
             let executor = 'Unknown User';
             try {
                 const fetchedLogs = await updatedRole.guild.fetchAuditLogs({
@@ -92,13 +92,11 @@ module.exports = {
                 logger.warn(`⚠️ Could not fetch audit log for role creation: ${auditError.message}`);
             }
 
-            // Prepare role properties for the embed.
             const mentionable = updatedRole.mentionable ? '`✅ Yes`' : '`❌ No`';
             const hoist = updatedRole.hoist ? '`✅ Yes`' : '`❌ No`';
             const roleColor = updatedRole.color ? `#${updatedRole.color.toString(16).padStart(6, '0')}` : '`Default`';
             const position = `\`#${updatedRole.position}\``;
 
-            // Construct the embed message.
             const embed = new EmbedBuilder()
                 .setColor(updatedRole.color || 0x2ecc71)
                 .setTitle('🔑 New Role Created')
@@ -113,7 +111,6 @@ module.exports = {
                 )
                 .setTimestamp();
 
-            // Send the log embed.
             await logChannel.send({ embeds: [embed] });
             logger.info(`📋 Successfully logged new role creation: ${updatedRole.name}`);
         } catch (error) {

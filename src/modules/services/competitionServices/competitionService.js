@@ -65,7 +65,7 @@ class CompetitionService {
      * @returns {Promise<void>} Resolves when initialization is complete.
      */
     async initialize() {
-        await scheduleRotationsOnStartup();
+        await scheduleRotationsOnStartup(db, () => this.startNextCompetitionCycle(), constants, this.scheduledJobs);
     }
 
     /**
@@ -136,6 +136,50 @@ class CompetitionService {
     }
 
     /**
+     * Retrieves the Discord channel associated with the given competition type.
+     *
+     * This method maps the competition type ('SOTW' or 'BOTW') to its corresponding database key,
+     * queries the comp_channels table to retrieve the channel ID, and then fetches the channel object
+     * using the Discord client's channels cache.
+     *
+     * @async
+     * @param {string} type - The competition type. Expected values are 'SOTW' or 'BOTW'.
+     * @returns {Promise<import('discord.js').BaseChannel|undefined>} A promise that resolves to the Discord channel
+     * object if found, or undefined if the competition type is unknown or the channel is not configured.
+     *
+     * @example
+     * // Retrieve the channel for SOTW competition type
+     * const channel = await getChannelId('SOTW');
+     * if (channel) {
+     * console.log('Channel fetched:', channel.id);
+     * } else {
+     * console.log('Channel not found.');
+     * }
+     */
+    async getChannelId(type) {
+        let channelKey;
+        if (type === 'SOTW') {
+            channelKey = 'sotw_channel';
+        } else if (type === 'BOTW') {
+            channelKey = 'botw_channel';
+        } else {
+            logger.info(`⚠️ Unknown competition type: ${type}.`);
+            return;
+        }
+
+        // Query the database for the corresponding channel ID
+        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', [channelKey]);
+        if (!row) {
+            logger.info(`⚠️ No channel_id is configured in comp_channels for ${channelKey}.`);
+            return;
+        }
+
+        const channelId = row.channel_id;
+        const channel = await this.client.channels.fetch(channelId);
+        return channel;
+    }
+
+    /**
      * 🎯 **Creates New Competitions.**
      *
      * Checks for queued competitions and creates a new competition accordingly. If no votes and no queue exist,
@@ -149,7 +193,8 @@ class CompetitionService {
      */
     async createNewCompetitions(type, lastCompetition, votesExist, pauseForRotationUpdate) {
         const queuedCompetitions = await db.getAll('SELECT * FROM competition_queue WHERE type = ? ORDER BY queued_at ASC', [type]);
-        const channel = await this.client.channels.fetch(type === 'SOTW' ? constants.SOTW_CHANNEL_ID : constants.BOTW_CHANNEL_ID);
+
+        const channel = await this.getChannelId(type);
 
         if (!votesExist && queuedCompetitions.length === 0) {
             logger.info(`ℹ️ **Info:** No votes and no queued competitions for \`${type}\`. Creating a random competition.`);
@@ -229,7 +274,7 @@ class CompetitionService {
      * @returns {Promise<void>}
      */
     async processLastCompetition(type, lastCompetition) {
-        const channel = await this.client.channels.fetch(type === 'SOTW' ? constants.SOTW_CHANNEL_ID : constants.BOTW_CHANNEL_ID);
+        const channel = await this.getChannelId(type);
         await purgeChannel(channel);
         await this.createCompetitionFromVote(lastCompetition);
     }
@@ -285,7 +330,6 @@ class CompetitionService {
         await this.updateCompetitionData();
         if (overallNearestEndTime) {
             scheduleRotation(new Date(overallNearestEndTime), () => this.startNextCompetitionCycle(), this.scheduledJobs);
-            logger.info(`🚀 Scheduled next rotation at \`${overallNearestEndTime.toISOString()}\`.`);
             await migrateEndedCompetitions();
         } else {
             logger.info('ℹ️ **Info:** No active or scheduled competitions found. Rotation not scheduled.');
@@ -461,22 +505,47 @@ class CompetitionService {
         const selectedOption = interaction.values[0];
         let competitionType = '';
 
-        if (interaction.channelId === constants.SOTW_CHANNEL_ID) {
+        // Retrieve channel objects for both competition types
+        const sotwChannel = await this.getChannelId('SOTW');
+        const botwChannel = await this.getChannelId('BOTW');
+
+        // Determine competition type based on which channel the interaction came from
+        if (sotwChannel && interaction.channelId === sotwChannel.id) {
             competitionType = 'SOTW';
-        } else if (interaction.channelId === constants.BOTW_CHANNEL_ID) {
+        } else if (botwChannel && interaction.channelId === botwChannel.id) {
             competitionType = 'BOTW';
         }
 
         try {
+            const validRegistration = await db.getOne(
+                `
+                    SELECT r.*, cm.player_id AS clan_player_id
+                    FROM registered_rsn AS r
+                    INNER JOIN clan_members AS cm 
+                    ON r.player_id = cm.player_id
+                    AND LOWER(r.rsn) = LOWER(cm.rsn)
+                    WHERE r.discord_id = ?
+                `,
+                [discordId],
+            );
+
+            if (!validRegistration) {
+                return interaction.reply({
+                    content: '🚫 **Error:** You must be a registered clan member to vote.',
+                    flags: 64,
+                });
+            }
+
+            const currentTime = new Date().toISOString();
             const competition = await db.getOne(
                 `
-        SELECT *
-        FROM competitions
-        WHERE type=?
-          AND starts_at <= ?
-          AND ends_at >= ?
-      `,
-                [competitionType, new Date().toISOString(), new Date().toISOString()],
+    SELECT *
+    FROM competitions
+    WHERE type = ?
+      AND starts_at <= ?
+      AND ends_at >= ?
+    `,
+                [competitionType, currentTime, currentTime],
             );
 
             if (!competition) {
@@ -520,7 +589,7 @@ class CompetitionService {
             });
 
             if (competition.message_id) {
-                const channel = await interaction.client.channels.fetch(competitionType === 'SOTW' ? constants.SOTW_CHANNEL_ID : constants.BOTW_CHANNEL_ID);
+                const channel = await this.getChannelId(competitionType);
 
                 if (channel) {
                     try {

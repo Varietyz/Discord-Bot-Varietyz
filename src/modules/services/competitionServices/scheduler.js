@@ -39,9 +39,29 @@ function scheduleRotation(endTime, rotationCallback, scheduledJobs) {
         logger.info('🚫 **Cleared existing scheduled rotation job.**');
     }
 
+    let isRotating = false;
+
+    /**
+     *
+     */
+    async function safeRotationCallback() {
+        if (isRotating) {
+            logger.warn('Rotation already in progress. Skipping duplicate call.');
+            return;
+        }
+        isRotating = true;
+        try {
+            await rotationCallback(); // Your existing rotation logic
+        } catch (error) {
+            logger.error('Error during rotation:', error);
+        } finally {
+            isRotating = false;
+        }
+    }
+
     const job = schedule.scheduleJob(endTime, async () => {
         logger.info('🔄 **Scheduled rotation triggered!** Executing rotation callback...');
-        await rotationCallback();
+        await safeRotationCallback();
         scheduledJobs.delete(jobName);
     });
 

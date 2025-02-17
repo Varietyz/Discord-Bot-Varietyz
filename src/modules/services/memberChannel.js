@@ -27,11 +27,11 @@
 const { EmbedBuilder } = require('discord.js');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('../utils/essentials/logger');
-const { MEMBER_CHANNEL_ID, ROLE_CHANNEL_ID, rankHierarchy } = require('../../config/constants');
+const { rankHierarchy } = require('../../config/constants');
 const { getRankEmoji, formatExp, formatRank, getRankColor } = require('../utils/helpers/rankUtils');
 const { getRanks } = require('../utils/fetchers/fetchRankEmojis');
 const { purgeChannel } = require('../utils/helpers/purgeChannel');
-const { getAll, runQuery, getOne } = require('../utils/essentials/dbUtils');
+const db = require('../utils/essentials/dbUtils');
 const { syncClanRankEmojis } = require('../utils/essentials/syncClanRanks');
 require('dotenv').config();
 
@@ -75,7 +75,14 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
 
         await member.roles.remove(rolesToRemove);
 
-        const roleChannel = await guild.channels.fetch(ROLE_CHANNEL_ID);
+        const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['auto_roles_channel']);
+        if (!row) {
+            logger.info('⚠️ No channel_id is configured in comp_channels for auto_roles_channel.');
+            return;
+        }
+
+        const channelId = row.channel_id;
+        const roleChannel = await guild.channels.fetch(channelId);
         const color = await getRankColor(rank);
         // Get the emoji for the target role (if needed)
         const targetEmoji = await getRankEmoji(rank);
@@ -161,7 +168,7 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
             }
 
             if (!discordIdCache[rsn.toLowerCase()]) {
-                const result = await getAll('SELECT discord_id FROM registered_rsn WHERE LOWER(rsn) = LOWER(?)', [rsn]);
+                const result = await db.getAll('SELECT discord_id FROM registered_rsn WHERE LOWER(rsn) = LOWER(?)', [rsn]);
                 if (result.length > 0) discordIdCache[rsn.toLowerCase()] = result[0].discord_id;
             }
 
@@ -196,7 +203,7 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
  */
 async function updateDatabase(newData) {
     try {
-        const currentData = await getAll('SELECT player_id, rsn, rank, joined_at FROM clan_members');
+        const currentData = await db.getAll('SELECT player_id, rsn, rank, joined_at FROM clan_members');
 
         const currentDataMap = new Map(currentData.map(({ player_id, rsn, rank, joined_at }) => [player_id, { rsn, rank, joined_at }]));
 
@@ -242,16 +249,16 @@ async function updateDatabase(newData) {
             joined_at = COALESCE(excluded.joined_at, clan_members.joined_at)
         `;
                 try {
-                    await runQuery(updateQuery, [playerId, rsn, rank, joinedAt]);
+                    await db.runQuery(updateQuery, [playerId, rsn, rank, joinedAt]);
                 } catch (err) {
                     if (err.message.includes('UNIQUE constraint failed: clan_members.rsn')) {
                         logger.warn(`⚠️ Conflict detected for RSN '${rsn}'. Attempting to resolve...`);
-                        const occupant = await getOne('SELECT player_id FROM clan_members WHERE rsn = ?', [rsn]);
+                        const occupant = await db.getOne('SELECT player_id FROM clan_members WHERE rsn = ?', [rsn]);
                         if (occupant && occupant.player_id !== playerId) {
                             logger.warn(`🗑️ Removing occupant row #${occupant.player_id} which also has RSN '${rsn}'.`);
-                            await runQuery('DELETE FROM clan_members WHERE player_id = ?', [occupant.player_id]);
+                            await db.runQuery('DELETE FROM clan_members WHERE player_id = ?', [occupant.player_id]);
                         }
-                        await runQuery(updateQuery, [playerId, rsn, rank, joinedAt]);
+                        await db.runQuery(updateQuery, [playerId, rsn, rank, joinedAt]);
                     } else {
                         throw err;
                     }
@@ -336,7 +343,14 @@ async function sendEmbedsInBatches(channel, embeds) {
  * await updateClanChannel(client, cachedData);
  */
 async function updateClanChannel(client, cachedData) {
-    const channel = await client.channels.fetch(MEMBER_CHANNEL_ID);
+    const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['clan_members_channel']);
+    if (!row) {
+        logger.info('⚠️ No channel_id is configured in comp_channels for clan_members_channel.');
+        return;
+    }
+
+    const channelId = row.channel_id;
+    const channel = await client.channels.fetch(channelId);
     await purgeChannel(channel);
 
     const embeds = [];

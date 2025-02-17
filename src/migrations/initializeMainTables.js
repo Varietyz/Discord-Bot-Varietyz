@@ -127,6 +127,21 @@ const initializeMainTables = async () => {
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             `,
+            clanchat_config: `
+                clanchat_key TEXT PRIMARY KEY,
+                secret_key TEXT NOT NULL UNIQUE,
+                clan_name TEXT NOT NULL,
+                webhook_url TEXT NOT NULL,
+                channel_id TEXT NOT NULL,
+                endpoint_url TEXT NOT NULL,
+                registered_by TEXT NOT NULL
+            `,
+            modal_tracking: `
+                idx INTEGER PRIMARY KEY AUTOINCREMENT,
+                modal_key TEXT NOT NULL,
+                registered_by TEXT NOT NULL,
+                registered_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            `,
         };
 
         for (const [table, schema] of Object.entries(tables)) {

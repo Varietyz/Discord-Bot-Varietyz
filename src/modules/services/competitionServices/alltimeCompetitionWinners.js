@@ -2,7 +2,6 @@
 const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder } = require('discord.js');
-const { TOP_TEN_CHANNEL_ID } = require('../../../config/constants');
 
 /**
  * 🎯 **Updates the All-Time Leaderboard (Now Uses `player_id`)**
@@ -31,7 +30,13 @@ const { TOP_TEN_CHANNEL_ID } = require('../../../config/constants');
  */
 const updateAllTimeLeaderboard = async (client) => {
     try {
-        const channelId = TOP_TEN_CHANNEL_ID;
+        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', ['top_10_channel']);
+        if (!row) {
+            logger.info('⚠️ No channel_id is configured in comp_channels for top_10_channel.');
+            return;
+        }
+
+        const channelId = row.channel_id;
         const channel = await client.channels.fetch(channelId);
 
         if (!channel) {
@@ -102,8 +107,10 @@ const updateAllTimeLeaderboard = async (client) => {
                 : '_No data available_';
         };
 
-        const sotwEmojiRow = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_overall']);
-        const botwEmojiRow = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_slayer']);
+        // Use getOne to fetch a single row
+        const sotwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_overall']);
+        const botwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_slayer']);
+
         const sotwEmoji = sotwEmojiRow ? sotwEmojiRow.emoji_format : '';
         const botwEmoji = botwEmojiRow ? botwEmojiRow.emoji_format : '';
 

@@ -2,7 +2,6 @@ const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 const { EmbedBuilder } = require('discord.js');
-const constants = require('../../../config/constants');
 const { getMetricEmoji } = require('../../utils/fetchers/getCompMetricEmoji');
 
 /**
@@ -93,14 +92,13 @@ const recordCompetitionWinner = async (competition) => {
  * @async
  * @function updateFinalLeaderboard
  * @param {Object} competition - The ended competition object.
- * @param guild
  * @param {Object} client - The Discord client instance.
  *
  * @example
  * // 📌 Update the final leaderboard for a competition:
  * await updateFinalLeaderboard(competition, client);
  */
-const updateFinalLeaderboard = async (competition, guild, client) => {
+const updateFinalLeaderboard = async (competition, client) => {
     try {
         const details = await WOMApiClient.request('competitions', 'getCompetitionDetails', competition.competition_id);
 
@@ -111,14 +109,21 @@ const updateFinalLeaderboard = async (competition, guild, client) => {
 
         const sortedParticipants = details.participations.filter((p) => p.progress.gained > 0).sort((a, b) => b.progress.gained - a.progress.gained);
 
-        const channelId = constants.HALL_OF_FAME_CHANNEL_ID;
+        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', ['results_channel']);
+        if (!row) {
+            logger.info('⚠️ No channel_id is configured in comp_channels for results_channel.');
+            return;
+        }
+
+        const channelId = row.channel_id;
         const channel = await client.channels.fetch(channelId);
         if (!channel) {
             logger.warn(`⚠️ Could not find Hall of Fame channel for \`${competition.type}\`.`);
             return;
         }
 
-        let metricEmoji = await getMetricEmoji(guild, competition.metric, competition.type); // ✅ Await the function
+        const guild = channel.guild; // Get the guild from the fetched channel
+        let metricEmoji = await getMetricEmoji(guild, competition.metric, competition.type);
 
         if (!metricEmoji) {
             logger.warn(`⚠️ **Warning:** Metric emoji is undefined for \`${competition.metric}\`.`);

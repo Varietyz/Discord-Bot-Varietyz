@@ -29,10 +29,6 @@ async function handleSlashCommand(interaction, commands) {
         logger.info(`✅ **Success:** \`${interaction.commandName}\` executed successfully. 🎉`);
     } catch (err) {
         logger.error(`🚨 **Execution Error:** Error executing \`${interaction.commandName}\`: ${err.message}`);
-        await interaction.reply({
-            content: '🚨 **Error:** Something went wrong while processing your command. ❌',
-            flags: 64,
-        });
     }
 }
 

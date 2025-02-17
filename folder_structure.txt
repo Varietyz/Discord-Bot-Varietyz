@@ -39,6 +39,7 @@
 │   │   ├─ 📄 migrateEndedCompetitions.js
 │   │   ├─ 📄 migrateRsn.js
 │   │   ├─ 📄 populateHiscoreActivities.js
+│   │   ├─ 📄 populateImageCache.js
 │   │   ├─ 📄 populateSkillsBosses.js
 │   │   └─ 📄 registered_rsn_backup.json
 │   ├─ 📂 modules
@@ -54,27 +55,34 @@
 │   │   │   │   ├─ 📄 adminAssignRsn.js
 │   │   │   │   ├─ 📄 adminCheckActivity.js
 │   │   │   │   ├─ 📄 adminQueueCompetition.js
+│   │   │   │   ├─ 📄 adminRemoveCCWebhook.js
 │   │   │   │   ├─ 📄 adminRemoveRsn.js
 │   │   │   │   ├─ 📄 adminRenameRsn.js
 │   │   │   │   ├─ 📄 adminRsnList.js
 │   │   │   │   ├─ 📄 adminSetRotationPeriod.js
-│   │   │   │   ├─ 📄 adminSyncMembers.js
-│   │   │   │   ├─ 📄 adminUpdateClannieChannel.js
-│   │   │   │   ├─ 📄 adminUpdateTop10Channel.js
-│   │   │   │   └─ 📂 database
-│   │    adminCompManagement.js
-│   │    adminDatabaseViewer.js
-│   │    adminEditDatabase.js
-│   │    adminInitializeGuild.js
-│   │    adminLogManagement.js
-│   │   │   │       └─ 📄 adminSetupManagement.js
+│   │   │   │   ├─ 📂 database
+│   │   │   │   │   ├─ 📄 adminDatabaseViewer.js
+│   │   │   │   │   └─ 📄 adminEditDatabase.js
+│   │   │   │   └─ 📂 guild
+│   │   │   │       ├─ 📄 adminCompManagement.js
+│   │   │   │       ├─ 📄 adminInitializeGuild.js
+│   │   │   │       ├─ 📄 adminLogManagement.js
+│   │   │   │       ├─ 📄 adminSetupManagement.js
+│   │   │   │       ├─ 📄 adminSyncEmojis.js
+│   │   │   │       ├─ 📄 adminSyncMembers.js
+│   │   │   │       ├─ 📄 adminUpdateClannieChannel.js
+│   │   │   │       ├─ 📄 adminUpdateResources.js
+│   │   │   │       ├─ 📄 adminUpdateTop10Channel.js
+│   │   │   │       └─ 📄 setupClanChat.js
 │   │   │   └─ 📂 user
-│    analytics.js
-│    help.js
-│    listCompetitions.js
-│    profile.js
-│    removeRsn.js
-│   │   │       └─ 📄 rsn.js
+│   │   │       ├─ 📄 analytics.js
+│   │   │       ├─ 📄 help.js
+│   │   │       ├─ 📄 listCompetitions.js
+│   │   │       ├─ 📄 profile.js
+│   │   │       ├─ 📄 removeRsn.js
+│   │   │       ├─ 📄 rsn.js
+│   │   │       └─ 📂 tutorials
+│   │   │           └─ 📄 clanchat_webhook.js
 │   │   ├─ 📂 events
 │   │   │   ├─ 📂 boosts
 │   │   │   │   ├─ 📄 memberBoost.js
@@ -96,10 +104,10 @@
 │   │   │   │   ├─ 📄 channelPinsUpdate.js
 │   │   │   │   ├─ 📄 channelUpdate.js
 │   │   │   │   └─ 📂 threads
-│   │    threadCreate.js
-│   │    threadDelete.js
-│   │    threadMemberUpdate.js
-│   │    threadStateUpdate.js
+│   │   │   │       ├─ 📄 threadCreate.js
+│   │   │   │       ├─ 📄 threadDelete.js
+│   │   │   │       ├─ 📄 threadMemberUpdate.js
+│   │   │   │       ├─ 📄 threadStateUpdate.js
 │   │   │   │       └─ 📄 threadUpdate.js
 │   │   │   ├─ 📂 client
 │   │   │   │   ├─ 📄 interactionCreate.js
@@ -116,7 +124,7 @@
 │   │   │   │   ├─ 📄 guildIntegrationsUpdate.js
 │   │   │   │   ├─ 📄 guildUpdate.js
 │   │   │   │   └─ 📂 invites
-│   │    inviteCreate.js
+│   │   │   │       ├─ 📄 inviteCreate.js
 │   │   │   │       └─ 📄 inviteDelete.js
 │   │   │   ├─ 📂 messages
 │   │   │   │   ├─ 📄 messageCreate.js
@@ -140,11 +148,13 @@
 │   │   │   │   ├─ 📄 stageInstanceDelete.js
 │   │   │   │   └─ 📄 stageInstanceUpdate.js
 │   │   │   └─ 📂 user
-│    guildMemberAdd.js
-│    guildMemberRemove.js
-│    guildMemberUpdate.js
-│    presenceUpdate.js
+│   │   │       ├─ 📄 guildMemberAdd.js
+│   │   │       ├─ 📄 guildMemberRemove.js
+│   │   │       ├─ 📄 guildMemberUpdate.js
+│   │   │       ├─ 📄 presenceUpdate.js
 │   │   │       └─ 📄 voiceStateUpdate.js
+│   │   ├─ 📂 modals
+│   │   │   └─ 📄 registerCCWebhookModal.js
 │   │   ├─ 📂 services
 │   │   │   ├─ 📄 activeMembers.js
 │   │   │   ├─ 📄 autoRoles.js
@@ -162,481 +172,44 @@
 │   │   │   ├─ 📄 nameChanges.js
 │   │   │   └─ 📄 playerDataExtractor.js
 │   │   └─ 📂 utils
- calculateActivity.js
- cleanupInactiveUsers.js
- dateUtils.js
- dbUtils.js
- embedUtils.js
- ensureBasicChannels.js
- ensureCompetitionCategory.js
- ensureLoggingCategory.js
- fetchPlayerData.js
- fetchRankEmojis.js
- forceDbNameChange.js
- formatCustomEmoji.js
- getCompMetricEmoji.js
- lastFetchedTime.js
- logger.js
- normalizeKey.js
- normalizeRsn.js
- purgeChannel.js
- rankUtils.js
- slashCommandHandler.js
- sleepUtil.js
- tallyVotes.js
-│   │       └─ 📄 validateRsn.js
+│   │       ├─ 📂 essentials
+│   │       │   ├─ 📄 dbUtils.js
+│   │       │   ├─ 📄 ensureBasicChannels.js
+│   │       │   ├─ 📄 ensureCompetitionCategory.js
+│   │       │   ├─ 📄 ensureLoggingCategory.js
+│   │       │   ├─ 📄 forceDbNameChange.js
+│   │       │   ├─ 📄 logger.js
+│   │       │   ├─ 📄 modalHandler.js
+│   │       │   ├─ 📄 slashCommandHandler.js
+│   │       │   └─ 📄 syncClanRanks.js
+│   │       ├─ 📂 fetchers
+│   │       │   ├─ 📄 fetchPlayerData.js
+│   │       │   ├─ 📄 fetchRankEmojis.js
+│   │       │   ├─ 📄 getCompMetricEmoji.js
+│   │       │   └─ 📄 lastFetchedTime.js
+│   │       ├─ 📂 helpers
+│   │       │   ├─ 📄 calculateActivity.js
+│   │       │   ├─ 📄 cleanupInactiveUsers.js
+│   │       │   ├─ 📄 dateUtils.js
+│   │       │   ├─ 📄 embedUtils.js
+│   │       │   ├─ 📄 formatCustomEmoji.js
+│   │       │   ├─ 📄 purgeChannel.js
+│   │       │   ├─ 📄 rankUtils.js
+│   │       │   ├─ 📄 sendWebhookCCModal.js
+│   │       │   ├─ 📄 sleepUtil.js
+│   │       │   ├─ 📄 tallyVotes.js
+│   │       │   └─ 📄 validateRsn.js
+│   │       └─ 📂 normalizing
+│   │           ├─ 📄 normalizeKey.js
+│   │           └─ 📄 normalizeRsn.js
 │   ├─ 📂 resources
 │   │   ├─ 📂 anim_emojis
-│   │   │   ├─ 📄 fire_cape.gif
-│   │   │   ├─ 📄 infernal_cape.gif
-│   │   │   └─ 📄 infernal_max_cape.gif
 │   │   ├─ 📂 emojis
-│   │   │   ├─ 📄 abyssal_sire
-│   │   │   ├─ 📄 agility
-│   │   │   ├─ 📄 alchemical_hydra
-│   │   │   ├─ 📄 amoxliatl
-│   │   │   ├─ 📄 araxxor
-│   │   │   ├─ 📄 artio
-│   │   │   ├─ 📄 attack
-│   │   │   ├─ 📄 barrows_chests
-│   │   │   ├─ 📄 bounty_hunter_hunter
-│   │   │   ├─ 📄 bounty_hunter_rogue
-│   │   │   ├─ 📄 branda
-│   │   │   ├─ 📄 bryophyta
-│   │   │   ├─ 📄 callisto
-│   │   │   ├─ 📄 calvarion
-│   │   │   ├─ 📄 cerberus
-│   │   │   ├─ 📄 chambers_of_xeric
-│   │   │   ├─ 📄 chambers_of_xeric_challenge_mode
-│   │   │   ├─ 📄 chaos_elemental
-│   │   │   ├─ 📄 chaos_fanatic
-│   │   │   ├─ 📄 clue_scrolls_all
-│   │   │   ├─ 📄 collections_logged
-│   │   │   ├─ 📄 colosseum_glory
-│   │   │   ├─ 📄 commander_zilyana
-│   │   │   ├─ 📄 construction
-│   │   │   ├─ 📄 cooking
-│   │   │   ├─ 📄 corporeal_beast
-│   │   │   ├─ 📄 crafting
-│   │   │   ├─ 📄 crazy_archaeologist
-│   │   │   ├─ 📄 dagannoth_kings
-│   │   │   ├─ 📄 dagannoth_prime
-│   │   │   ├─ 📄 dagannoth_rex
-│   │   │   ├─ 📄 dagganoth_supreme
-│   │   │   ├─ 📄 defence
-│   │   │   ├─ 📄 deranged_archaeologist
-│   │   │   ├─ 📄 duke_sucellus
-│   │   │   ├─ 📄 eldric
-│   │   │   ├─ 📄 farming
-│   │   │   ├─ 📄 firemaking
-│   │   │   ├─ 📄 fishing
-│   │   │   ├─ 📄 fletching
-│   │   │   ├─ 📄 general_graardor
-│   │   │   ├─ 📄 giant_mole
-│   │   │   ├─ 📄 grotesque_guardians
-│   │   │   ├─ 📄 guardians_of_the_rift
-│   │   │   ├─ 📄 herblore
-│   │   │   ├─ 📄 hespori
-│   │   │   ├─ 📄 hitpoints
-│   │   │   ├─ 📄 hunter
-│   │   │   ├─ 📄 kalphite_queen
-│   │   │   ├─ 📄 king_black_dragon
-│   │   │   ├─ 📄 kraken
-│   │   │   ├─ 📄 kreearra
-│   │   │   ├─ 📄 kril_tsutsaroth
-│   │   │   ├─ 📄 last_man_standing
-│   │   │   ├─ 📄 league_points
-│   │   │   ├─ 📄 lunar_chests
-│   │   │   ├─ 📄 magic
-│   │   │   ├─ 📄 max_cape
-│   │   │   ├─ 📄 mimic
-│   │   │   ├─ 📄 mining
-│   │   │   ├─ 📄 nex
-│   │   │   ├─ 📄 nightmare
-│   │   │   ├─ 📄 obor
-│   │   │   ├─ 📄 osrsofficialclient
-│   │   │   ├─ 📄 overall
-│   │   │   ├─ 📄 phantom_muspah
-│   │   │   ├─ 📄 phosanis_nightmare
-│   │   │   ├─ 📄 prayer
-│   │   │   ├─ 📄 pvp_arena
-│   │   │   ├─ 📄 ranged
-│   │   │   ├─ 📄 runecrafting
-│   │   │   ├─ 📄 runeliteclient
-│   │   │   ├─ 📄 sarachnis
-│   │   │   ├─ 📄 scorpia
-│   │   │   ├─ 📄 scurrius
-│   │   │   ├─ 📄 skotizo
-│   │   │   ├─ 📄 slayer
-│   │   │   ├─ 📄 smithing
-│   │   │   ├─ 📄 sol_heredit
-│   │   │   ├─ 📄 soul_wars_zeal
-│   │   │   ├─ 📄 spindel
-│   │   │   ├─ 📄 strength
-│   │   │   ├─ 📄 tempoross
-│   │   │   ├─ 📄 theatre_of_blood
-│   │   │   ├─ 📄 theatre_of_blood_hard_mode
-│   │   │   ├─ 📄 thermonuclear_smoke_devil
-│   │   │   ├─ 📄 the_corrupted_gauntlet
-│   │   │   ├─ 📄 the_gauntlet
-│   │   │   ├─ 📄 the_hueycoatl
-│   │   │   ├─ 📄 the_leviathan
-│   │   │   ├─ 📄 the_royal_titans
-│   │   │   ├─ 📄 the_whisperer
-│   │   │   ├─ 📄 thieving
-│   │   │   ├─ 📄 tombs_of_amascut
-│   │   │   ├─ 📄 tombs_of_amascut_expert
-│   │   │   ├─ 📄 tzkal_zuk
-│   │   │   ├─ 📄 tztok_jad
-│   │   │   ├─ 📄 vardorvis
-│   │   │   ├─ 📄 venenatis
-│   │   │   ├─ 📄 vetion
-│   │   │   ├─ 📄 vorkath
-│   │   │   ├─ 📄 wintertodt
-│   │   │   ├─ 📄 woodcutting
-│   │   │   ├─ 📄 zalcano
-│   │   │   └─ 📄 zulrah
 │   │   ├─ 📂 enlarged_emojis
-│   │   │   ├─ 📄 abyssal_sire
-│   │   │   ├─ 📄 agility
-│   │   │   ├─ 📄 alchemical_hydra
-│   │   │   ├─ 📄 amoxliatl
-│   │   │   ├─ 📄 araxxor
-│   │   │   ├─ 📄 attack
-│   │   │   ├─ 📄 barrows_chests
-│   │   │   ├─ 📄 branda
-│   │   │   ├─ 📄 bryophyta
-│   │   │   ├─ 📄 cerberus
-│   │   │   ├─ 📄 chambers_of_xeric
-│   │   │   ├─ 📄 commander_zilyana
-│   │   │   ├─ 📄 construction
-│   │   │   ├─ 📄 cooking
-│   │   │   ├─ 📄 corporeal_beast
-│   │   │   ├─ 📄 crafting
-│   │   │   ├─ 📄 dagannoth_kings
-│   │   │   ├─ 📄 dagannoth_rex
-│   │   │   ├─ 📄 defence
-│   │   │   ├─ 📄 eldric
-│   │   │   ├─ 📄 farming
-│   │   │   ├─ 📄 firemaking
-│   │   │   ├─ 📄 fishing
-│   │   │   ├─ 📄 fletching
-│   │   │   ├─ 📄 general_graardor
-│   │   │   ├─ 📄 giant_mole
-│   │   │   ├─ 📄 grotesque_guardians
-│   │   │   ├─ 📄 herblore
-│   │   │   ├─ 📄 hespori
-│   │   │   ├─ 📄 hitpoints
-│   │   │   ├─ 📄 hunter
-│   │   │   ├─ 📄 kalphite_queen
-│   │   │   ├─ 📄 king_black_dragon
-│   │   │   ├─ 📄 kraken
-│   │   │   ├─ 📄 kreearra
-│   │   │   ├─ 📄 kril_tsutsaroth
-│   │   │   ├─ 📄 lunar_chests
-│   │   │   ├─ 📄 magic
-│   │   │   ├─ 📄 mimic
-│   │   │   ├─ 📄 mining
-│   │   │   ├─ 📄 nex
-│   │   │   ├─ 📄 nightmare
-│   │   │   ├─ 📄 obor
-│   │   │   ├─ 📄 phosanis_nightmare
-│   │   │   ├─ 📄 prayer
-│   │   │   ├─ 📄 ranged
-│   │   │   ├─ 📄 runecrafting
-│   │   │   ├─ 📄 sarachnis
-│   │   │   ├─ 📄 scurrius
-│   │   │   ├─ 📄 skotizo
-│   │   │   ├─ 📄 slayer
-│   │   │   ├─ 📄 smithing
-│   │   │   ├─ 📄 sol_heredit
-│   │   │   ├─ 📄 strength
-│   │   │   ├─ 📄 tempoross
-│   │   │   ├─ 📄 theatre_of_blood
-│   │   │   ├─ 📄 theatre_of_blood_hard_mode
-│   │   │   ├─ 📄 thermonuclear_smoke_devil
-│   │   │   ├─ 📄 the_corrupted_gauntlet
-│   │   │   ├─ 📄 the_gauntlet
-│   │   │   ├─ 📄 the_hueycoatl
-│   │   │   ├─ 📄 the_royal_titans
-│   │   │   ├─ 📄 thieving
-│   │   │   ├─ 📄 tztok_jad
-│   │   │   ├─ 📄 vorkath
-│   │   │   ├─ 📄 wintertodt
-│   │   │   ├─ 📄 woodcutting
-│   │   │   ├─ 📄 zalcano
-│   │   │   └─ 📄 zulrah
-│   │   └─ 📂 ranks
- Achiever
- Adamant
- Adept
- Administrator
- Admiral
- Adventurer
- Air
- Anchor
- Apothecary
- Archer
- Armadylean
- Artillery
- Artisan
- Asgarnian
- Assassin
- Assistant
- Astral
- Athlete
- Attacker
- Bandit
- Bandosian
- Barbarian
- Battlemage
- Beast
- Berserker
- Blisterwood
- Blood
- Blue
- Bob
- Body
- Brassican
- Brawler
- Brigadier
- Brigand
- Bronze
- Bruiser
- Bulwark
- Burglar
- Burnt
- Cadet
- Captain
- Carry
- Champion
- Chaos
- Cleric
- Collector
- Colonel
- Commander
- Competitor
- Completionist
- Constructor
- Cook
- Coordinator
- Corporal
- Cosmic
- Councillor
- Crafter
- Crew
- Crusader
- Cutpurse
- Death
- Defender
- Defiler
- Deputy_Owner
- Destroyer
- Diamond
- Diseased
- Doctor
- Dogsbody
- Dragon
- Dragonstone
- Druid
- Duellist
- Earth
- Elite
- Emerald
- Enforcer
- Epic
- Executive
- Expert
- Explorer
- Farmer
- Feeder
- Fighter
- Fire
- Firemaker
- Firestarter
- Fisher
- Fletcher
- Forager
- Fremennik
- Gamer
- Gatherer
- General
- Gnome_Child
- Gnome_Elder
- Goblin
- Gold
- Goon
- Green
- Grey
- Guardian
- Guest
- Guthixian
- Harpoon
- Healer
- Hellcat
- Helper
- Herbologist
- Hero
- Hoarder
- Holy
- Hunter
- Ignitor
- Illusionist
- Imp
- Infantry
- Inquisitor
- Iron
- Jade
- Jagex_Moderator
- Justiciar
- Kandarin
- Karamjan
- Kharidian
- Kitten
- Knight
- Labourer
- Law
- Leader
- Learner
- Legacy
- Legend
- Legionnaire
- Lieutenant
- Looter
- Lumberjack
- Magic
- Magician
- Major
- Maple
- Marshal
- Master
- Maxed
- Mediator
- Medic
- Mentor
- Merchant
- Mind
- Miner
- Minion
- Misthalinian
- Mithril
- Moderator
- Monarch
- Morytanian
- Mystic
- Myth
- Natural
- Nature
- Necromancer
- Ninja
- Noble
- Novice
- Nurse
- Oak
- Officer
- Onyx
- Opal
- Oracle
- Orange
- Owner
- Page
- Paladin
- Pawn
- Pilgrim
- Pine
- Pink
- Prefect
- Priest
- Private
- Prodigy
- Proselyte
- Prospector
- Protector
- Pure
- Purple
- Pyromancer
- Quester
- Racer
- Raider
- Ranger
- Record_chaser
- Recruit
- Recruiter
- Red
- Red_Topaz
- Rogue
- Ruby
- Rune
- Runecrafter
- Sage
- Sapphire
- Saradominist
- Saviour
- Scavenger
- Scholar
- Scourge
- Scout
- Scribe
- Seer
- Senator
- Sentry
- Serenist
- Sergeant
- Shaman
- Sheriff
- Short_Green_Guy
- Skiller
- Skulled
- Slayer
- Smiter
- Smith
- Smuggler
- Sniper
- Soul
- Specialist
- Speed_Runner
- Spellcaster
- Squire
- Staff
- Steel
- Strider
- Striker
- Summoner
- Superior
- Supervisor
- Teacher
- Templar
- Therapist
- Thief
- Tirannian
- Trialist
- Trickster
- TzKal
- TzTok
- Unholy
- Vagrant
- Vanguard
- Walker
- Wanderer
- Warden
- Warlock
- Warrior
- Water
- Wild
- Willow
- Wily
- Wintumber
- Witch
- Wizard
- Worker
- Wrath
- Xerician
- Yellow
- Yew
- Zamorakian
- Zarosian
- Zealot
- Zenyte
+│   │   ├─ 📂 hook_avatars
+│   │   ├─ 📂 ranks
+│   │   └─ 📂 tutorial_files
+│   │       ├─ 📂 clanchat_webhook
 │   ├─ 📂 scripts
 │   │   ├─ 📄 createGuildDb.js
 │   │   ├─ 📄 createImgDb.js
@@ -645,8 +218,7 @@
 │   │   ├─ 📄 dropGuildDb.js
 │   │   ├─ 📄 dropImgDb.js
 │   │   ├─ 📄 dropMainDb.js
-│   │   ├─ 📄 dropMsgDb.js
-│   │   └─ 📄 populateImageCache.js
+│   │   └─ 📄 dropMsgDb.js
 │   └─ 📄 tasks.js
 ├─ 📄 src.rar
 ├─ 📄 template.hbs

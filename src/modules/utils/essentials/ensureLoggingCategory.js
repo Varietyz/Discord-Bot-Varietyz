@@ -38,6 +38,7 @@ async function ensureLoggingCategory(guild) {
             { key: 'boost_logs', name: '📋‣-‣boost-logs', topic: 'Tracks when members boost the server.' },
             { key: 'bot_logs', name: '📋‣-‣bot-logs', topic: 'Logs bot actions and errors.' },
             { key: 'database_logs', name: '📋‣-‣database-logs', topic: 'Logs database actions.' },
+            { key: 'critical_alerts', name: '🚨‣-‣critical-alerts🚨', topic: 'Logs critical alerts from database and unresolved actions.' },
         ];
 
         // 🔍 **Find or Create the Logging Category**
@@ -66,7 +67,7 @@ async function ensureLoggingCategory(guild) {
             if (!channel) {
                 channel = await guild.channels.create({
                     name,
-                    type: ChannelType.GuildText,
+                    type: ChannelType.GuildAnnouncement,
                     parent: loggingCategory.id,
                     topic,
                     permissionOverwrites: [

@@ -31,8 +31,7 @@
 const { DateTime } = require('luxon');
 const logger = require('../utils/essentials/logger');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
-const { VOICE_CHANNEL_ID } = require('../../config/constants');
-const { getAll, runQuery } = require('../utils/essentials/dbUtils');
+const db = require('../utils/essentials/dbUtils');
 const { calculateInactivity, calculateProgressCount } = require('../utils/helpers/calculateActivity');
 
 /**
@@ -79,7 +78,7 @@ async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
                     if (player?.lastChangedAt) {
                         const lastProgressed = DateTime.fromJSDate(player.lastChangedAt);
                         if (lastProgressed.isValid) {
-                            await runQuery(
+                            await db.runQuery(
                                 `INSERT INTO active_inactive (player_id, last_progressed)
                                  VALUES (?, ?)
                                  ON CONFLICT(player_id) DO UPDATE SET last_progressed = excluded.last_progressed`,
@@ -132,7 +131,14 @@ async function updateVoiceChannel(client) {
     try {
         const guild = client.guilds.cache.get(process.env.GUILD_ID);
         if (guild) {
-            const voiceChannel = guild.channels.cache.get(VOICE_CHANNEL_ID);
+            const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['activity_voice_channel']);
+            if (!row) {
+                logger.info('⚠️ No channel_id is configured in comp_channels for activity_voice_channel.');
+                return;
+            }
+
+            const channelId = row.channel_id;
+            const voiceChannel = guild.channels.cache.get(channelId);
             if (voiceChannel) {
                 await updateActivityData(3, 5000);
                 const emoji = '🟢';

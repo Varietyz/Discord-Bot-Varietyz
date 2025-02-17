@@ -35,7 +35,13 @@ async function ensureBasicChannels(guild) {
                 name: '🔃auto-roles',
                 topic: 'Logs and announces the automatic role changes.',
             },
+            {
+                key: 'clanchat_channel',
+                name: '💬clan-chat',
+                topic: 'Logs clanchat webhook.\nCheck out <#PLACEHOLDER> to learn how you can help keep this channel up-to-date.',
+            },
         ];
+
         const basicVoiceChannels = [
             {
                 key: 'activity_voice_channel',
@@ -53,7 +59,7 @@ async function ensureBasicChannels(guild) {
             if (!channel) {
                 channel = await guild.channels.create({
                     name,
-                    type: ChannelType.GuildText,
+                    type: ChannelType.GuildAnnouncement,
                     topic,
                     permissionOverwrites: [
                         {

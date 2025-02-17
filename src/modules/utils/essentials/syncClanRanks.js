@@ -116,10 +116,10 @@ async function syncClanRankEmojis(guild, activeRanksParam) {
                 ],
             );
             addedEmojis++;
+            await sleep(3500); // Delay to help mitigate rate limits.
         } catch (error) {
             logger.error(`❌ Failed to upload rank emoji (${baseName}): ${error.message}`);
         }
-        await sleep(3500); // Delay to help mitigate rate limits.
     }
 
     // --- DELETION PHASE (with Confirmation) ---

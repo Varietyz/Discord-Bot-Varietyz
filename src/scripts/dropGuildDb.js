@@ -72,12 +72,12 @@ async function dropTables(db) {
         'guild_roles',
         'guild_webhooks',
         'guild_emojis',
-        'guild_permissions',
-        'guild_members',
-        'guild_events',
+        //'guild_members',
+        //'guild_events',
         //'error_logs',
         //'comp_channels',
-        //'setup_channels'
+        //'setup_channels',
+        //'clanchat_config',
     ];
 
     try {

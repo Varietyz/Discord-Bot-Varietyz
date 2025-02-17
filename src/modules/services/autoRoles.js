@@ -1,166 +1,518 @@
 // @ts-nocheck
 /**
  * @fileoverview
- * **Auto Roles Service Utilities** 🤖
+ * **Auto Roles Service (Enhanced)**
  *
- * This module contains utility functions for managing automatic role assignments based on player data in the Varietyz Bot.
- * It fetches and processes data from multiple RuneScape Names (RSNs), merges the data for role assignments,
- * and assigns or removes Discord roles based on hiscores and achievements (such as boss kills, activities, and skills).
+ * This module dynamically processes a member’s hiscores data by reading thresholds and role mappings
+ * from your databases. It loads role definitions (from guild_roles) and emojis (from guild_emojis)
+ * so that as new metrics come online you only need to update the configuration or the DB.
  *
- * **Key Features:**
- * - **Role Assignment:** Automatically assigns roles based on boss kills, activity scores, and skill levels from RSN data.
- * - **Data Merging:** Combines data from multiple RSNs into a single profile for each player, ensuring the highest achievements are retained.
- * - **Dynamic Role Updates:** Removes outdated roles and assigns new ones based on the player's latest achievements.
- * - **Discord Notifications:** Sends embed messages in a designated channel to notify players of role assignments and removals.
- * - **Custom Mappings:** Maps boss and activity names to corresponding Discord role names for easier management.
+ * The service then:
+ * 1. Merges hiscores data from all RSNs associated with a Discord member.
+ * 2. Determines which roles (for skills, bosses, activities) should be assigned based on configurable thresholds.
+ * 3. Removes roles that are no longer valid.
+ * 4. Sends a summary embed (or multiple embeds if needed) in a designated channel.
  *
- * **External Dependencies:**
- * - **Wise Old Man (WOM) API:** Retrieves player data and achievements.
- * - **Discord.js:** For interacting with Discord (assigning roles, sending notifications, managing guild data).
- * - **dbUtils:** Handles database interactions.
- * - **normalizeRsn:** Provides utilities for normalizing RSNs.
+ * **Dependencies:**
+ * - **Wise Old Man API / Database:** For retrieving player data.
+ * - **Discord.js:** For interacting with Discord.
+ * - **dbUtils:** For database queries.
+ * - **Logger:** For logging errors/info.
  *
- * @module modules/services/autoRoles
+ * @module services/autoRolesEnhanced
  */
 
 const { EmbedBuilder } = require('discord.js');
 const logger = require('../utils/essentials/logger.js');
-const { ROLE_CHANNEL_ID } = require('../../config/constants.js');
-const { getAll } = require('../utils/essentials/dbUtils.js');
+const db = require('../utils/essentials/dbUtils.js');
 const { normalizeRsn } = require('../utils/normalizing/normalizeRsn.js');
 const { cleanupInactiveUsers } = require('../utils/helpers/cleanupInactiveUsers');
 
+/*────────────────────────────────────────────────────────────────────────────
+  CONFIGURATION & THRESHOLDS
+────────────────────────────────────────────────────────────────────────────*/
+
+const THRESHOLDS = {
+    skills: {
+        default: 99,
+        custom: {
+            overall: { threshold: 2277, roleKey: 'role_99_overall' },
+            // You may add a mapping that grants multiple roles:
+            // maxed: { threshold: 2277, roleKeys: ['role_99_overall', 'role_max_cape'] },
+        },
+    },
+    bosses: {
+        default: 300,
+        custom: {
+            chambers_of_xeric_challenge_mode: { threshold: 75, roleKey: 'role_cox_challenge_mode' },
+            kalphite_queen: { threshold: 300, roleKey: 'role_kalphite_queen' },
+            abyssal_sire: { threshold: 300, roleKey: 'role_abyssal_sire' },
+            alchemical_hydra: { threshold: 300, roleKey: 'role_alchemical_hydra' },
+            amoxliatl: { threshold: 500, roleKey: 'role_amoxliatl' },
+            araxxor: { threshold: 300, roleKey: 'role_araxxor' },
+            artio: { threshold: 300, roleKey: 'role_artio' },
+            barrows_chests: { threshold: 300, roleKey: 'role_barrows_chests' },
+            bryophyta: { threshold: 500, roleKey: 'role_bryophyta' },
+            callisto: { threshold: 300, roleKey: 'role_callisto' },
+            calvarion: { threshold: 300, roleKey: 'role_calvarion' },
+            cerberus: { threshold: 300, roleKey: 'role_cerberus' },
+            chambers_of_xeric: { threshold: 150, roleKey: 'role_chambers_of_xeric' },
+            chaos_elemental: { threshold: 300, roleKey: 'role_chaos_elemental' },
+            chaos_fanatic: { threshold: 300, roleKey: 'role_chaos_fanatic' },
+            commander_zilyana: { threshold: 300, roleKey: 'role_commander_zilyana' },
+            corporeal_beast: { threshold: 200, roleKey: 'role_corporeal_beast' },
+            crazy_archaeologist: { threshold: 500, roleKey: 'role_crazy_archaeologist' },
+            dagannoth_prime: { threshold: 250, roleKey: 'role_dagannoth_prime' },
+            dagannoth_rex: { threshold: 250, roleKey: 'role_dagannoth_rex' },
+            dagannoth_supreme: { threshold: 250, roleKey: 'role_dagannoth_supreme' },
+            deranged_archaeologist: { threshold: 500, roleKey: 'role_deranged_archaeologist' },
+            duke_sucellus: { threshold: 500, roleKey: 'role_duke_sucellus' },
+            general_graardor: { threshold: 300, roleKey: 'role_general_graardor' },
+            giant_mole: { threshold: 500, roleKey: 'role_giant_mole' },
+            grotesque_guardians: { threshold: 200, roleKey: 'role_grotesque_guardians' },
+            hespori: { threshold: 200, roleKey: 'role_hespori' },
+            king_black_dragon: { threshold: 300, roleKey: 'role_king_black_dragon' },
+            kraken: { threshold: 500, roleKey: 'role_kraken' },
+            kreearra: { threshold: 300, roleKey: 'role_kreearra' },
+            kril_tsutsaroth: { threshold: 300, roleKey: 'role_kril_tsutsaroth' },
+            lunar_chests: { threshold: 100, roleKey: 'role_lunar_chests' },
+            mimic: { threshold: 10, roleKey: 'role_mimic' },
+            nex: { threshold: 200, roleKey: 'role_nex' },
+            nightmare: { threshold: 200, roleKey: 'role_nightmare' },
+            phosanis_nightmare: { threshold: 150, roleKey: 'role_phosanis_nightmare' },
+            obor: { threshold: 500, roleKey: 'role_obor' },
+            phantom_muspah: { threshold: 300, roleKey: 'role_phantom_muspah' },
+            sarachnis: { threshold: 300, roleKey: 'role_sarachnis' },
+            scorpia: { threshold: 300, roleKey: 'role_scorpia' },
+            scurrius: { threshold: 500, roleKey: 'role_scurrius' },
+            skotizo: { threshold: 300, roleKey: 'role_skotizo' },
+            sol_heredit: { threshold: 1, roleKey: 'role_sol_heredit' },
+            spindel: { threshold: 300, roleKey: 'role_spindel' },
+            tempoross: { threshold: 500, roleKey: 'role_tempoross' },
+            the_gauntlet: { threshold: 150, roleKey: 'role_the_gauntlet' },
+            the_corrupted_gauntlet: { threshold: 100, roleKey: 'role_the_corrupted_gauntlet' },
+            the_hueycoatl: { threshold: 300, roleKey: 'role_the_hueycoatl' },
+            the_leviathan: { threshold: 300, roleKey: 'role_the_leviathan' },
+            the_royal_titans: { threshold: 500, roleKey: 'role_the_royal_titans' },
+            the_whisperer: { threshold: 250, roleKey: 'role_the_whisperer' },
+            theatre_of_blood: { threshold: 150, roleKey: 'role_theatre_of_blood' },
+            theatre_of_blood_hard_mode: { threshold: 75, roleKey: 'role_theatre_of_blood_hard_mode' },
+            thermonuclear_smoke_devil: { threshold: 300, roleKey: 'role_thermonuclear_smoke_devil' },
+            tombs_of_amascut: { threshold: 150, roleKey: 'role_tombs_of_amascut' },
+            tombs_of_amascut_expert: { threshold: 75, roleKey: 'role_tombs_of_amascut_expert' },
+            tzkal_zuk: { threshold: 1, roleKey: 'role_tzkal_zuk' },
+            tztok_jad: { threshold: 10, roleKey: 'role_tztok_jad' },
+            vardorvis: { threshold: 200, roleKey: 'role_vardorvis' },
+            venenatis: { threshold: 300, roleKey: 'role_venenatis' },
+            vetion: { threshold: 300, roleKey: 'role_vetion' },
+            vorkath: { threshold: 300, roleKey: 'role_vorkath' },
+            wintertodt: { threshold: 500, roleKey: 'role_wintertodt' },
+            zalcano: { threshold: 500, roleKey: 'role_zalcano' },
+            zulrah: { threshold: 300, roleKey: 'role_zulrah' },
+        },
+    },
+    activities: {
+        default: 50,
+        custom: {
+            league_points: { threshold: 45000, roleKey: 'role_league_points' },
+            bounty_hunter_hunter: { threshold: 700, roleKey: 'role_bounty_hunter_hunter' },
+            bounty_hunter_rogue: { threshold: 100, roleKey: 'role_bounty_hunter_rogue' },
+            clue_scrolls_all: { threshold: 1550, roleKey: 'role_clue_scrolls_all' },
+            clue_scrolls_beginner: { threshold: 500, roleKey: 'role_clue_scrolls_beginner' },
+            clue_scrolls_easy: { threshold: 400, roleKey: 'role_clue_scrolls_easy' },
+            clue_scrolls_medium: { threshold: 300, roleKey: 'role_clue_scrolls_medium' },
+            clue_scrolls_hard: { threshold: 200, roleKey: 'role_clue_scrolls_hard' },
+            clue_scrolls_elite: { threshold: 100, roleKey: 'role_clue_scrolls_elite' },
+            clue_scrolls_master: { threshold: 50, roleKey: 'role_clue_scrolls_master' },
+            last_man_standing: { threshold: 15000, roleKey: 'role_last_man_standing' },
+            pvp_arena: { threshold: 5000, roleKey: 'role_pvp_arena' },
+            soul_wars_zeal: { threshold: 100000, roleKey: 'role_soul_wars_zeal' },
+            guardians_of_the_rift: { threshold: 350, roleKey: 'role_guardians_of_the_rift' },
+            colosseum_glory: { threshold: 20000, roleKey: 'role_colosseum_glory' },
+            collections_logged: { threshold: 750, roleKey: 'role_collections_logged' },
+        },
+    },
+};
+
+/*────────────────────────────────────────────────────────────────────────────
+  HELPER FUNCTIONS: METRIC -> ROLE MAPPING & THRESHOLDS
+────────────────────────────────────────────────────────────────────────────*/
+
 /**
- * 🎯 **Maps a Boss Name to Its Corresponding Discord Role Name**
+ * Derives role keys based on the metric type and name.
+ * For skills, a default role key is built as "role_99_<skill>".
+ * For bosses/activities, we either use a custom mapping (if defined) or derive one.
  *
- * Returns a custom-mapped role name for a given boss. If no mapping exists, it returns the original boss name.
- *
- * @function mapBossToRole
- * @param {string} bossName - The name of the boss.
- * @returns {string} The corresponding Discord role name.
- *
- * @example
- * const roleName = mapBossToRole("K'ril Tsutsaroth"); // Returns "K'ril Tsutsaroth"
+ * @param {string} metricType - One of "skills", "bosses", or "activities".
+ * @param {string} metricName - The name of the metric (e.g. "Attack", "Abyssal Sire").
+ * @returns {string[]} Array of derived role keys.
  */
-function mapBossToRole(bossName) {
-    const roleMap = {
-        'Chambers Of Xeric Challenge Mode': 'CoX: Challenge Mode',
-        'Theatre Of Blood Hard Mode': 'ToB: Hard Mode',
-        'Tombs Of Amascut Expert': 'ToA: Expert Mode',
-        'Kree\'Arra': 'Kree\'Arra',
-        'K\'ril Tsutsaroth': 'K\'ril Tsutsaroth',
-        'Calvar\'ion': 'Calvar\'ion',
-        'Vet\'ion': 'Vet\'ion',
-    };
-    return roleMap[bossName] || bossName;
+function deriveRoleKeys(metricType, metricName) {
+    switch (metricType) {
+    case 'skills': {
+        const key = metricName.toLowerCase();
+        if (THRESHOLDS.skills.custom[key]) {
+            const custom = THRESHOLDS.skills.custom[key];
+            return Array.isArray(custom.roleKeys) ? custom.roleKeys : [custom.roleKey];
+        }
+        // Derive default role key for skills.
+        return [`role_99_${key}`];
+    }
+    case 'bosses': {
+        const key = metricName.toLowerCase().replace(/\s+/g, '_');
+        if (THRESHOLDS.bosses.custom[key]) {
+            const custom = THRESHOLDS.bosses.custom[key];
+            return Array.isArray(custom.roleKeys) ? custom.roleKeys : [custom.roleKey];
+        }
+        return [`role_${key}`];
+    }
+    case 'activities': {
+        const key = metricName.toLowerCase().replace(/\s+/g, '_');
+        if (THRESHOLDS.activities.custom[key]) {
+            const custom = THRESHOLDS.activities.custom[key];
+            return Array.isArray(custom.roleKeys) ? custom.roleKeys : [custom.roleKey];
+        }
+        return [`role_${key}`];
+    }
+    default:
+        return [];
+    }
 }
 
 /**
- * 🎯 **Maps an Activity Name to Its Corresponding Discord Role Name**
+ * Returns the threshold value for a given metric.
  *
- * Returns a custom-mapped role name for a given activity. If no mapping exists, it returns the original activity name.
- *
- * @function mapActivityToRole
- * @param {string} activityName - The name of the activity.
- * @returns {string} The corresponding Discord role name.
- *
- * @example
- * const roleName = mapActivityToRole('Clue Scrolls All'); // Returns "Clue Solver"
+ * @param {string} metricType - "skills", "bosses", or "activities".
+ * @param {string} metricName - The name of the metric.
+ * @returns {number} The threshold value.
  */
-function mapActivityToRole(activityName) {
-    const roleMap = {
-        'Clue Scrolls All': 'Clue Solver',
-        'Colosseum Glory': 'Colosseum',
-        'Last Man Standing': 'Last Man Standing (LMS)',
-        'Soul Wars Zeal': 'Soul Wars',
-        'League Points': 'League Compete',
-        'Pvp Arena': 'PvP Arena',
-    };
-    return roleMap[activityName] || activityName;
+function getThresholdForMetric(metricType, metricName) {
+    switch (metricType) {
+    case 'skills': {
+        const key = metricName.toLowerCase();
+        if (THRESHOLDS.skills.custom[key]) return THRESHOLDS.skills.custom[key].threshold;
+        return THRESHOLDS.skills.default;
+    }
+    case 'bosses': {
+        const key = metricName.toLowerCase().replace(/\s+/g, '_');
+        if (THRESHOLDS.bosses.custom[key]) return THRESHOLDS.bosses.custom[key].threshold;
+        return THRESHOLDS.bosses.default;
+    }
+    case 'activities': {
+        const key = metricName.toLowerCase().replace(/\s+/g, '_');
+        if (THRESHOLDS.activities.custom[key]) return THRESHOLDS.activities.custom[key].threshold;
+        return THRESHOLDS.activities.default;
+    }
+    default:
+        return null;
+    }
 }
 
+/*────────────────────────────────────────────────────────────────────────────
+  DATABASE LOADING FUNCTIONS: GUILD ROLES & EMOJIS
+────────────────────────────────────────────────────────────────────────────*/
+
 /**
- * 🎯 **Retrieves All RSNs for a Discord User**
- *
- * Queries the database for all RuneScape Names (RSNs) linked to a given Discord user ID.
+ * Loads all role definitions from the guild_roles table.
+ * Returns an object mapping role_key to an object with role_id.
  *
  * @async
- * @function getUserRSNs
- * @param {string} userId - The Discord user ID.
- * @returns {Promise<string[]>} A promise that resolves to an array of RSNs.
+ * @returns {Promise<Object>} Map of role_key -> { roleId, roleKey }.
+ */
+async function fetchGuildRoles() {
+    const query = 'SELECT role_id, role_key FROM guild_roles';
+    const rows = await db.guild.getAll(query);
+    const rolesMap = {};
+    for (const row of rows) {
+        rolesMap[row.role_key] = { roleId: row.role_id, roleKey: row.role_key };
+    }
+    return rolesMap;
+}
+
+/**
+ * Loads all emoji definitions from the guild_emojis table.
+ * Returns an object mapping emoji_key to its emoji_format.
  *
- * @example
- * const rsns = await getUserRSNs('123456789012345678');
- * // Might log: ['PlayerOne', 'PlayerTwo']
+ * @async
+ * @returns {Promise<Object>} Map of emoji_key -> emoji_format.
+ */
+async function fetchGuildEmojis() {
+    const query = 'SELECT emoji_key, emoji_format FROM guild_emojis';
+    const rows = await db.guild.getAll(query);
+    const emojisMap = {};
+    for (const row of rows) {
+        emojisMap[row.emoji_key] = row.emoji_format;
+    }
+    return emojisMap;
+}
+
+/**
+ * Given a role key, returns the corresponding emoji format.
+ * It strips known prefixes (e.g. "role_99_" or "role_") and then
+ * looks up "emoji_<keyPart>" in the emojis map.
+ *
+ * @param {string} roleKey - The role key (e.g. "role_99_fishing").
+ * @param {Object} emojisMap - Mapping of emoji_key -> emoji_format.
+ * @returns {string} The emoji string if found, or an empty string.
+ */
+function getEmojiForRoleKey(roleKey, emojisMap) {
+    let keyPart = roleKey;
+    if (roleKey.startsWith('role_99_')) {
+        keyPart = roleKey.substring('role_99_'.length);
+    } else if (roleKey.startsWith('role_')) {
+        keyPart = roleKey.substring('role_'.length);
+    }
+    const emojiKey = `emoji_${keyPart}`;
+    return emojisMap[emojiKey] || '';
+}
+
+/*────────────────────────────────────────────────────────────────────────────
+  ROLE PROCESSING FUNCTION
+────────────────────────────────────────────────────────────────────────────*/
+
+/**
+ * Processes a member’s hiscores data to assign or remove roles dynamically.
+ * Only roles auto‑managed by this system (i.e. derivable from our hiscores data via THRESHOLDS)
+ * are processed. Roles not defined in our thresholds remain untouched.
+ *
+ * @async
+ * @param {Discord.Guild} guild - The Discord guild.
+ * @param {Discord.GuildMember} member - The guild member.
+ * @param {Object} hiscoresData - Object mapping metric keys to values.
+ * @param {Object} guildRolesMap - Mapping of role_key -> { roleId, roleKey }.
+ * @param {Object} emojisMap - Mapping of emoji_key -> emoji_format.
+ * @returns {Promise<EmbedBuilder[]|null>} Array of embed objects summarizing updates, or null if none.
+ */
+async function processMemberRoles(guild, member, hiscoresData, guildRolesMap, emojisMap) {
+    const roleUpdates = []; // Record each assignment or removal.
+    const expectedRoleKeys = new Set(); // Roles that should be assigned (threshold met).
+    const managedRoleKeys = new Set(); // Roles that our system manages based on hiscores data.
+
+    // Process each hiscores metric.
+    for (const key in hiscoresData) {
+        const rawValue = hiscoresData[key];
+        const value = parseInt(rawValue, 10);
+        if (isNaN(value)) continue;
+
+        let metricName,
+            roleKeys = [],
+            threshold;
+        if (key.startsWith('Skills ') && key.endsWith(' Level')) {
+            // Extract metric name from "Skills Attack Level"
+            metricName = key.slice('Skills '.length, key.length - ' Level'.length).trim();
+            roleKeys = deriveRoleKeys('skills', metricName);
+            threshold = getThresholdForMetric('skills', metricName);
+        } else if (key.startsWith('Bosses ') && key.endsWith(' Kills')) {
+            metricName = key.slice('Bosses '.length, key.length - ' Kills'.length).trim();
+            roleKeys = deriveRoleKeys('bosses', metricName);
+            threshold = getThresholdForMetric('bosses', metricName);
+        } else if (key.startsWith('Activities ') && key.endsWith(' Score')) {
+            metricName = key.slice('Activities '.length, key.length - ' Score'.length).trim();
+            roleKeys = deriveRoleKeys('activities', metricName);
+            threshold = getThresholdForMetric('activities', metricName);
+        }
+
+        // Only process roles explicitly defined via our THRESHOLDS mappings.
+        if (roleKeys && roleKeys.length > 0) {
+            roleKeys.forEach((rk) => {
+                managedRoleKeys.add(rk);
+                if (value >= threshold) {
+                    expectedRoleKeys.add(rk);
+                }
+            });
+        }
+    }
+
+    // Removal: Remove auto-managed roles that are no longer expected.
+    for (const roleKey of managedRoleKeys) {
+        const roleData = guildRolesMap[roleKey];
+        if (!roleData) continue; // Role not defined in DB—skip.
+        if (!expectedRoleKeys.has(roleKey) && member.roles.cache.has(roleData.roleId)) {
+            try {
+                await member.roles.remove(roleData.roleId);
+                const emoji = getEmojiForRoleKey(roleKey, emojisMap);
+                const roleName = guild.roles.cache.get(roleData.roleId)?.name || roleKey;
+                roleUpdates.push({ action: 'removed', roleKey, roleId: roleData.roleId, roleName, emoji });
+            } catch (err) {
+                logger.error(`Error removing role ${roleKey} from member ${member.id}: ${err.message}`);
+            }
+        }
+    }
+
+    // Addition: Add roles for which the metric threshold is met.
+    for (const roleKey of expectedRoleKeys) {
+        const roleData = guildRolesMap[roleKey];
+        if (!roleData) {
+            logger.warn(`No guild role found for roleKey ${roleKey}`);
+            continue;
+        }
+        if (!member.roles.cache.has(roleData.roleId)) {
+            try {
+                await member.roles.add(roleData.roleId);
+                const emoji = getEmojiForRoleKey(roleKey, emojisMap);
+                const roleName = guild.roles.cache.get(roleData.roleId)?.name || roleKey;
+                roleUpdates.push({ action: 'assigned', roleKey, roleId: roleData.roleId, roleName, emoji });
+            } catch (err) {
+                logger.error(`Error assigning role ${roleKey} to member ${member.id}: ${err.message}`);
+            }
+        }
+    }
+
+    // Build and return embed(s) summarizing the role updates.
+    if (roleUpdates.length > 0) {
+        const embedLines = roleUpdates.map((update) => {
+            const actionIcon = update.action === 'assigned' ? '✅' : '❌';
+
+            return `${actionIcon} ${update.emoji} <@&${update.roleId}> ${update.action}`;
+        });
+
+        const MAX_DESCRIPTION_LENGTH = 2048;
+        const embeds = [];
+        let currentDesc = '';
+        let isFirstEmbed = true;
+
+        for (const line of embedLines) {
+            // Check if adding the next line exceeds the embed description limit.
+            if (currentDesc.length + line.length + 1 > MAX_DESCRIPTION_LENGTH) {
+                const description = isFirstEmbed ? `${currentDesc}` : currentDesc;
+                embeds.push(new EmbedBuilder().setTitle('Role Updates').setDescription(description).setColor(0x48de6f).setTimestamp());
+                currentDesc = line;
+                isFirstEmbed = false;
+            } else {
+                currentDesc += (currentDesc ? '\n' : '') + line;
+            }
+        }
+        if (currentDesc) {
+            const description = isFirstEmbed ? `${currentDesc}` : currentDesc;
+            embeds.push(new EmbedBuilder().setTitle('Role Updates').setDescription(description).setColor(0x48de6f).setTimestamp());
+        }
+        return embeds;
+    }
+
+    return null;
+}
+
+/*────────────────────────────────────────────────────────────────────────────
+  MAIN FUNCTION: FETCH & PROCESS MEMBER DATA
+────────────────────────────────────────────────────────────────────────────*/
+
+/**
+ * Fetches RSNs for a user, merges hiscores data, loads guild role and emoji definitions,
+ * processes role assignments/removals, and sends a summary embed to the update channel.
+ *
+ * @async
+ * @param {Discord.Guild} guild - The Discord guild.
+ * @param {string} userId - The Discord user ID.
+ * @returns {Promise<void>}
+ */
+async function fetchAndProcessMember(guild, userId) {
+    try {
+        // Fetch all RSNs linked to this user.
+        const rsns = await getUserRSNs(userId);
+        if (!rsns.length) {
+            logger.info(`🚨 No RSNs linked to user ID: ${userId}`);
+            return;
+        }
+
+        // Fetch the member from the guild.
+        const member = await guild.members.fetch(userId).catch(() => null);
+        if (!member) {
+            logger.error(`⚠️ Member with ID ${userId} not found in the guild; cleaning up.`);
+            await cleanupInactiveUsers(guild);
+            return;
+        }
+
+        // Merge hiscores data from all RSNs.
+        const mergedData = await mergeRsnData(rsns);
+
+        // Load guild roles and emojis from the DB.
+        const [guildRolesMap, emojisMap] = await Promise.all([fetchGuildRoles(), fetchGuildEmojis()]);
+
+        // Process hiscores data to determine role updates.
+        const updateEmbeds = await processMemberRoles(guild, member, mergedData, guildRolesMap, emojisMap);
+
+        // Retrieve the designated update channel from your setup.
+        const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['auto_roles_channel']);
+        if (!row) {
+            logger.info('⚠️ No channel_id configured for auto_roles_channel.');
+            return;
+        }
+        const channelUpdate = guild.channels.cache.get(row.channel_id);
+        if (!channelUpdate) {
+            logger.error(`🚨 Update channel with ID ${row.channel_id} not found.`);
+            return;
+        }
+
+        // If any role updates occurred, send the embed(s).
+        if (updateEmbeds && updateEmbeds.length > 0) {
+            for (const embed of updateEmbeds) {
+                await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
+            }
+        }
+
+        logger.info(`✅ Processed role updates for RSNs: ${rsns.join(', ')} (User ID: ${userId})`);
+    } catch (error) {
+        logger.error(`🚨 Error processing member ID ${userId}: ${error.message}`);
+    }
+}
+
+/*────────────────────────────────────────────────────────────────────────────
+  AUXILIARY FUNCTIONS (EXISTING): DATABASE QUERIES & DATA MERGING
+────────────────────────────────────────────────────────────────────────────*/
+
+/**
+ * Retrieves all RSNs associated with a Discord user.
+ *
+ * @async
+ * @param {string} userId - Discord user ID.
+ * @returns {Promise<string[]>} Array of RSNs.
  */
 async function getUserRSNs(userId) {
     const query = 'SELECT rsn FROM registered_rsn WHERE CAST(discord_id AS TEXT) = ?';
-    const rows = await getAll(query, [String(userId)]);
-
+    const rows = await db.getAll(query, [String(userId)]);
     if (!rows.length) {
         logger.info(`⚠️ No RSNs linked to Discord ID: ${userId}`);
         return [];
     }
-
     return rows.map((row) => row.rsn);
 }
 
 /**
- * 🎯 **Fetches Player Data for a Given RSN**
- *
- * Normalizes the provided RSN and queries the database for associated player data.
- * Returns an object mapping data keys to their values.
+ * Retrieves player data for a given RSN from the player_data table.
  *
  * @async
- * @function getPlayerDataForRSN
- * @param {string} rsn - The RuneScape Name to fetch data for.
- * @returns {Promise<Object>} A promise that resolves to an object with player data.
- *
- * @example
- * const playerData = await getPlayerDataForRSN('PlayerOne');
- * logger.info(playerData);
+ * @param {string} rsn - The RuneScape Name.
+ * @returns {Promise<Object>} Object with data_key -> data_value.
  */
 async function getPlayerDataForRSN(rsn) {
     const normalizedRsn = normalizeRsn(rsn);
-
     const query = `
-        SELECT data_key, data_value 
-        FROM player_data
-        WHERE LOWER(rsn) = LOWER(?)
-    `;
-
-    const rows = await getAll(query, [normalizedRsn]);
-
+    SELECT data_key, data_value 
+    FROM player_data
+    WHERE LOWER(rsn) = LOWER(?)
+  `;
+    const rows = await db.getAll(query, [normalizedRsn]);
     const result = {};
     for (const { data_key, data_value } of rows) {
         result[data_key] = data_value;
     }
-
     return result;
 }
 
 /**
- * 🎯 **Merges Hiscores Data from Multiple RSNs**
- *
- * Combines hiscores data from an array of RSNs so that the highest values are retained for skills,
- * boss kills, and activities. This effectively treats multiple RSNs as a single combined account.
+ * Merges hiscores data from multiple RSNs. For each metric (skill, boss, activity),
+ * the highest value is retained.
  *
  * @async
- * @function mergeRsnData
- * @param {string[]} rsns - An array of RSNs to merge data from.
- * @returns {Promise<Object>} A promise that resolves to an object containing the merged hiscores data.
- *
- * @example
- * const mergedData = await mergeRsnData(['PlayerOne', 'PlayerTwo']);
- * logger.info(mergedData);
+ * @param {string[]} rsns - Array of RSNs.
+ * @returns {Promise<Object>} Merged hiscores data.
  */
 async function mergeRsnData(rsns) {
     const merged = {};
-
     for (const rsn of rsns) {
         const data = await getPlayerDataForRSN(rsn);
-
         for (const [key, value] of Object.entries(data)) {
+            // Only merge numerical metrics.
             if ((key.startsWith('Skills ') && key.endsWith(' Level')) || (key.startsWith('Bosses ') && key.endsWith(' Kills')) || (key.startsWith('Activities ') && key.endsWith(' Score'))) {
                 const oldVal = merged[key] ? parseInt(merged[key], 10) : 0;
                 const newVal = parseInt(value, 10);
@@ -170,266 +522,7 @@ async function mergeRsnData(rsns) {
             }
         }
     }
-
     return merged;
-}
-
-/**
- * 🎯 **Fetches and Processes Member Data for Auto Role Assignment**
- *
- * Retrieves RSNs linked to a Discord user, merges hiscores data from those RSNs,
- * and then assigns or updates Discord roles based on the merged data.
- *
- * @async
- * @function fetchAndProcessMember
- * @param {Discord.Guild} guild - The Discord guild (server).
- * @param {string} userId - The Discord user ID.
- * @returns {Promise<void>} Resolves when the member has been processed.
- *
- * @example
- * await fetchAndProcessMember(guild, '123456789012345678');
- */
-async function fetchAndProcessMember(guild, userId) {
-    try {
-        const rsns = await getUserRSNs(userId);
-
-        if (!rsns.length) {
-            logger.info(`🚨 No RSNs linked to user ID: ${userId}`);
-            return;
-        }
-
-        const member = await guild.members.fetch(userId).catch(() => null);
-        if (!member) {
-            logger.error(`⚠️ Member with ID ${userId} not found in the guild, preparing cleanup.`);
-            await cleanupInactiveUsers(guild);
-            return;
-        }
-
-        const mergedData = await mergeRsnData(rsns);
-
-        await handleHiscoresData(guild, member, rsns, mergedData);
-        logger.info(`✅ Processed data for RSNs: ${rsns.join(', ')} (User ID: ${userId})`);
-    } catch (error) {
-        logger.error(`🚨 Error processing member ID ${userId}: ${error.message}`);
-    }
-}
-
-/**
- * 🎯 **Handles Role Assignments Based on Hiscores Data**
- *
- * Delegates to specific functions to assign OSRS roles (skill-based) and achievement-based roles.
- *
- * @async
- * @function handleHiscoresData
- * @param {Discord.Guild} guild - The Discord guild.
- * @param {Discord.GuildMember} member - The Discord guild member.
- * @param {string[]} rsns - Array of RSNs linked to the member.
- * @param {Object} hiscoresData - Merged hiscores data.
- * @returns {Promise<void>} Resolves when role assignments are complete.
- *
- * @example
- * await handleHiscoresData(guild, member, ['PlayerOne'], mergedData);
- */
-async function handleHiscoresData(guild, member, rsns, hiscoresData) {
-    const channelUpdate = guild.channels.cache.get(ROLE_CHANNEL_ID);
-    if (!channelUpdate) {
-        logger.error(`🚨 Role channel with ID ${ROLE_CHANNEL_ID} not found.`);
-        return;
-    }
-
-    await Promise.all([createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate), createAchievementRoles(guild, member, hiscoresData, channelUpdate)]);
-}
-
-/**
- * 🎯 **Assigns Achievement-Based Roles**
- *
- * Processes hiscores data to assign or update roles based on boss kills and activity scores.
- *
- * @async
- * @function createAchievementRoles
- * @param {Discord.Guild} guild - The Discord guild.
- * @param {Discord.GuildMember} member - The Discord guild member.
- * @param {Object} hiscoresData - Merged hiscores data.
- * @param {Discord.TextChannel} channelUpdate - The channel to send role update messages.
- * @returns {Promise<void>} Resolves when all achievement roles are processed.
- *
- * @example
- * await createAchievementRoles(guild, member, mergedData, channelUpdate);
- */
-async function createAchievementRoles(guild, member, hiscoresData, channelUpdate) {
-    const rsns = await getUserRSNs(member.id);
-    const playerName = rsns.length > 0 ? rsns[0] : 'Unknown RSN';
-
-    for (const key in hiscoresData) {
-        const score = parseInt(hiscoresData[key], 10) || 0;
-        if (score <= 0) continue;
-
-        if (key.startsWith('Bosses ') && key.endsWith(' Kills')) {
-            const bossName = key.replace('Bosses ', '').replace(' Kills', '');
-            if (score >= 100) {
-                await maybeAssignBossRole(guild, member, bossName, score, playerName, channelUpdate);
-            }
-        }
-
-        if (key.startsWith('Activities ') && key.endsWith(' Score')) {
-            const activityName = key.replace('Activities ', '').replace(' Score', '');
-            await maybeAssignActivityRole(guild, member, activityName, score, playerName, channelUpdate);
-        }
-    }
-}
-
-/**
- * 🎯 **Assigns a Boss-Related Role if Criteria Are Met**
- *
- * Checks if the member has not yet been assigned the role corresponding to the given boss.
- * If the member's boss kill count meets or exceeds the threshold (>= 100), the role is assigned,
- * and a notification embed is sent to the designated channel.
- *
- * @async
- * @function maybeAssignBossRole
- * @param {Discord.Guild} guild - The Discord guild.
- * @param {Discord.GuildMember} member - The guild member.
- * @param {string} bossName - The boss name.
- * @param {number} kills - The number of kills achieved.
- * @param {string} playerName - The RSN of the player.
- * @param {Discord.TextChannel} channelUpdate - The channel to send role update messages.
- * @returns {Promise<void>} Resolves when the role assignment is complete.
- *
- * @example
- * await maybeAssignBossRole(guild, member, "K'ril Tsutsaroth", 150, 'PlayerOne', channelUpdate);
- */
-async function maybeAssignBossRole(guild, member, bossName, kills, playerName, channelUpdate) {
-    const roleName = mapBossToRole(bossName);
-    const role = guild.roles.cache.find((r) => r.name === roleName);
-    if (role && !member.roles.cache.has(role.id)) {
-        await member.roles.add(role);
-        const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Congratulations!**\n🔥 You have defeated \`${bossName}\` **${kills}** times and earned the role <@&${role.id}>. 🏆`).setColor(0x48de6f).setTimestamp();
-
-        await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
-        logger.info(`✅ Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
-    }
-}
-
-/**
- * 🎯 **Assigns an Activity-Related Role if Criteria Are Met**
- *
- * Checks if the member's activity score for a specific activity meets the threshold.
- * If so, the corresponding role is assigned and a notification embed is sent.
- *
- * @async
- * @function maybeAssignActivityRole
- * @param {Discord.Guild} guild - The Discord guild.
- * @param {Discord.GuildMember} member - The guild member.
- * @param {string} activityName - The name of the activity.
- * @param {number} score - The achieved score.
- * @param {string} playerName - The RSN of the player.
- * @param {Discord.TextChannel} channelUpdate - The channel to send role update messages.
- * @returns {Promise<void>} Resolves when the role assignment is complete.
- *
- * @example
- * await maybeAssignActivityRole(guild, member, 'Clue Scrolls All', 200, 'PlayerOne', channelUpdate);
- */
-async function maybeAssignActivityRole(guild, member, activityName, score, playerName, channelUpdate) {
-    let threshold = 50;
-    if (['Clue Scrolls All', 'Colosseum Glory'].includes(activityName)) {
-        threshold = 150;
-    }
-    if (activityName === 'Clue Scrolls All') {
-        threshold = 500;
-    }
-
-    if (score >= threshold) {
-        const roleName = mapActivityToRole(activityName);
-        const role = guild.roles.cache.find((r) => r.name === roleName);
-        if (role && !member.roles.cache.has(role.id)) {
-            await member.roles.add(role);
-            const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Awesome job!**\n🔥 You completed \`${score}\` in \`${activityName}\` and unlocked the role <@&${role.id}>. 🏅`).setColor(0x48de6f).setTimestamp();
-
-            await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
-            logger.info(`✅ Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
-        }
-    }
-}
-
-/**
- * 🎯 **Assigns or Updates OSRS Skill-Based Roles**
- *
- * Evaluates hiscores data for each skill to assign "99" roles when applicable,
- * and removes any "99" roles that the member should no longer have.
- *
- * @async
- * @function createUpdateOsrsRoles
- * @param {Discord.Guild} guild - The Discord guild.
- * @param {Discord.GuildMember} member - The guild member.
- * @param {Object} hiscoresData - Merged hiscores data.
- * @param {Discord.TextChannel} channelUpdate - The channel to send role update messages.
- * @returns {Promise<void>} Resolves when all OSRS roles have been processed.
- *
- * @example
- * await createUpdateOsrsRoles(guild, member, mergedData, channelUpdate);
- */
-async function createUpdateOsrsRoles(guild, member, hiscoresData, channelUpdate) {
-    const rsns = await getUserRSNs(member.id);
-    const playerName = rsns.length > 0 ? rsns[0] : 'Unknown RSN';
-
-    const currentRoles = new Set(member.roles.cache.map((role) => role.name));
-    const newlyAssigned99Roles = new Set();
-
-    for (const key in hiscoresData) {
-        if (!key.startsWith('Skills ') || !key.endsWith(' Level')) continue;
-
-        const levelNum = parseInt(hiscoresData[key], 10) || 0;
-        if (levelNum === 99) {
-            const skillName = key.replace('Skills ', '').replace(' Level', '');
-            const roleName = `99 ${skillName}`;
-
-            newlyAssigned99Roles.add(roleName);
-            const role = guild.roles.cache.find((r) => r.name === roleName);
-            if (role && !member.roles.cache.has(role.id)) {
-                await member.roles.add(role);
-                const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Well done!**\n🔥 You’ve reached \`${roleName}\` and earned the role <@&${role.id}>. 🎊`).setColor(0x48de6f).setTimestamp();
-
-                await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
-                logger.info(`✅ Assigned role "${roleName}" to RSN: ${playerName} (User ID: ${member.id})`);
-            }
-        }
-    }
-
-    const overallKey = 'Skills Overall Level';
-    if (hiscoresData[overallKey] && hiscoresData[overallKey] === '2277') {
-        const role2277Total = guild.roles.cache.find((r) => r.name === '2277 Total');
-        const roleMaxCape = guild.roles.cache.find((r) => r.name === 'Max Cape');
-
-        if (role2277Total && !member.roles.cache.has(role2277Total.id)) {
-            await member.roles.add(role2277Total);
-            const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Fantastic achievement!**\n🔥 You’ve reached \`2277 Total level\` and earned the role <@&${role2277Total.id}>. 🎊`).setColor(0x48de6f).setTimestamp();
-
-            await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
-            logger.info(`✅ Assigned role "2277 Total" to RSN: ${playerName} (User ID: ${member.id})`);
-        }
-
-        if (roleMaxCape && !member.roles.cache.has(roleMaxCape.id)) {
-            await member.roles.add(roleMaxCape);
-            const embed = new EmbedBuilder().setTitle('Role Assigned!').setDescription(`🎉 **Incredible work!**\n🔥 You’ve earned the prestigious \`Max Cape\` and the role <@&${roleMaxCape.id}>. 🏆`).setColor(0x48de6f).setTimestamp();
-
-            await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
-            logger.info(`✅ Assigned role "Max Cape" to RSN: ${playerName} (User ID: ${member.id})`);
-        }
-    }
-
-    for (const roleName of currentRoles) {
-        if (!roleName.startsWith('99 ')) continue;
-        if (!newlyAssigned99Roles.has(roleName)) {
-            const role = guild.roles.cache.find((r) => r.name === roleName);
-            if (role) {
-                await member.roles.remove(role);
-                const embed = new EmbedBuilder().setTitle('Role Removed!').setDescription(`⚠️ Hey! It seems the role \`${roleName}\` isn’t supposed to be assigned to you. Removing it now. 🔄`).setColor(0xff0000).setTimestamp();
-
-                await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
-                logger.info(`✅ Removed role "${roleName}" from RSN: ${playerName} (User ID: ${member.id})`);
-            }
-        }
-    }
 }
 
 module.exports = { fetchAndProcessMember };
