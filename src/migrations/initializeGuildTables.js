@@ -1,36 +1,10 @@
-/**
- * @fileoverview
- * **Initialize Main Tables Migration** ⚙️
- *
- * This script initializes the main competition tables in the database.
- * It ensures that all necessary tables exist by creating them if they do not.
- *
- * @module src/migrations/initializeTables
- */
-
 const {
     guild: { runQuery },
 } = require('../modules/utils/essentials/dbUtils');
-
 const logger = require('../modules/utils/essentials/logger');
-
-/**
- * 🎯 **Initializes Main Competition Tables**
- *
- * This asynchronous function ensures that all required tables for competitions are present in the database.
- * It iterates over a predefined set of table schemas and creates each table if it does not already exist.
- *
- * @async
- * @function initializeTables
- *
- * @example
- * // Initialize all main tables:
- * initializeTables().then(() => console.log('Tables are ready!'));
- */
 const initializeGuildTables = async () => {
     try {
         logger.info('🔄 Ensuring all necessary guild tables exist...');
-
         const tables = {
             log_channels: `
                 log_key TEXT PRIMARY KEY,
@@ -89,16 +63,13 @@ const initializeGuildTables = async () => {
                 banner_url TEXT DEFAULT NULL
             `,
         };
-
         for (const [table, schema] of Object.entries(tables)) {
             await runQuery(`CREATE TABLE IF NOT EXISTS ${table} (${schema});`);
             logger.info(`✅ Ensured "${table}" table exists.`);
         }
-
         logger.info('✅ All main competition tables have been successfully initialized.');
     } catch (error) {
         logger.error(`❌ Error initializing competition tables: ${error.message}`);
     }
 };
-
 module.exports = initializeGuildTables;

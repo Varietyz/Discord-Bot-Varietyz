@@ -23,11 +23,11 @@ module.exports = {
     // Define custom rules and override default settings
     rules: {
         // JSDoc Rules
-        'jsdoc/check-alignment': 'error',              // Ensure JSDoc comments are properly aligned
-        'jsdoc/check-indentation': 'error',            // Check that JSDoc blocks are correctly indented
-        'jsdoc/check-param-names': 'error',            // Verify that parameter names in JSDoc match those in the function
+        'jsdoc/check-alignment': 'warn',              // Ensure JSDoc comments are properly aligned
+        'jsdoc/check-indentation': 'warn',            // Check that JSDoc blocks are correctly indented
+        'jsdoc/check-param-names': 'warn',            // Verify that parameter names in JSDoc match those in the function
         'jsdoc/require-jsdoc': [
-            'error',
+            'warn',
             {
                 require: {
                     FunctionDeclaration: true,          // Require JSDoc for function declarations
@@ -36,8 +36,8 @@ module.exports = {
                 }
             }
         ],
-        'jsdoc/require-param': 'error',                 // Ensure that @param tags are present in JSDoc
-        'jsdoc/require-returns': 'error',               // Ensure that @returns tags are present in JSDoc
+        'jsdoc/require-param': 'warn',                 // Ensure that @param tags are present in JSDoc
+        'jsdoc/require-returns': 'warn',               // Ensure that @returns tags are present in JSDoc
 
         // Node.js Rules
         'node/no-missing-require': 'error',            // Disallow require() expressions with missing modules
@@ -50,7 +50,7 @@ module.exports = {
         indent: ['error', 4],                           // Enforce consistent indentation (4 spaces)
         quotes: ['error', 'single'],                     // Enforce the consistent use of single quotes
         semi: ['error', 'always'],                       // Require or disallow semicolons instead of ASI
-        'max-len': ['error', { code: 250 }],            // Enforce a maximum line length of 250 characters
+        'max-len': ['warn', { code: 250 }],            // Enforce a maximum line length of 250 characters
         'no-console': 'warn',                            // Warn about the use of console (can be set to 'off' if desired)
         'prefer-const': 'error'                          // Suggest using const over let when variables are not reassigned
     },

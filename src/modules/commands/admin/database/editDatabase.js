@@ -1,7 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const dbUtils = require('../../../utils/essentials/dbUtils');
 const logger = require('../../../utils/essentials/logger');
-
 const IMPORTANT_KEYS = {
     log_channels: 'log_key',
     setup_channels: 'setup_key',
@@ -11,7 +10,6 @@ const IMPORTANT_KEYS = {
     guild_roles: 'role_key',
     guild_webhooks: 'webhook_key',
 };
-
 module.exports.data = new SlashCommandBuilder()
     .setName('edit_database')
     .setDescription('ADMIN: Edit a specific field in a database table.')
@@ -34,31 +32,24 @@ module.exports.data = new SlashCommandBuilder()
             .addStringOption((option) => option.setName('key').setDescription('Select the key to update').setRequired(true).setAutocomplete(true))
             .addStringOption((option) => option.setName('new_value').setDescription('Enter the new value for the key').setRequired(true)),
     );
-
 module.exports.execute = async (interaction) => {
     try {
-        // Check for administrator permissions
         if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
             return interaction.reply({
                 content: '❌ You do not have permission to use this command.',
                 flags: 64,
             });
         }
-
         await interaction.deferReply({ flags: 64 });
-
         const subcommand = interaction.options.getSubcommand();
         let query, params;
-
         if (subcommand === 'change') {
             const dbChoice = interaction.options.getString('database');
             const table = interaction.options.getString('table');
             const column = interaction.options.getString('column');
             const field = interaction.options.getString('field');
             const newValue = interaction.options.getString('new_value');
-
             let runQueryFunc, dbHandler;
-            // Select the appropriate database handler based on the user's choice
             switch (dbChoice) {
             case 'main':
                 runQueryFunc = dbUtils.runQuery;
@@ -78,32 +69,22 @@ module.exports.execute = async (interaction) => {
                 dbHandler = dbUtils.guild;
                 break;
             }
-
             query = `UPDATE ${table} SET ${column} = ? WHERE ${column} = ?`;
             params = [newValue, field];
-
-            // Execute the update query
             await runQueryFunc(query, params);
             await interaction.editReply(`✅ Successfully updated **${column}** in table **${table}** from \`${field}\` to \`${newValue}\`.`);
-
-            // For logging the update, use the guild database if the chosen database doesn’t contain the log_channels table.
-            // If the selected database is 'guild', we use its handler; otherwise, we fall back to dbUtils.guild.
             const logDbHandler = dbChoice === 'guild' ? dbHandler : dbUtils.guild;
-
             try {
-                // Retrieve log channel information using the determined logDbHandler
                 const logChannelData = await logDbHandler.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['database_logs']);
                 if (!logChannelData) {
                     logger.warn('⚠️ No log channel found for "database_logs" in the logging database.');
                 } else {
-                    // Fetch the log channel from the guild
                     const logChannel = await interaction.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
                     if (!logChannel) {
                         logger.warn(`⚠️ Could not fetch log channel ID: ${logChannelData.channel_id}`);
                     } else {
-                        // 📌 **Build Embed**
                         const embed = new EmbedBuilder()
-                            .setColor(0x3498db) // Blue for field updates
+                            .setColor(0x3498db)
                             .setTitle('✏️ **Database Field Updated**')
                             .setDescription(`Action performed by <@${interaction.user.id}> (${interaction.user.tag})`)
                             .addFields(
@@ -114,8 +95,6 @@ module.exports.execute = async (interaction) => {
                                 { name: '✅ **Field (New Value)**', value: `\`\`\`${newValue}\`\`\``, inline: true },
                             )
                             .setTimestamp();
-
-                        // 📤 **Send Embed to Log Channel**
                         await logChannel.send({ embeds: [embed] });
                     }
                 }
@@ -123,23 +102,16 @@ module.exports.execute = async (interaction) => {
                 logger.error(`Error logging database update: ${logErr.message}`);
             }
         } else if (subcommand === 'change_keys') {
-            // For change_keys, we don't have a database option so we'll use the guild database
             const table = interaction.options.getString('table');
             const keyColumn = IMPORTANT_KEYS[table];
             if (!keyColumn) return interaction.editReply('❌ This table does not have a predefined key column.');
-
             const key = interaction.options.getString('key');
             const newValue = interaction.options.getString('new_value');
-
             query = `UPDATE ${table} SET ${keyColumn} = ? WHERE ${keyColumn} = ?`;
             params = [newValue, key];
-
-            // Execute the update in the guild database
             await dbUtils.guild.runQuery(query, params);
             await interaction.editReply(`✅ Successfully updated key **${keyColumn}** in **${table}** from \`${key}\` to \`${newValue}\`.`);
-
             try {
-                // Use the guild database for logging
                 const logChannelData = await dbUtils.guild.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['database_logs']);
                 if (!logChannelData) {
                     logger.warn('⚠️ No log channel found for "database_logs" in the logging database.');
@@ -148,9 +120,8 @@ module.exports.execute = async (interaction) => {
                     if (!logChannel) {
                         logger.warn(`⚠️ Could not fetch log channel ID: ${logChannelData.channel_id}`);
                     } else {
-                        // 📌 **Build Embed**
                         const embed = new EmbedBuilder()
-                            .setColor(0xffa500) // Orange for key updates
+                            .setColor(0xffa500)
                             .setTitle('🔑 **Guild Database Key Updated**')
                             .addFields(
                                 { name: '📋 **Table**', value: `\`${table}\``, inline: true },
@@ -160,8 +131,6 @@ module.exports.execute = async (interaction) => {
                             )
                             .setFooter({ text: `Executed by ${interaction.user.tag}` })
                             .setTimestamp();
-
-                        // 📤 **Send Embed to Log Channel**
                         await logChannel.send({ embeds: [embed] });
                     }
                 }
@@ -174,16 +143,12 @@ module.exports.execute = async (interaction) => {
         return interaction.editReply('❌ An error occurred while updating the database.');
     }
 };
-
 module.exports.autocomplete = async (interaction) => {
     try {
         const focused = interaction.options.getFocused(true);
         const subcommand = interaction.options.getSubcommand();
         const searchValue = focused.value.toLowerCase();
-
         logger.info(`🔍 DEBUG: Autocomplete triggered for ${focused.name} | Input: ${searchValue}`);
-
-        // Autocomplete for the 'database' option
         if (focused.name === 'database') {
             return interaction.respond(
                 ['main', 'messages', 'images', 'guild']
@@ -194,12 +159,8 @@ module.exports.autocomplete = async (interaction) => {
                     })),
             );
         }
-
-        // Retrieve the chosen database (defaults to 'guild')
         const dbChoice = interaction.options.getString('database') || 'guild';
         if (!dbChoice) return interaction.respond([]);
-
-        // Select the appropriate database handler
         let dbHandler;
         switch (dbChoice) {
         case 'main':
@@ -216,20 +177,13 @@ module.exports.autocomplete = async (interaction) => {
             dbHandler = dbUtils.guild;
             break;
         }
-
         let tableNames = [];
-
-        // For the 'table' option, use different sources based on the subcommand.
         if (subcommand === 'change_keys' && focused.name === 'table') {
-            // In change_keys, restrict table choices to those defined in IMPORTANT_KEYS.
             tableNames = Object.keys(IMPORTANT_KEYS);
         } else if (subcommand === 'change' && focused.name === 'table') {
-            // In change, dynamically retrieve table names from the selected database.
             const tables = await dbHandler.getAll('SELECT name FROM sqlite_master WHERE type=\'table\' AND name NOT LIKE \'sqlite_%\'');
             tableNames = tables.map((row) => row.name);
         }
-
-        // Respond with filtered table names.
         if (focused.name === 'table') {
             return interaction.respond(
                 tableNames
@@ -238,8 +192,6 @@ module.exports.autocomplete = async (interaction) => {
                     .map((name) => ({ name, value: name })),
             );
         }
-
-        // Autocomplete for the 'column' option: retrieve columns via PRAGMA.
         if (focused.name === 'column') {
             const tableChoice = interaction.options.getString('table');
             if (!tableChoice) return interaction.respond([]);
@@ -252,8 +204,6 @@ module.exports.autocomplete = async (interaction) => {
                     .map((name) => ({ name, value: name })),
             );
         }
-
-        // Autocomplete for the 'field' option: retrieve distinct field values.
         if (focused.name === 'field') {
             const tableChoice = interaction.options.getString('table');
             const column = interaction.options.getString('column');
@@ -267,16 +217,11 @@ module.exports.autocomplete = async (interaction) => {
                     .map((value) => ({ name: value.toString(), value: value.toString() })),
             );
         }
-
-        // Autocomplete for the 'key' option (only for change_keys subcommand).
         if (focused.name === 'key' && subcommand === 'change_keys') {
             const tableChoice = interaction.options.getString('table');
             if (!tableChoice) return interaction.respond([]);
-
-            // Try the tableChoice as given, or remove a trailing "s" if present
             const keyColumn = IMPORTANT_KEYS[tableChoice] || IMPORTANT_KEYS[tableChoice.replace(/s$/, '')];
             if (!keyColumn) return interaction.respond([]);
-
             const keys = await dbHandler.getAll(`SELECT DISTINCT ${keyColumn} FROM ${tableChoice}`);
             return interaction.respond(
                 keys

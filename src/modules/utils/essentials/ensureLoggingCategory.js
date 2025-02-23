@@ -3,24 +3,9 @@ const {
     guild: { runQuery, getOne },
 } = require('./dbUtils');
 const logger = require('./logger');
-
-/**
- * 🎯 **Ensures the Logging System Exists and Stores Channels in DB**
- *
- * - Creates the `📁 ‣‣ LOGGING` category if missing.
- * - Ensures all logging channels exist with proper formatting and emojis.
- * - Stores channel IDs in `database.sqlite` for retrieval in event handlers.
- * - Configures permissions (admins can access logs, @everyone is denied).
- *
- * @async
- * @function ensureLoggingCategory
- * @param guild - The Discord guild (server) instance.
- * @returns {Promise<void>} Resolves when the setup is complete.
- */
 async function ensureLoggingCategory(guild) {
     try {
-        const loggingCategoryName = '📁 ‣‣ LOGGING';
-
+        const loggingCategoryName = '📁 ‣‣ Logging';
         const logChannels = [
             { key: 'transcripts', name: '📋‣-‣transcripts', topic: 'Stores chat transcripts.' },
             { key: 'moderation_logs', name: '📋‣-‣moderation-logs', topic: 'Logs bans, kicks, mutes, and warnings.' },
@@ -40,10 +25,7 @@ async function ensureLoggingCategory(guild) {
             { key: 'database_logs', name: '📋‣-‣database-logs', topic: 'Logs database actions.' },
             { key: 'critical_alerts', name: '🚨‣-‣critical-alerts🚨', topic: 'Logs critical alerts from database and unresolved actions.' },
         ];
-
-        // 🔍 **Find or Create the Logging Category**
         let loggingCategory = guild.channels.cache.find((ch) => ch.type === ChannelType.GuildCategory && ch.name === loggingCategoryName);
-
         if (!loggingCategory) {
             loggingCategory = await guild.channels.create({
                 name: loggingCategoryName,
@@ -52,14 +34,9 @@ async function ensureLoggingCategory(guild) {
             });
             logger.info(`✅ Created category: ${loggingCategory.name}`);
         }
-
-        // 🔍 **Ensure All Log Channels Exist and Store in DB**
         for (const { key, name, topic } of logChannels) {
             const storedChannel = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', [key]);
-
-            // ✅ Fetch channel by ID instead of name & parent category
             let channel = storedChannel ? guild.channels.cache.get(storedChannel.channel_id) : null;
-            // ✅ If channel exists, check if it’s in the correct category
             if (channel && channel.parentId !== loggingCategory.id) {
                 logger.warn(`⚠️ Channel ${channel.id} is in the wrong category. Moving it...`);
                 await channel.setParent(loggingCategory.id);
@@ -80,19 +57,15 @@ async function ensureLoggingCategory(guild) {
                 });
                 logger.info(`✅ Created channel: ${name}`);
             }
-
             if (!storedChannel) {
                 await runQuery('INSERT INTO log_channels (log_key, channel_id) VALUES (?, ?)', [key, channel.id]);
             } else {
-                // Update existing log channel entry with the new channel ID
                 await runQuery('UPDATE log_channels SET channel_id = ? WHERE log_key = ?', [channel.id, key]);
             }
         }
-
         logger.info('🎉 Logging system setup complete.');
     } catch (error) {
         logger.error(`❌ Error setting up logging system: ${error.message}`);
     }
 }
-
 module.exports = { ensureLoggingCategory };

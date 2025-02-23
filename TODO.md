@@ -33,6 +33,7 @@
     - Include configuration options for time, participants, and activity type.
 
 2. **General Event Scheduling:**
+
     - Add event scheduling commands that synchronize with Discord’s built-in event system and WoM.
     - Eligible event types:
         - Giveaways
@@ -41,6 +42,9 @@
         - Clan wars
         - Discord voice/stream events
     - Define customizable event parameters through a static file for flexibility.
+
+3. **Clan Vs Clan**
+    - allow for clan v clan events (group id vs group id, competitions vs competition, drops vs drops)
 
 ---
 

@@ -1,44 +1,13 @@
-// @ts-nocheck
-/**
- * @fileoverview
- * **Auto Roles Service (Enhanced)**
- *
- * This module dynamically processes a member’s hiscores data by reading thresholds and role mappings
- * from your databases. It loads role definitions (from guild_roles) and emojis (from guild_emojis)
- * so that as new metrics come online you only need to update the configuration or the DB.
- *
- * The service then:
- * 1. Merges hiscores data from all RSNs associated with a Discord member.
- * 2. Determines which roles (for skills, bosses, activities) should be assigned based on configurable thresholds.
- * 3. Removes roles that are no longer valid.
- * 4. Sends a summary embed (or multiple embeds if needed) in a designated channel.
- *
- * **Dependencies:**
- * - **Wise Old Man API / Database:** For retrieving player data.
- * - **Discord.js:** For interacting with Discord.
- * - **dbUtils:** For database queries.
- * - **Logger:** For logging errors/info.
- *
- * @module services/autoRolesEnhanced
- */
-
 const { EmbedBuilder } = require('discord.js');
 const logger = require('../utils/essentials/logger.js');
 const db = require('../utils/essentials/dbUtils.js');
 const { normalizeRsn } = require('../utils/normalizing/normalizeRsn.js');
 const { cleanupInactiveUsers } = require('../utils/helpers/cleanupInactiveUsers');
-
-/*────────────────────────────────────────────────────────────────────────────
-  CONFIGURATION & THRESHOLDS
-────────────────────────────────────────────────────────────────────────────*/
-
 const THRESHOLDS = {
     skills: {
         default: 99,
         custom: {
-            overall: { threshold: 2277, roleKey: 'role_99_overall' },
-            // You may add a mapping that grants multiple roles:
-            // maxed: { threshold: 2277, roleKeys: ['role_99_overall', 'role_max_cape'] },
+            overall: { threshold: 2277, roleKeys: ['role_99_overall', 'role_2277_total', 'role_max_cape'] },
         },
     },
     bosses: {
@@ -133,43 +102,25 @@ const THRESHOLDS = {
         },
     },
 };
-
-/*────────────────────────────────────────────────────────────────────────────
-  HELPER FUNCTIONS: METRIC -> ROLE MAPPING & THRESHOLDS
-────────────────────────────────────────────────────────────────────────────*/
-
-/**
- * Derives role keys based on the metric type and name.
- * For skills, a default role key is built as "role_99_<skill>".
- * For bosses/activities, we either use a custom mapping (if defined) or derive one.
- *
- * @param {string} metricType - One of "skills", "bosses", or "activities".
- * @param {string} metricName - The name of the metric (e.g. "Attack", "Abyssal Sire").
- * @returns {string[]} Array of derived role keys.
- */
 function deriveRoleKeys(metricType, metricName) {
     switch (metricType) {
     case 'skills': {
         const key = metricName.toLowerCase();
         if (THRESHOLDS.skills.custom[key]) {
             const custom = THRESHOLDS.skills.custom[key];
-            return Array.isArray(custom.roleKeys) ? custom.roleKeys : [custom.roleKey];
+            let roles = Array.isArray(custom.roleKeys) ? custom.roleKeys : [custom.roleKey];
+            if (roles.includes('role_99_overall')) {
+                roles = [...new Set([...roles, 'role_2277_total', 'role_max_cape'])];
+            }
+            return roles;
         }
-        // Derive default role key for skills.
         return [`role_99_${key}`];
     }
-    case 'bosses': {
-        const key = metricName.toLowerCase().replace(/\s+/g, '_');
-        if (THRESHOLDS.bosses.custom[key]) {
-            const custom = THRESHOLDS.bosses.custom[key];
-            return Array.isArray(custom.roleKeys) ? custom.roleKeys : [custom.roleKey];
-        }
-        return [`role_${key}`];
-    }
+    case 'bosses':
     case 'activities': {
         const key = metricName.toLowerCase().replace(/\s+/g, '_');
-        if (THRESHOLDS.activities.custom[key]) {
-            const custom = THRESHOLDS.activities.custom[key];
+        if (THRESHOLDS[metricType].custom[key]) {
+            const custom = THRESHOLDS[metricType].custom[key];
             return Array.isArray(custom.roleKeys) ? custom.roleKeys : [custom.roleKey];
         }
         return [`role_${key}`];
@@ -178,14 +129,6 @@ function deriveRoleKeys(metricType, metricName) {
         return [];
     }
 }
-
-/**
- * Returns the threshold value for a given metric.
- *
- * @param {string} metricType - "skills", "bosses", or "activities".
- * @param {string} metricName - The name of the metric.
- * @returns {number} The threshold value.
- */
 function getThresholdForMetric(metricType, metricName) {
     switch (metricType) {
     case 'skills': {
@@ -207,18 +150,6 @@ function getThresholdForMetric(metricType, metricName) {
         return null;
     }
 }
-
-/*────────────────────────────────────────────────────────────────────────────
-  DATABASE LOADING FUNCTIONS: GUILD ROLES & EMOJIS
-────────────────────────────────────────────────────────────────────────────*/
-
-/**
- * Loads all role definitions from the guild_roles table.
- * Returns an object mapping role_key to an object with role_id.
- *
- * @async
- * @returns {Promise<Object>} Map of role_key -> { roleId, roleKey }.
- */
 async function fetchGuildRoles() {
     const query = 'SELECT role_id, role_key FROM guild_roles';
     const rows = await db.guild.getAll(query);
@@ -228,14 +159,6 @@ async function fetchGuildRoles() {
     }
     return rolesMap;
 }
-
-/**
- * Loads all emoji definitions from the guild_emojis table.
- * Returns an object mapping emoji_key to its emoji_format.
- *
- * @async
- * @returns {Promise<Object>} Map of emoji_key -> emoji_format.
- */
 async function fetchGuildEmojis() {
     const query = 'SELECT emoji_key, emoji_format FROM guild_emojis';
     const rows = await db.guild.getAll(query);
@@ -245,19 +168,11 @@ async function fetchGuildEmojis() {
     }
     return emojisMap;
 }
-
-/**
- * Given a role key, returns the corresponding emoji format.
- * It strips known prefixes (e.g. "role_99_" or "role_") and then
- * looks up "emoji_<keyPart>" in the emojis map.
- *
- * @param {string} roleKey - The role key (e.g. "role_99_fishing").
- * @param {Object} emojisMap - Mapping of emoji_key -> emoji_format.
- * @returns {string} The emoji string if found, or an empty string.
- */
 function getEmojiForRoleKey(roleKey, emojisMap) {
     let keyPart = roleKey;
-    if (roleKey.startsWith('role_99_')) {
+    if (roleKey === 'role_2277_total') {
+        keyPart = 'overall';
+    } else if (roleKey.startsWith('role_99_')) {
         keyPart = roleKey.substring('role_99_'.length);
     } else if (roleKey.startsWith('role_')) {
         keyPart = roleKey.substring('role_'.length);
@@ -265,40 +180,18 @@ function getEmojiForRoleKey(roleKey, emojisMap) {
     const emojiKey = `emoji_${keyPart}`;
     return emojisMap[emojiKey] || '';
 }
-
-/*────────────────────────────────────────────────────────────────────────────
-  ROLE PROCESSING FUNCTION
-────────────────────────────────────────────────────────────────────────────*/
-
-/**
- * Processes a member’s hiscores data to assign or remove roles dynamically.
- * Only roles auto‑managed by this system (i.e. derivable from our hiscores data via THRESHOLDS)
- * are processed. Roles not defined in our thresholds remain untouched.
- *
- * @async
- * @param {Discord.Guild} guild - The Discord guild.
- * @param {Discord.GuildMember} member - The guild member.
- * @param {Object} hiscoresData - Object mapping metric keys to values.
- * @param {Object} guildRolesMap - Mapping of role_key -> { roleId, roleKey }.
- * @param {Object} emojisMap - Mapping of emoji_key -> emoji_format.
- * @returns {Promise<EmbedBuilder[]|null>} Array of embed objects summarizing updates, or null if none.
- */
 async function processMemberRoles(guild, member, hiscoresData, guildRolesMap, emojisMap) {
-    const roleUpdates = []; // Record each assignment or removal.
-    const expectedRoleKeys = new Set(); // Roles that should be assigned (threshold met).
-    const managedRoleKeys = new Set(); // Roles that our system manages based on hiscores data.
-
-    // Process each hiscores metric.
+    const roleUpdates = [];
+    const expectedRoleKeys = new Set();
+    const managedRoleKeys = new Set();
     for (const key in hiscoresData) {
         const rawValue = hiscoresData[key];
         const value = parseInt(rawValue, 10);
         if (isNaN(value)) continue;
-
         let metricName,
             roleKeys = [],
             threshold;
         if (key.startsWith('Skills ') && key.endsWith(' Level')) {
-            // Extract metric name from "Skills Attack Level"
             metricName = key.slice('Skills '.length, key.length - ' Level'.length).trim();
             roleKeys = deriveRoleKeys('skills', metricName);
             threshold = getThresholdForMetric('skills', metricName);
@@ -311,8 +204,6 @@ async function processMemberRoles(guild, member, hiscoresData, guildRolesMap, em
             roleKeys = deriveRoleKeys('activities', metricName);
             threshold = getThresholdForMetric('activities', metricName);
         }
-
-        // Only process roles explicitly defined via our THRESHOLDS mappings.
         if (roleKeys && roleKeys.length > 0) {
             roleKeys.forEach((rk) => {
                 managedRoleKeys.add(rk);
@@ -322,24 +213,28 @@ async function processMemberRoles(guild, member, hiscoresData, guildRolesMap, em
             });
         }
     }
-
-    // Removal: Remove auto-managed roles that are no longer expected.
     for (const roleKey of managedRoleKeys) {
         const roleData = guildRolesMap[roleKey];
-        if (!roleData) continue; // Role not defined in DB—skip.
+        if (!roleData) continue;
         if (!expectedRoleKeys.has(roleKey) && member.roles.cache.has(roleData.roleId)) {
             try {
                 await member.roles.remove(roleData.roleId);
                 const emoji = getEmojiForRoleKey(roleKey, emojisMap);
                 const roleName = guild.roles.cache.get(roleData.roleId)?.name || roleKey;
-                roleUpdates.push({ action: 'removed', roleKey, roleId: roleData.roleId, roleName, emoji });
+                roleUpdates.push({
+                    action: 'removed',
+                    roleKey,
+                    roleId: roleData.roleId,
+                    roleName,
+                    emoji,
+                    currentScore: hiscoresData[roleKey] || 0,
+                    threshold: getThresholdForMetric('skills', roleKey),
+                });
             } catch (err) {
                 logger.error(`Error removing role ${roleKey} from member ${member.id}: ${err.message}`);
             }
         }
     }
-
-    // Addition: Add roles for which the metric threshold is met.
     for (const roleKey of expectedRoleKeys) {
         const roleData = guildRolesMap[roleKey];
         if (!roleData) {
@@ -351,87 +246,58 @@ async function processMemberRoles(guild, member, hiscoresData, guildRolesMap, em
                 await member.roles.add(roleData.roleId);
                 const emoji = getEmojiForRoleKey(roleKey, emojisMap);
                 const roleName = guild.roles.cache.get(roleData.roleId)?.name || roleKey;
-                roleUpdates.push({ action: 'assigned', roleKey, roleId: roleData.roleId, roleName, emoji });
+                roleUpdates.push({
+                    action: 'assigned',
+                    roleKey,
+                    roleId: roleData.roleId,
+                    roleName,
+                    emoji,
+                    currentScore: hiscoresData[roleKey] || 0,
+                    threshold: getThresholdForMetric('skills', roleKey),
+                });
             } catch (err) {
                 logger.error(`Error assigning role ${roleKey} to member ${member.id}: ${err.message}`);
             }
         }
     }
-
-    // Build and return embed(s) summarizing the role updates.
-    if (roleUpdates.length > 0) {
-        const embedLines = roleUpdates.map((update) => {
-            const actionIcon = update.action === 'assigned' ? '✅' : '❌';
-
-            return `${actionIcon} ${update.emoji} <@&${update.roleId}> ${update.action}`;
-        });
-
-        const MAX_DESCRIPTION_LENGTH = 2048;
-        const embeds = [];
-        let currentDesc = '';
-        let isFirstEmbed = true;
-
-        for (const line of embedLines) {
-            // Check if adding the next line exceeds the embed description limit.
-            if (currentDesc.length + line.length + 1 > MAX_DESCRIPTION_LENGTH) {
-                const description = isFirstEmbed ? `${currentDesc}` : currentDesc;
-                embeds.push(new EmbedBuilder().setTitle('Role Updates').setDescription(description).setColor(0x48de6f).setTimestamp());
-                currentDesc = line;
-                isFirstEmbed = false;
-            } else {
-                currentDesc += (currentDesc ? '\n' : '') + line;
-            }
-        }
-        if (currentDesc) {
-            const description = isFirstEmbed ? `${currentDesc}` : currentDesc;
-            embeds.push(new EmbedBuilder().setTitle('Role Updates').setDescription(description).setColor(0x48de6f).setTimestamp());
-        }
-        return embeds;
+    const overallRoles = new Set(['role_99_overall', 'role_2277_total', 'role_max_cape']);
+    const hasOverallRole = [...expectedRoleKeys].some((role) => overallRoles.has(role));
+    if (hasOverallRole) {
+        overallRoles.forEach((role) => expectedRoleKeys.add(role));
+    } else {
+        overallRoles.forEach((role) => managedRoleKeys.add(role));
     }
+    const roleChanges = roleUpdates.map((update) => {
+        const actionIcon = update.action === 'assigned' ? '✅' : '❌';
+        return `${actionIcon} ${update.emoji} <@&${update.roleId}>`;
+    });
+    if (roleUpdates.length > 0) {
+        const embed = new EmbedBuilder()
+            .setTitle('Role Changes')
+            .setDescription(roleChanges.join('\n'))
+            .setColor(0x48de6f)
+            .setTimestamp();
 
+        return [embed];
+    }
     return null;
 }
-
-/*────────────────────────────────────────────────────────────────────────────
-  MAIN FUNCTION: FETCH & PROCESS MEMBER DATA
-────────────────────────────────────────────────────────────────────────────*/
-
-/**
- * Fetches RSNs for a user, merges hiscores data, loads guild role and emoji definitions,
- * processes role assignments/removals, and sends a summary embed to the update channel.
- *
- * @async
- * @param {Discord.Guild} guild - The Discord guild.
- * @param {string} userId - The Discord user ID.
- * @returns {Promise<void>}
- */
 async function fetchAndProcessMember(guild, userId) {
     try {
-        // Fetch all RSNs linked to this user.
         const rsns = await getUserRSNs(userId);
         if (!rsns.length) {
             logger.info(`🚨 No RSNs linked to user ID: ${userId}`);
             return;
         }
-
-        // Fetch the member from the guild.
         const member = await guild.members.fetch(userId).catch(() => null);
         if (!member) {
             logger.error(`⚠️ Member with ID ${userId} not found in the guild; cleaning up.`);
             await cleanupInactiveUsers(guild);
             return;
         }
-
-        // Merge hiscores data from all RSNs.
         const mergedData = await mergeRsnData(rsns);
-
-        // Load guild roles and emojis from the DB.
         const [guildRolesMap, emojisMap] = await Promise.all([fetchGuildRoles(), fetchGuildEmojis()]);
-
-        // Process hiscores data to determine role updates.
         const updateEmbeds = await processMemberRoles(guild, member, mergedData, guildRolesMap, emojisMap);
-
-        // Retrieve the designated update channel from your setup.
         const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['auto_roles_channel']);
         if (!row) {
             logger.info('⚠️ No channel_id configured for auto_roles_channel.');
@@ -442,31 +308,16 @@ async function fetchAndProcessMember(guild, userId) {
             logger.error(`🚨 Update channel with ID ${row.channel_id} not found.`);
             return;
         }
-
-        // If any role updates occurred, send the embed(s).
         if (updateEmbeds && updateEmbeds.length > 0) {
             for (const embed of updateEmbeds) {
                 await channelUpdate.send({ content: `<@${member.id}>`, embeds: [embed] });
             }
         }
-
         logger.info(`✅ Processed role updates for RSNs: ${rsns.join(', ')} (User ID: ${userId})`);
     } catch (error) {
         logger.error(`🚨 Error processing member ID ${userId}: ${error.message}`);
     }
 }
-
-/*────────────────────────────────────────────────────────────────────────────
-  AUXILIARY FUNCTIONS (EXISTING): DATABASE QUERIES & DATA MERGING
-────────────────────────────────────────────────────────────────────────────*/
-
-/**
- * Retrieves all RSNs associated with a Discord user.
- *
- * @async
- * @param {string} userId - Discord user ID.
- * @returns {Promise<string[]>} Array of RSNs.
- */
 async function getUserRSNs(userId) {
     const query = 'SELECT rsn FROM registered_rsn WHERE CAST(discord_id AS TEXT) = ?';
     const rows = await db.getAll(query, [String(userId)]);
@@ -476,43 +327,46 @@ async function getUserRSNs(userId) {
     }
     return rows.map((row) => row.rsn);
 }
-
-/**
- * Retrieves player data for a given RSN from the player_data table.
- *
- * @async
- * @param {string} rsn - The RuneScape Name.
- * @returns {Promise<Object>} Object with data_key -> data_value.
- */
 async function getPlayerDataForRSN(rsn) {
     const normalizedRsn = normalizeRsn(rsn);
     const query = `
-    SELECT data_key, data_value 
-    FROM player_data
-    WHERE LOWER(rsn) = LOWER(?)
-  `;
+      SELECT type, metric, level, kills, score, exp
+      FROM player_data
+      WHERE LOWER(rsn) = LOWER(?)
+    `;
     const rows = await db.getAll(query, [normalizedRsn]);
     const result = {};
-    for (const { data_key, data_value } of rows) {
-        result[data_key] = data_value;
+    for (const row of rows) {
+        let key = '';
+        if (row.type === 'skills') {
+            key = `Skills ${capitalize(row.metric)} Level`;
+            result[key] = row.level;
+        } else if (row.type === 'bosses') {
+            key = `Bosses ${capitalize(row.metric).replace(/_/g, ' ')} Kills`;
+            result[key] = row.kills;
+        } else if (row.type === 'activities') {
+            key = `Activities ${capitalize(row.metric).replace(/_/g, ' ')} Score`;
+            result[key] = row.score;
+        } else if (row.type === 'account') {
+            if (row.metric === 'combat_level') {
+                key = 'Account Combat Level';
+                result[key] = row.level;
+            } else {
+                key = `Account ${capitalize(row.metric)}`;
+                result[key] = row.metric;
+            }
+        }
     }
     return result;
 }
-
-/**
- * Merges hiscores data from multiple RSNs. For each metric (skill, boss, activity),
- * the highest value is retained.
- *
- * @async
- * @param {string[]} rsns - Array of RSNs.
- * @returns {Promise<Object>} Merged hiscores data.
- */
+function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
 async function mergeRsnData(rsns) {
     const merged = {};
     for (const rsn of rsns) {
         const data = await getPlayerDataForRSN(rsn);
         for (const [key, value] of Object.entries(data)) {
-            // Only merge numerical metrics.
             if ((key.startsWith('Skills ') && key.endsWith(' Level')) || (key.startsWith('Bosses ') && key.endsWith(' Kills')) || (key.startsWith('Activities ') && key.endsWith(' Score'))) {
                 const oldVal = merged[key] ? parseInt(merged[key], 10) : 0;
                 const newVal = parseInt(value, 10);
@@ -524,5 +378,4 @@ async function mergeRsnData(rsns) {
     }
     return merged;
 }
-
 module.exports = { fetchAndProcessMember };

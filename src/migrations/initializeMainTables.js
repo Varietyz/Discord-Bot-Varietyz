@@ -1,33 +1,8 @@
-/**
- * @fileoverview
- * **Initialize Main Tables Migration** ⚙️
- *
- * This script initializes the main competition tables in the database.
- * It ensures that all necessary tables exist by creating them if they do not.
- *
- * @module src/migrations/initializeTables
- */
-
 const { runQuery } = require('../modules/utils/essentials/dbUtils');
 const logger = require('../modules/utils/essentials/logger');
-
-/**
- * 🎯 **Initializes Main Competition Tables**
- *
- * This asynchronous function ensures that all required tables for competitions are present in the database.
- * It iterates over a predefined set of table schemas and creates each table if it does not already exist.
- *
- * @async
- * @function initializeMainTables
- *
- * @example
- * // Initialize all main tables:
- * initializeTables().then(() => console.log('Tables are ready!'));
- */
 const initializeMainTables = async () => {
     try {
         logger.info('🔄 Ensuring all necessary tables exist...');
-
         const tables = {
             registered_rsn: `
                 player_id INTEGER PRIMARY KEY,
@@ -49,12 +24,17 @@ const initializeMainTables = async () => {
                 resolved_at DATETIME DEFAULT CURRENT_TIMESTAMP
             `,
             player_data: `
-                idx INTEGER PRIMARY KEY AUTOINCREMENT,
                 player_id INTEGER NOT NULL,
                 rsn TEXT NOT NULL,
-                data_key TEXT NOT NULL,
-                data_value TEXT,
-                last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+                type TEXT NOT NULL,
+                metric TEXT NOT NULL,
+                kills INTEGER DEFAULT 0,
+                score INTEGER DEFAULT 0,
+                level INTEGER DEFAULT 0,
+                exp BIGINT DEFAULT 0,
+                last_changed DATETIME,
+                last_updated DATETIME,
+                PRIMARY KEY (player_id, type, metric)
             `,
             player_fetch_times: `
                 player_id INTEGER PRIMARY KEY,
@@ -148,11 +128,9 @@ const initializeMainTables = async () => {
             await runQuery(`CREATE TABLE IF NOT EXISTS ${table} (${schema});`);
             logger.info(`✅ Ensured "${table}" table exists.`);
         }
-
         logger.info('✅ All main competition tables have been successfully initialized.');
     } catch (error) {
         logger.error(`❌ Error initializing competition tables: ${error.message}`);
     }
 };
-
 module.exports = initializeMainTables;

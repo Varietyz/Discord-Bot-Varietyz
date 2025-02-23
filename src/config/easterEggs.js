@@ -1,31 +1,3 @@
-/**
- * @fileoverview
- * **Easter Egg Responses for RSNs** 🎉
- *
- * This module defines a set of Easter egg responses for special RuneScape Names (RSNs).
- * For each key (RSN in lowercase), it provides a unique title, description, and color.
- * These responses are used to generate fun or themed messages when a user registers or queries one of these legendary RSNs.
- *
- * **Core Features:**
- * - Maps specific RSNs to unique titles, descriptions, and colors.
- * - Provides responses for well-known RSNs such as **Zezima**, **Woox**, and **Durial321**.
- * - Supports various colored responses to match the iconic status of each RSN.
- *
- * @module config/easterEggs
- */
-
-/**
- * @typedef {Object} EasterEgg
- * @property {string} title - The title to display for the RSN.
- * @property {string} description - The description or message associated with the RSN.
- * @property {number} color - The color code (in hexadecimal) used for styling responses.
- */
-
-/**
- * An object mapping special RSNs (in lowercase) to their Easter egg responses.
- * @type {Object.<string, EasterEgg>}
- */
-
 module.exports = {
     easterEggs: {
         zezima: {

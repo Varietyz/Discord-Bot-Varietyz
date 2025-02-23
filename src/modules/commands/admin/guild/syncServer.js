@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-returns */
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 const logger = require('../../../utils/essentials/logger');
@@ -6,45 +5,25 @@ const {
     guild: { runQuery, getAll },
 } = require('../../../utils/essentials/dbUtils');
 const { formatCustomEmoji } = require('../../../utils/helpers/formatCustomEmoji');
-
-// Helper: Normalize a name using cleaning rules and ensuring uniqueness using a local set.
-/**
- *
- * @param name
- * @param type
- * @param existingKeys
- */
 function getUniqueKey(name, type, existingKeys) {
     const cleanName = name
         .toLowerCase()
-        .replace(/[^a-z0-9\s_]/gi, '') // keep letters, numbers, spaces, underscores
-        .replace(/[-\s]+/g, '_') // convert spaces/hyphens to underscores
-        .replace(/^_+|_+$/g, ''); // trim leading/trailing underscores
-
+        .replace(/[^a-z0-9\s_]/gi, '')
+        .replace(/[-\s]+/g, '_')
+        .replace(/^_+|_+$/g, '');
     const baseKey = `${type}_${cleanName}`;
     let uniqueKey = baseKey;
     let suffix = 1;
-
-    // If already in set, append _1, _2, etc.
     while (existingKeys.has(uniqueKey)) {
         uniqueKey = `${baseKey}_${suffix}`;
         suffix++;
-        // Guard: avoid exceeding 32 chars (Discord-like limit)
         if (uniqueKey.length > 32) {
             uniqueKey = `${baseKey.slice(0, 29)}_${suffix}`;
         }
     }
-
     existingKeys.add(uniqueKey);
     return uniqueKey;
 }
-
-/**
- * Deletes database entries for roles, channels, emojis, members, or webhooks that no longer exist.
- * @param {Set<string>} existingIds - The set of **Discord IDs** that still exist for the given item.
- * @param {string} table - The DB table name.
- * @param {string} idColumn - The column name containing the Discord ID.
- */
 async function cleanupDeletedItems(existingIds, table, idColumn) {
     const storedItems = await getAll(`SELECT ${idColumn} FROM ${table}`);
     for (const item of storedItems) {
@@ -54,15 +33,13 @@ async function cleanupDeletedItems(existingIds, table, idColumn) {
         }
     }
 }
-
 module.exports = {
     data: new SlashCommandBuilder().setName('sync_server').setDescription('ADMIN: Fetch, store, and clean up all relevant server data for the bot.').setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
-
     async execute(interaction) {
         try {
-            // Defer reply (ephemeral)
-            await interaction.deferReply({ flags: 64 });
-
+            if (!interaction.deferred && !interaction.replied) {
+                await interaction.deferReply({ flags: 64 });
+            }
             const startTime = Date.now();
             const guild = interaction.guild;
             if (!guild) {
@@ -71,13 +48,7 @@ module.exports = {
                     flags: 64,
                 });
             }
-
             logger.info(`🔄 Fetching and cleaning server data for guild: ${guild.name} (${guild.id})`);
-
-            // ==============================================================
-            //    1) CHANNELS
-            // ==============================================================
-            // A) Load existing channel (id->key) from DB
             const existingChannels = await getAll('SELECT channel_id, channel_key FROM guild_channels');
             const channelIdToKey = new Map();
             const usedChannelKeys = new Set();
@@ -85,18 +56,13 @@ module.exports = {
                 channelIdToKey.set(row.channel_id, row.channel_key);
                 usedChannelKeys.add(row.channel_key);
             }
-
-            // B) Build channel data to insert or update
             const channelsToSave = [];
             for (const channel of guild.channels.cache.values()) {
                 let channelKey = channelIdToKey.get(channel.id);
-
                 if (!channelKey) {
-                    // brand-new channel -> generate a new unique key
                     channelKey = getUniqueKey(channel.name, 'channel', usedChannelKeys);
                     channelIdToKey.set(channel.id, channelKey);
                 }
-
                 channelsToSave.push({
                     id: channel.id,
                     key: channelKey,
@@ -106,8 +72,6 @@ module.exports = {
                     permissions: channel.permissionsFor(guild.roles.everyone)?.bitfield.toString() || '0',
                 });
             }
-
-            // C) Insert/Update channels
             for (const ch of channelsToSave) {
                 await runQuery(
                     `INSERT INTO guild_channels (channel_id, channel_key, name, type, category, permissions)
@@ -122,10 +86,6 @@ module.exports = {
                 );
             }
             logger.info(`📌 Stored/updated ${channelsToSave.length} channels.`);
-
-            // ==============================================================
-            //    2) ROLES
-            // ==============================================================
             const existingRoles = await getAll('SELECT role_id, role_key FROM guild_roles');
             const roleIdToKey = new Map();
             const usedRoleKeys = new Set();
@@ -133,23 +93,19 @@ module.exports = {
                 roleIdToKey.set(row.role_id, row.role_key);
                 usedRoleKeys.add(row.role_key);
             }
-
             const rolesToSave = [];
             for (const role of guild.roles.cache.values()) {
                 let roleKey = roleIdToKey.get(role.id);
-
                 if (!roleKey) {
                     roleKey = getUniqueKey(role.name, 'role', usedRoleKeys);
                     roleIdToKey.set(role.id, roleKey);
                 }
-
                 rolesToSave.push({
                     id: role.id,
                     key: roleKey,
                     permissions: role.permissions.bitfield.toString(),
                 });
             }
-
             for (const r of rolesToSave) {
                 await runQuery(
                     `INSERT INTO guild_roles (role_id, role_key, permissions)
@@ -161,10 +117,6 @@ module.exports = {
                 );
             }
             logger.info(`🔑 Stored/updated ${rolesToSave.length} roles.`);
-
-            // ==============================================================
-            //    3) EMOJIS
-            // ==============================================================
             const existingEmojis = await getAll('SELECT emoji_id, emoji_key FROM guild_emojis');
             const emojiIdToKey = new Map();
             const usedEmojiKeys = new Set();
@@ -172,16 +124,13 @@ module.exports = {
                 emojiIdToKey.set(row.emoji_id, row.emoji_key);
                 usedEmojiKeys.add(row.emoji_key);
             }
-
             const emojisToSave = [];
             for (const emoji of guild.emojis.cache.values()) {
                 let emojiKey = emojiIdToKey.get(emoji.id);
-
                 if (!emojiKey) {
                     emojiKey = getUniqueKey(emoji.name, 'emoji', usedEmojiKeys);
                     emojiIdToKey.set(emoji.id, emojiKey);
                 }
-
                 emojisToSave.push({
                     id: emoji.id,
                     key: emojiKey,
@@ -190,7 +139,6 @@ module.exports = {
                     animated: emoji.animated ? 1 : 0,
                 });
             }
-
             for (const e of emojisToSave) {
                 await runQuery(
                     `INSERT INTO guild_emojis (emoji_id, emoji_key, emoji_name, emoji_format, animated)
@@ -204,16 +152,11 @@ module.exports = {
                 );
             }
             logger.info(`😃 Stored/updated ${emojisToSave.length} emojis.`);
-
-            // ==============================================================
-            //    4) MEMBERS (no "key" concept, so no uniqueKey generation)
-            // ==============================================================
             await guild.members.fetch();
             const membersToSave = Array.from(guild.members.cache.values()).map((member) => ({
                 id: member.id,
                 username: member.user.username,
             }));
-
             for (const m of membersToSave) {
                 await runQuery(
                     `INSERT INTO guild_members (user_id, username)
@@ -224,31 +167,22 @@ module.exports = {
                 );
             }
             logger.info(`👥 Stored/updated ${membersToSave.length} members.`);
-
-            // ==============================================================
-            //    5) WEBHOOKS (use ID for uniqueness, not URL)
-            // ==============================================================
             const existingWebhooks = await getAll('SELECT webhook_id, webhook_key FROM guild_webhooks');
             const webhookIdToKey = new Map();
             const usedWebhookKeys = new Set();
-
             for (const row of existingWebhooks) {
                 webhookIdToKey.set(row.webhook_id, row.webhook_key);
                 usedWebhookKeys.add(row.webhook_key);
             }
-
             const webhooks = await guild.fetchWebhooks();
             const webhooksToSave = [];
             for (const webhook of webhooks.values()) {
                 let key = webhookIdToKey.get(webhook.id);
-
                 if (!key) {
-                    // Fallback name if webhook.name missing
                     const nameToUse = webhook.name || guild.name;
                     key = getUniqueKey(nameToUse, 'webhook', usedWebhookKeys);
                     webhookIdToKey.set(webhook.id, key);
                 }
-
                 webhooksToSave.push({
                     id: webhook.id,
                     key,
@@ -257,7 +191,6 @@ module.exports = {
                     channelId: webhook.channelId || null,
                 });
             }
-
             for (const w of webhooksToSave) {
                 await runQuery(
                     `INSERT INTO guild_webhooks (webhook_id, webhook_key, webhook_name, webhook_url, channel_id)
@@ -271,19 +204,11 @@ module.exports = {
                 );
             }
             logger.info(`📡 Stored/updated ${webhooksToSave.length} webhooks.`);
-
-            // ==============================================================
-            //    6) CLEANUP DELETED ITEMS
-            // ==============================================================
             await cleanupDeletedItems(new Set(channelsToSave.map((c) => c.id)), 'guild_channels', 'channel_id');
             await cleanupDeletedItems(new Set(rolesToSave.map((r) => r.id)), 'guild_roles', 'role_id');
             await cleanupDeletedItems(new Set(emojisToSave.map((e) => e.id)), 'guild_emojis', 'emoji_id');
             await cleanupDeletedItems(new Set(membersToSave.map((m) => m.id)), 'guild_members', 'user_id');
             await cleanupDeletedItems(new Set(webhooksToSave.map((w) => w.id)), 'guild_webhooks', 'webhook_id');
-
-            // ==============================================================
-            //    7) SEND CONFIRMATION
-            // ==============================================================
             const embed = new EmbedBuilder()
                 .setColor(0x2ecc71)
                 .setTitle('✅ Server Data Initialized & Cleaned')
@@ -303,14 +228,11 @@ This ensures that the bot has **up-to-date information** about channels, roles, 
                     { name: '\u200b', value: '\u200b', inline: true },
                 )
                 .setTimestamp();
-
             await interaction.editReply({ embeds: [embed] });
-
             const executionTime = Date.now() - startTime;
             logger.info(`✅ Execution completed in ${executionTime}ms, cleanup done.`);
         } catch (error) {
             logger.error(`❌ Error executing /admin_initialize_guild: ${error.message}`);
-            // Optionally reply with an error
             await interaction.editReply({
                 content: `❌ Error initializing server data: ${error.message}`,
             });

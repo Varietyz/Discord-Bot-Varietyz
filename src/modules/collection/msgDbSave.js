@@ -1,45 +1,16 @@
-/**
- * 📚 **msgDbSave Module**
- *
- * This module provides utility functions for processing and cleaning up message data,
- * as well as retrieving recent chat messages from the database.
- *
- * Functions include:
- * - Determining if a message is a chat message.
- * - Detecting system messages based on key patterns.
- * - Cleaning and reformatting text.
- * - Combining extra name tokens for system messages.
- * - Cleaning up various message formats (chat, tasks, keys, emoji-based system messages).
- * - Retrieving recent chat messages.
- *
- * @module msgDbSave
- */
 const { dbPromise, systemTables, emojiCleanupTypes } = require('./msgDbConstants');
+const maindb = require('../utils/essentials/dbUtils');
 const { reformatText, isChatMessage, cleanupEmojiSystemMessage, cleanupKeysRow, cleanupTasksRow, cleanupChatRow, combineExtraName, detectSystemMessage } = require('./msgDbUtils');
 const logger = require('../utils/essentials/logger');
-
 /**
- * 🎯 **Saves a Message**
  *
- * Immediately cleans up and saves a message to the database.
- * - If it's a chat message, it uses `cleanupChatRow` to extract username and message content.
- * - For system messages, applies specialized cleanup functions (TASKS, KEYS, RAID_DROP, or generic emoji-based cleanup).
- * - Uses `combineExtraName` to ensure the message starts appropriately.
- * - Finally, saves the processed message into the designated system table or chat table.
- *
- * @async
- * @function saveMessage
- * @param {string} rsn - The raw sender name.
- * @param {string} message - The raw message content.
- * @param {string} messageId - The Discord message ID.
- * @param {number} timestamp - The message timestamp.
- *
- * @example
- * saveMessage("Alice", "**Alice**: Hello!", "1234567890", Date.now());
+ * @param rsn
+ * @param message
+ * @param messageId
+ * @param timestamp
  */
 async function saveMessage(rsn, message, messageId, timestamp) {
     try {
-        // Check if the message is a chat message
         if (isChatMessage(message)) {
             const { username, cleanedMessage } = cleanupChatRow(message);
             if (username) rsn = username;
@@ -49,8 +20,6 @@ async function saveMessage(rsn, message, messageId, timestamp) {
             logger.info(`✅ 💬 Chat message stored: [${rsn}] ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
             return;
         }
-
-        // Detect system messages and apply appropriate cleanup
         const systemType = detectSystemMessage(message);
         if (systemType) {
             if (systemType === 'TASKS') {
@@ -80,8 +49,6 @@ async function saveMessage(rsn, message, messageId, timestamp) {
             await saveSystemMessage(systemType, rsn, message, messageId, timestamp);
             return;
         }
-
-        // Fallback: treat as a chat message
         rsn = reformatText(rsn);
         message = reformatText(message);
         const db = await dbPromise;
@@ -91,22 +58,13 @@ async function saveMessage(rsn, message, messageId, timestamp) {
         logger.error('❌ Database Save Error:', error);
     }
 }
-
 /**
- * 🎯 **Saves a System Message**
  *
- * Saves a cleaned-up system message into its designated system table based on its type.
- *
- * @async
- * @function saveSystemMessage
- * @param {string} type - The detected system message type.
- * @param {string} rsn - The cleaned sender name.
- * @param {string} message - The cleaned message content.
- * @param {string} messageId - The Discord message ID.
- * @param {number} timestamp - The message timestamp.
- *
- * @example
- * saveSystemMessage("KEYS", "Bob", "has opened a loot key...", "0987654321", Date.now());
+ * @param type
+ * @param rsn
+ * @param message
+ * @param messageId
+ * @param timestamp
  */
 async function saveSystemMessage(type, rsn, message, messageId, timestamp) {
     try {
@@ -118,11 +76,91 @@ async function saveSystemMessage(type, rsn, message, messageId, timestamp) {
         }
         await db.run(`INSERT OR IGNORE INTO ${tableName} (rsn, message, message_id, timestamp) VALUES (?, ?, ?, ?)`, [rsn, message, messageId, new Date(timestamp).toISOString()]);
         logger.info(`✅ 🎉 Saved system message of type [${type}] from [${rsn}]: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
+        await trackDropForBingo(rsn, message, messageId, timestamp);
     } catch (error) {
         logger.error(`❌ Error saving system message (type ${type}):`, error);
     }
 }
 
+/**
+ * Tracks drops and raid drops for Bingo tasks.
+ * - Checks saved messages in `drops` and `raid_drops` tables.
+ * - Matches them to dynamic tasks in `bingo_tasks`.
+ * - Registers progress in `bingo_task_progress`.
+ * @param {string} rsn - The RSN of the player.
+ * @param {string} message - The message content.
+ * @param {string} messageId - The ID of the Discord message.
+ * @param {number} timestamp - The timestamp of the message.
+ */
+async function trackDropForBingo(rsn, message, messageId, timestamp) {
+    try {
+        // Fetch ongoing events
+        const ongoingEvents = await maindb.getAll(`
+            SELECT event_id, start_time, end_time
+            FROM bingo_state
+            WHERE state='ongoing'
+        `);
+
+        if (ongoingEvents.length === 0) return;
+
+        // Fetch all Drop-type dynamic tasks
+        const tasks = await maindb.getAll(`
+            SELECT task_id, parameter, description
+            FROM bingo_tasks
+            WHERE is_dynamic = 1
+              AND type = 'Drop'
+        `);
+
+        if (tasks.length === 0) return;
+
+        for (const task of tasks) {
+            const { task_id, parameter } = task;
+
+            // Check if message matches the task parameter
+            if (message.includes(parameter)) {
+                for (const event of ongoingEvents) {
+                    const { event_id, start_time, end_time } = event;
+
+                    // Check if message is within the event timeframe
+                    if (new Date(timestamp) >= new Date(start_time) && new Date(timestamp) <= new Date(end_time)) {
+                        const player = await maindb.getOne(
+                            `
+                            SELECT player_id
+                            FROM registered_rsn
+                            WHERE LOWER(rsn) = LOWER(?)
+                        `,
+                            [rsn.toLowerCase()],
+                        );
+
+                        if (!player) {
+                            logger.warn(`[trackDropForBingo] No player_id found for RSN: ${rsn}. Skipping.`);
+                            continue;
+                        }
+
+                        const player_id = player.player_id;
+                        const progressVal = 1;
+                        const status = 'completed';
+
+                        // Register task progress
+                        await maindb.runQuery(
+                            `
+                            INSERT INTO bingo_task_progress (event_id, player_id, task_id, progress_value, status, points_awarded)
+                            VALUES (?, ?, ?, ?, ?, 0)
+                        `,
+                            [event_id, player_id, task_id, progressVal, status],
+                        );
+
+                        logger.info(`[trackDropForBingo] Task #${task_id} completed by ${rsn} for event #${event_id}`);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        logger.error(`[trackDropForBingo] Error: ${error.message}`);
+    }
+}
+
 module.exports = {
     saveMessage,
+    trackDropForBingo,
 };

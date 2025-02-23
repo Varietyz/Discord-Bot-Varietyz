@@ -1,33 +1,6 @@
-// @ts-nocheck
 const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder } = require('discord.js');
-
-/**
- * 🎯 **Updates the All-Time Leaderboard (Now Uses `player_id`)**
- *
- * Retrieves all-time competition data from the database, formats it with clickable player links,
- * and sends or updates a pinned embed in the designated leaderboard channel.
- *
- * ---
- *
- * 🔹 **How It Works:**
- * - Fetches top 10 players for SOTW and BOTW from the database.
- * - Retrieves the biggest overall gainer and highest single competition gain.
- * - Formats each leaderboard entry as a clickable link to the player's profile.
- * - Sends or updates a pinned embed in the designated channel.
- *
- * ---
- *
- * @async
- * @function updateAllTimeLeaderboard
- * @param {Discord.Client} client - The Discord client instance.
- * @returns {Promise<void>} Resolves when the all-time leaderboard is updated.
- *
- * @example
- * // 📌 Update the all-time leaderboard:
- * await updateAllTimeLeaderboard(client);
- */
 const updateAllTimeLeaderboard = async (client) => {
     try {
         const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', ['top_10_channel']);
@@ -35,17 +8,13 @@ const updateAllTimeLeaderboard = async (client) => {
             logger.info('⚠️ No channel_id is configured in comp_channels for top_10_channel.');
             return;
         }
-
         const channelId = row.channel_id;
         const channel = await client.channels.fetch(channelId);
-
         if (!channel) {
             logger.warn(`🚫 **Warning:** Could not find leaderboard channel with ID \`${channelId}\`.`);
             return;
         }
-
         logger.info('🔄 **Fetching all-time competition data...**');
-
         const topSOTW = await db.getAll(`
             SELECT player_id, rsn, COALESCE(total_metric_gain_sotw, 0) AS total_gain, COALESCE(total_wins, 0) AS total_wins
             FROM users
@@ -53,7 +22,6 @@ const updateAllTimeLeaderboard = async (client) => {
             ORDER BY total_metric_gain_sotw DESC
             LIMIT 10
         `);
-
         const topBOTW = await db.getAll(`
             SELECT player_id, rsn, COALESCE(total_metric_gain_botw, 0) AS total_gain, COALESCE(total_wins, 0) AS total_wins
             FROM users
@@ -61,7 +29,6 @@ const updateAllTimeLeaderboard = async (client) => {
             ORDER BY total_metric_gain_botw DESC
             LIMIT 10
         `);
-
         const biggestOverallGainer = await db.getOne(`
     SELECT player_id, rsn, 
            COALESCE(total_metric_gain_sotw, 0) AS sotw_gain, 
@@ -71,14 +38,12 @@ const updateAllTimeLeaderboard = async (client) => {
     ORDER BY total_gain DESC
     LIMIT 1
 `);
-
         const highestSingleGain = await db.getOne(`
             SELECT player_id, rsn, metric_gain
             FROM winners
             ORDER BY metric_gain DESC
             LIMIT 1
         `);
-
         let overallMetricLabel = 'XP/KC';
         if (biggestOverallGainer) {
             if (biggestOverallGainer.sotw_gain > biggestOverallGainer.botw_gain) {
@@ -87,15 +52,6 @@ const updateAllTimeLeaderboard = async (client) => {
                 overallMetricLabel = 'KC';
             }
         }
-
-        /**
-         * 🎯 **Formats Leaderboard Entries with Clickable Player Links**
-         *
-         * @param {Array<Object>} data - Array of player data objects.
-         * @param {string} metricEmoji - Emoji representing the metric.
-         * @param metricLabel
-         * @returns {string} A formatted string for the leaderboard.
-         */
         const formatLeaderboard = (data, metricEmoji, metricLabel) => {
             return data.length > 0
                 ? data
@@ -106,17 +62,12 @@ const updateAllTimeLeaderboard = async (client) => {
                     .join('\n\n')
                 : '_No data available_';
         };
-
-        // Use getOne to fetch a single row
         const sotwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_overall']);
         const botwEmojiRow = await db.guild.getOne('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_slayer']);
-
         const sotwEmoji = sotwEmojiRow ? sotwEmojiRow.emoji_format : '';
         const botwEmoji = botwEmojiRow ? botwEmojiRow.emoji_format : '';
-
         const sotwLeaderboard = formatLeaderboard(topSOTW, sotwEmoji, 'XP');
         const botwLeaderboard = formatLeaderboard(topBOTW, botwEmoji, 'KC');
-
         const embed = new EmbedBuilder()
             .setTitle('🏆 **All-Time Top 10 Players** 🏆')
             .addFields(
@@ -145,10 +96,8 @@ const updateAllTimeLeaderboard = async (client) => {
             .setColor(0xffd700)
             .setFooter({ text: 'Updated after each competition' })
             .setTimestamp();
-
         const pinnedMessages = await channel.messages.fetchPinned();
         const existingMessage = pinnedMessages.find((msg) => msg.author.id === client.user.id);
-
         if (existingMessage) {
             await existingMessage.edit({ embeds: [embed] });
             logger.info(`✅ **Success:** Updated pinned all-time leaderboard in channel \`${channelId}\`.`);
@@ -161,7 +110,6 @@ const updateAllTimeLeaderboard = async (client) => {
         logger.error(`❌ Error updating all-time leaderboard: ${err.message}`);
     }
 };
-
 module.exports = {
     updateAllTimeLeaderboard,
 };

@@ -1,15 +1,10 @@
-/* eslint-disable max-len */
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const logger = require('../../../utils/essentials/logger');
-
 module.exports = {
     data: new SlashCommandBuilder().setName('fight_caves_tutorial').setDescription('A comprehensive guide to conquering the TzHaar Fight Cave and earning the Fire Cape!'),
-
     async execute(interaction) {
         try {
             await interaction.deferReply({ flags: 64 });
-
-            // Main Navigation Buttons (max 5 per row)
             const mainButtons = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('overview').setLabel('🏆 Overview').setStyle(ButtonStyle.Primary),
                 new ButtonBuilder().setCustomId('gear').setLabel('🛡️ Gear').setStyle(ButtonStyle.Primary),
@@ -17,14 +12,11 @@ module.exports = {
                 new ButtonBuilder().setCustomId('monsters').setLabel('👹 Monsters').setStyle(ButtonStyle.Primary),
                 new ButtonBuilder().setCustomId('jad').setLabel('🔥 TzTok-Jad').setStyle(ButtonStyle.Primary),
             );
-
             const mainButtons2 = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('tips').setLabel('💡 Tips').setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder().setCustomId('insights').setLabel('🏆 Insights').setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder().setCustomId('resources').setLabel('📜 Resources').setStyle(ButtonStyle.Secondary),
             );
-
-            // Gear Navigation Buttons split into two rows (5 buttons in first row, 1 Back button in second)
             const gearButtons = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('gear_ranged').setLabel('🏹 Ranged').setStyle(ButtonStyle.Primary),
                 new ButtonBuilder().setCustomId('gear_melee').setLabel('⚔️ Melee').setStyle(ButtonStyle.Primary),
@@ -33,8 +25,6 @@ module.exports = {
                 new ButtonBuilder().setCustomId('gear_iron').setLabel('🛡️ Iron').setStyle(ButtonStyle.Primary),
             );
             const gearBackButton = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('back').setLabel('⬅️ Back').setStyle(ButtonStyle.Secondary));
-
-            // Embed 1: Overview
             const embedOverview = new EmbedBuilder()
                 .setTitle('🔥 Fight Caves Tutorial: Overview')
                 .setDescription(
@@ -46,8 +36,6 @@ module.exports = {
                 .setColor(0x3498db)
                 .setFooter({ text: 'Fight Caves Tutorial • Overview' })
                 .setTimestamp();
-
-            // ───── RANGED SETUP ─────────────────────────────────────────────
             const embedGearRanged = new EmbedBuilder().setTitle('🏹 Recommended Ranged Setup for Fight Cave').setColor(0x2ecc71).setFooter({ text: 'Fight Caves Tutorial • Ranged Setup' }).setTimestamp().addFields(
                 {
                     name: '🪖 Head',
@@ -110,8 +98,6 @@ module.exports = {
                     inline: false,
                 },
             );
-
-            // ───── MELEE SETUP ──────────────────────────────────────────────
             const embedGearMelee = new EmbedBuilder().setTitle('⚔️ Recommended Melee Setup for Fight Cave').setColor(0xe74c3c).setFooter({ text: 'Fight Caves Tutorial • Melee Setup' }).setTimestamp().addFields(
                 {
                     name: '🪖 Head',
@@ -179,8 +165,6 @@ module.exports = {
                     inline: false,
                 },
             );
-
-            // ───── MAGIC SETUP ──────────────────────────────────────────────
             const embedGearMagic = new EmbedBuilder().setTitle('✨ Recommended Magic Setup for Fight Cave').setColor(0x3498db).setFooter({ text: 'Fight Caves Tutorial • Magic Setup' }).setTimestamp().addFields(
                 {
                     name: '🪖 Head',
@@ -248,8 +232,6 @@ module.exports = {
                     inline: false,
                 },
             );
-
-            // ───── PURE SETUP ──────────────────────────────────────────────
             const embedGearPure = new EmbedBuilder().setTitle('🔥 Recommended Pure Setup for Fight Cave').setColor(0xf1c40f).setFooter({ text: 'Fight Caves Tutorial • Pure Setup' }).setTimestamp().addFields(
                 {
                     name: '🪖 Head',
@@ -312,8 +294,6 @@ module.exports = {
                     inline: false,
                 },
             );
-
-            // ───── EARLY-GAME IRON SETUP ──────────────────────────────────────
             const embedGearIron = new EmbedBuilder().setTitle('🛡️ Recommended Early-Game Iron Setup for Fight Cave').setColor(0x9b59b6).setFooter({ text: 'Fight Caves Tutorial • Iron Setup' }).setTimestamp().addFields(
                 {
                     name: '🪖 Head',
@@ -381,8 +361,6 @@ module.exports = {
                     inline: false,
                 },
             );
-
-            // Embed 3: Detailed Strategy & Wave Breakdown
             const embedWaves = new EmbedBuilder()
                 .setTitle('⚔️ Detailed Strategy & Wave Breakdown')
                 .setColor(0xe67e22)
@@ -436,8 +414,6 @@ module.exports = {
                         inline: false,
                     },
                 );
-
-            // Embed 4: Monster Breakdown & Wave Details
             const monsterData = {
                 'Tz-Kih': {
                     level: 22,
@@ -475,7 +451,6 @@ module.exports = {
                     notes: 'Priority: Must be neutralized quickly to prevent Jad from regenerating.',
                 },
             };
-
             const monsterImageMap = {
                 'Tz-Kih': 'https://oldschool.runescape.wiki/images/Tz-Kih.png',
                 'Tz-Kek': 'https://oldschool.runescape.wiki/images/thumb/Tz-Kek_%28level_45%29.png/250px-Tz-Kek_%28level_45%29.png?2c78c',
@@ -485,7 +460,6 @@ module.exports = {
                 'TzTok-Jad': 'https://oldschool.runescape.wiki/images/TzTok-Jad.png',
                 'Yt-HurKot': 'https://oldschool.runescape.wiki/images/Yt-HurKot.png',
             };
-
             const monsterWikiPageMap = {
                 'Tz-Kih': 'https://oldschool.runescape.wiki/w/Tz-Kih',
                 'Tz-Kek': 'https://oldschool.runescape.wiki/w/Tz-Kek',
@@ -495,7 +469,6 @@ module.exports = {
                 'TzTok-Jad': 'https://oldschool.runescape.wiki/w/TzTok-Jad',
                 'Yt-HurKot': 'https://oldschool.runescape.wiki/w/Yt-HurKot',
             };
-
             const embedMonsters = Object.entries(monsterData).map(([name, data]) => {
                 return new EmbedBuilder()
                     .setTitle(`👹 ${name} (level ${data.level})`)
@@ -507,8 +480,6 @@ module.exports = {
                     .setFooter({ text: 'Fight Caves Tutorial • Monster Breakdown' })
                     .setTimestamp();
             });
-
-            // Embed 5: Tips & Tricks for Success (updated with fields)
             const embedTips = new EmbedBuilder()
                 .setTitle('💡 Tips & Tricks')
                 .setColor(0x9b59b6)
@@ -537,8 +508,6 @@ module.exports = {
                         inline: false,
                     },
                 );
-
-            // Embed 6: External Resources & Further Reading
             const embedResources = new EmbedBuilder()
                 .setTitle('🔗 External Resources & Guides')
                 .setColor(0x3498db)
@@ -551,8 +520,6 @@ module.exports = {
                         '• [Rotations & Spawn Patterns](https://oldschool.runescape.wiki/w/TzHaar_Fight_Cave/Rotations)\n' +
                         '• [TzHaar Fight Cave Strategies](https://oldschool.runescape.wiki/w/TzHaar_Fight_Cave/Strategies)',
                 );
-
-            // Embed 7: Additional Insights & Final Advice
             const embedInsights = new EmbedBuilder()
                 .setTitle('🏆 Additional Insights & Final Advice')
                 .setColor(0x1abc9c)
@@ -577,7 +544,6 @@ module.exports = {
                         inline: false,
                     },
                 );
-
             const embedJad = new EmbedBuilder()
                 .setTitle('🔥 TzTok-Jad: Final Boss Guide')
                 .setImage('https://oldschool.runescape.wiki/images/TzTok-Jad.png')
@@ -631,19 +597,15 @@ module.exports = {
                         inline: false,
                     },
                 );
-
-            // Main embed map for non-gear buttons
             const embedMap = {
                 overview: embedOverview,
                 waves: embedWaves,
-                monsters: embedMonsters, // This is an array of 7 embeds.
+                monsters: embedMonsters,
                 jad: embedJad,
                 tips: embedTips,
                 insights: embedInsights,
                 resources: embedResources,
             };
-
-            // Gear embed map for gear category buttons
             const gearEmbedMap = {
                 gear_ranged: embedGearRanged,
                 gear_melee: embedGearMelee,
@@ -651,32 +613,22 @@ module.exports = {
                 gear_pure: embedGearPure,
                 gear_iron: embedGearIron,
             };
-
-            // Initially, send the overview with the main navigation buttons.
             await interaction.editReply({ embeds: [embedOverview], components: [mainButtons, mainButtons2] });
-
             const collector = interaction.channel.createMessageComponentCollector({ time: 300000 });
-
             collector.on('collect', async (i) => {
                 await i.deferUpdate();
-
-                // Check for main gear button
                 if (i.customId === 'gear') {
                     return interaction.editReply({ embeds: [embedGearRanged], components: [gearButtons, gearBackButton] });
                 }
-                // Gear category buttons
                 if (i.customId.startsWith('gear_')) {
                     if (gearEmbedMap[i.customId]) {
                         return interaction.editReply({ embeds: [gearEmbedMap[i.customId]], components: [gearButtons, gearBackButton] });
                     }
                 }
-                // "Back" button from gear navigation: return to main navigation.
                 if (i.customId === 'back') {
                     return interaction.editReply({ embeds: [embedOverview], components: [mainButtons, mainButtons2] });
                 }
-                // Otherwise, main navigation items:
                 if (embedMap[i.customId]) {
-                    // If the value is an array (like for monsters), send it directly.
                     const embedsToSend = Array.isArray(embedMap[i.customId]) ? embedMap[i.customId] : [embedMap[i.customId]];
                     return interaction.editReply({ embeds: embedsToSend, components: [mainButtons, mainButtons2] });
                 }

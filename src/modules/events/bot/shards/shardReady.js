@@ -1,5 +1,4 @@
 const logger = require('../../../utils/essentials/logger');
-
 module.exports = {
     name: 'shardReady',
     once: false,

@@ -1,20 +1,5 @@
 const db = require('../essentials/dbUtils');
 const logger = require('../essentials/logger');
-
-/**
- * 🎯 **Fetches Rank Emojis from the Database**
- *
- * Queries the `guild_emojis` table to retrieve stored emoji formats based on predefined rank keys.
- * Replaces hardcoded emoji strings with dynamically loaded ones.
- *
- * @async
- * @function fetchRankEmojis
- * @returns {Promise<Object>} - A dictionary mapping rank names to their emoji formats.
- *
- * @example
- * const rankEmojis = await fetchRankEmojis();
- * console.log(rankEmojis.owner); // <:Clan_icon__Owner:1223270860152901816>
- */
 async function fetchRankEmojis() {
     try {
         const emojiRows = await db.guild.getAll('SELECT emoji_key, emoji_format FROM guild_emojis');
@@ -22,7 +7,6 @@ async function fetchRankEmojis() {
             acc[emoji_key.replace('emoji_', '')] = emoji_format;
             return acc;
         }, {});
-
         logger.info('✅ Rank emojis loaded successfully from the database.');
         return emojiMap;
     } catch (error) {
@@ -30,19 +14,8 @@ async function fetchRankEmojis() {
         return {};
     }
 }
-
-/**
- * 🎭 **Defines Rank Metadata**
- *
- * Each rank contains:
- * - **emoji**: Loaded dynamically from the database, with a fallback `❌` emoji.
- * - **role**: The Discord role name for the rank.
- * - **color**: The hex color associated with the role.
- * @returns
- */
 async function getRanks() {
     const rankEmojis = await fetchRankEmojis();
-
     return {
         owner: { emoji: rankEmojis.owner || '❌', role: 'Owner', color: 0xffff00 },
         'deputy owner': { emoji: rankEmojis.deputy_owner || '❌', role: 'Deputy owner', color: 0xdfefd6 },
@@ -71,7 +44,6 @@ async function getRanks() {
         looter: { emoji: rankEmojis.looter || '❌', role: 'Looter', color: 0xa40cc5 },
         quester: { emoji: rankEmojis.quester || '❌', role: 'Quester', color: 0x3a7fdc },
         wild: { emoji: rankEmojis.wild || '❌', role: 'Wild', color: 0x434343 },
-        // PLACEHOLDERS: Colors not on point, Generic Role Names
         achiever: { emoji: rankEmojis.achiever || '❌', role: 'Achiever', color: 0xffd700 },
         adept: { emoji: rankEmojis.adept || '❌', role: 'Adept', color: 0xc0c0c0 },
         admiral: { emoji: rankEmojis.admiral || '❌', role: 'Admiral', color: 0x000080 },
@@ -317,5 +289,4 @@ async function getRanks() {
         zealot: { emoji: rankEmojis.zealot || '❌', role: 'Zealot', color: 0xff6347 },
     };
 }
-
 module.exports = { getRanks };

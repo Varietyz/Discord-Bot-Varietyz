@@ -1,73 +1,45 @@
-// src/modules/modals/registerClanchatModal.js
-
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
 const db = require('../utils/essentials/dbUtils');
 const logger = require('../utils/essentials/logger');
-
 const modalId = 'register_clanchat_webhook_modal';
-
 /**
- * Shows the registration modal for Clanchat webhook.
- * @param {import('discord.js').ButtonInteraction} interaction - The button interaction that triggered this modal.
+ *
+ * @param interaction
  */
 async function showRegisterClanchatModal(interaction) {
     const modal = new ModalBuilder().setCustomId('register_clanchat_webhook_modal').setTitle('Register Clanchat Webhook');
-
     const secretKeyInput = new TextInputBuilder().setCustomId('secret_key').setLabel('Secret Key').setStyle(TextInputStyle.Short).setRequired(true);
-
     const clanNameInput = new TextInputBuilder().setCustomId('clan_name').setLabel('Clan Name').setStyle(TextInputStyle.Short).setRequired(true);
-
     const endpointUrlInput = new TextInputBuilder().setCustomId('endpoint_url').setLabel('Endpoint URL').setStyle(TextInputStyle.Short).setValue('https://clanchat.net').setRequired(true);
-
-    // Inline cast using JSDoc to specify that these rows contain TextInputBuilders.
-    const row1 =
-        /** @type {import('discord.js').ActionRowBuilder<import('discord.js').TextInputBuilder>} */
-        (new ActionRowBuilder().addComponents(secretKeyInput));
-    const row2 =
-        /** @type {import('discord.js').ActionRowBuilder<import('discord.js').TextInputBuilder>} */
-        (new ActionRowBuilder().addComponents(clanNameInput));
-    const row3 =
-        /** @type {import('discord.js').ActionRowBuilder<import('discord.js').TextInputBuilder>} */
-        (new ActionRowBuilder().addComponents(endpointUrlInput));
-
+    const row1 = new ActionRowBuilder().addComponents(secretKeyInput);
+    const row2 = new ActionRowBuilder().addComponents(clanNameInput);
+    const row3 = new ActionRowBuilder().addComponents(endpointUrlInput);
     modal.addComponents(row1, row2, row3);
-
-    // IMPORTANT: Do not defer or reply before calling showModal.
     await interaction.showModal(modal);
 }
-
 /**
- * Handles the "register_clanchat_webhook_modal" modal submission.
  *
- * @param {import('discord.js').ModalSubmitInteraction} interaction - The modal interaction object.
- * @returns
+ * @param interaction
  */
 async function execute(interaction) {
     if (!interaction.fields) {
         return interaction.reply({ content: '❌ Error processing modal submission. Missing fields.', flags: 64 });
     }
-
     const secretKey = interaction.fields.getTextInputValue('secret_key');
     const clanName = interaction.fields.getTextInputValue('clan_name');
     const endpointUrl = interaction.fields.getTextInputValue('endpoint_url') || 'https://clanchat.net';
     const registeredBy = interaction.user.id;
-
     try {
         const clanchatKey = await generateClanChatKey();
         const webhookRow = await db.guild.getOne('SELECT webhook_url, channel_id FROM guild_webhooks WHERE webhook_key = ?', ['webhook_osrs_clan_chat']);
-
         if (!webhookRow) {
             throw new Error('No matching webhook found in the database.');
         }
-
-        // Insert the new ClanChat config into the DB
         await db.runQuery(
             `INSERT INTO clanchat_config (clanchat_key, secret_key, clan_name, webhook_url, channel_id, endpoint_url, registered_by)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [clanchatKey, secretKey, clanName, webhookRow.webhook_url, webhookRow.channel_id, endpointUrl, registeredBy],
         );
-
-        // 1) Send ephemeral success message to the user
         await interaction.reply({
             content: `✅ Successfully registered ClanChat webhook with URL:\n**\`\`\`${webhookRow.webhook_url}\`\`\`**
         \`\`\`${clanchatKey}\`\`\`
@@ -76,13 +48,8 @@ async function execute(interaction) {
         \`\`\`${endpointUrl}\`\`\``,
             flags: 64,
         });
-        await db.runQuery('DELETE FROM modal_tracking WHERE modal_key = ? AND registered_by = ?', ['register_clanchat_webhook_modal', interaction.user.id]);
         logger.info(`✅ New ClanChat registered: Key=${clanchatKey}, Clan=${clanName}, URL=${endpointUrl}`);
-
-        // 2) Send a public embed in the chosen clan chat channel
         const targetChannelId = webhookRow.channel_id;
-
-        // First try cache, then fallback to an API fetch
         let targetChannel = interaction.client.channels.cache.get(targetChannelId);
         if (!targetChannel) {
             try {
@@ -91,7 +58,6 @@ async function execute(interaction) {
                 logger.warn(`⚠️ Could not fetch channel ${targetChannelId}: ${err.message}`);
             }
         }
-
         if (targetChannel) {
             const registrationEmbed = new EmbedBuilder()
                 .setTitle('✅ Clan Chat Registration Complete')
@@ -99,7 +65,6 @@ async function execute(interaction) {
                 .setDescription('**This channel was assigned as the clanchat.**\n\n' + `**Clan Name:** \`${clanName}\`\n` + `**Secret Key:** \`\`\`${secretKey}\`\`\`\n` + `**Endpoint URL:** \`${endpointUrl}\`\n` + '\n')
                 .setFooter({ text: `Registered by ${interaction.user.tag}` })
                 .setTimestamp();
-
             try {
                 if (targetChannel.isTextBased()) {
                     if (targetChannel.isTextBased() && 'send' in targetChannel) {
@@ -117,10 +82,8 @@ async function execute(interaction) {
             logger.warn(`⚠️ Could not find or fetch channel with ID ${targetChannelId} to send the registration embed.`);
         }
     } catch (error) {
-        // Handle "secret key already registered" error
         if (error.message.includes('SQLITE_CONSTRAINT: UNIQUE constraint failed: clanchat_config.secret_key')) {
             const existingEntry = await db.getOne('SELECT * FROM clanchat_config WHERE secret_key = ?', [secretKey]);
-
             if (existingEntry) {
                 const embed = new EmbedBuilder()
                     .setColor(0xffcc00)
@@ -135,22 +98,18 @@ async function execute(interaction) {
                         { name: '👤 **Registered By**', value: `<@${existingEntry.registered_by}>`, inline: false },
                     )
                     .setTimestamp();
-
                 await interaction.reply({ embeds: [embed], flags: 64 });
             } else {
                 await interaction.reply({ content: '❌ Error: This secret key is already registered, but no details found.', flags: 64 });
             }
         } else {
-            // Any other DB error
             logger.error(`❌ Database error: ${error.message}`);
             await interaction.reply({ content: '❌ Error saving ClanChat webhook. Please try again.', flags: 64 });
         }
     }
 }
-
 /**
- * Generates a unique `clanchat_key` by incrementing the highest existing key.
- * @returns {Promise<string>} A new unique `chathook_#` key.
+ *
  */
 async function generateClanChatKey() {
     const query = `
@@ -160,7 +119,6 @@ async function generateClanChatKey() {
     const row = await db.getOne(query);
     return `chathook_${row && row.maxKey ? row.maxKey + 1 : 1}`;
 }
-
 module.exports = {
     modalId,
     execute,

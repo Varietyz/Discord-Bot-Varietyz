@@ -3,7 +3,6 @@ const { EmbedBuilder } = require('discord.js');
 const {
     guild: { getOne },
 } = require('../../../utils/essentials/dbUtils');
-
 module.exports = {
     name: 'shardError',
     once: false,

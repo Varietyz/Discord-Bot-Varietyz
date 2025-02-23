@@ -3,20 +3,12 @@ const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 const {
     guild: { getOne },
 } = require('../../utils/essentials/dbUtils');
-
 module.exports = {
     name: 'guildUpdate',
     once: false,
-    /**
-     * Triggered when a guild's settings are updated.
-     * @param oldGuild - The guild before the update.
-     * @param newGuild - The guild after the update.
-     * @param client - The Discord client instance.
-     */
     async execute(oldGuild, newGuild, client) {
         try {
             const changes = [];
-
             if (oldGuild.name !== newGuild.name) {
                 changes.push(`📛 **Name Changed**\n\`${oldGuild.name}\` → **\`${newGuild.name}\`**`);
             }
@@ -55,49 +47,35 @@ module.exports = {
                 changes.push('ℹ️ **Changes detected, but nothing significant or impactful.**');
                 return;
             }
-
-            // 🔍 Fetch the logging channel from the database
             const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['server_logs']);
             if (!logChannelData) return;
-
             const logChannel = await client.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;
-
-            // 🔍 **Retrieve the action performer from the audit logs**
             let executor = 'Unknown User';
             try {
                 const fetchedLogs = await newGuild.fetchAuditLogs({
                     type: AuditLogEvent.GuildUpdate,
                     limit: 5,
                 });
-
                 const logEntry = fetchedLogs.entries.first();
                 if (logEntry) {
-                    executor = `<@${logEntry.executor.id}>`; // Mention the user
+                    executor = `<@${logEntry.executor.id}>`;
                 }
             } catch (auditError) {
                 logger.warn(`⚠️ Could not fetch audit log for guild update: ${auditError.message}`);
             }
-
-            // 🖼 **Image Handling**
             const bannerUrl = newGuild.bannerURL({ size: 1024 }) || null;
             const splashUrl = newGuild.splashURL({ size: 1024 }) || null;
-
-            // 🛠️ Construct Embed
             const embed = new EmbedBuilder()
-                .setColor(0x3498db) // Blue for guild updates
+                .setColor(0x3498db)
                 .setTitle('🔄 Server Updated')
                 .addFields({ name: '\u200b', value: changes.join('\n'), inline: false }, { name: '🛠 Changed By', value: executor, inline: false })
                 .setTimestamp();
-
             if (bannerUrl && oldGuild.banner !== newGuild.banner) embed.setImage(bannerUrl);
             if (splashUrl && oldGuild.splash !== newGuild.splash) {
                 embed.addFields({ name: '🌊 New Splash Image', value: `[View Image](${splashUrl})`, inline: false });
             }
-
-            // 🔍 Send the log message
             await logChannel.send({ embeds: [embed] });
-
             logger.info(`📋 Successfully logged server update: ${newGuild.name}`);
         } catch (error) {
             logger.error(`❌ Error logging server update: ${error.message}`);

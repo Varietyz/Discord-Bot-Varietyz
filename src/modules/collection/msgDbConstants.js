@@ -1,42 +1,11 @@
-// msgDbConstants.js
-
-/**
- * @fileoverview
- * This module defines constants used throughout the message database system,
- * including the database connection promise, system table names, system patterns
- * for detecting message types, and the list of system types that require emoji-based cleanup.
- *
- * ⚙️ **Usage:**
- * - Import `dbPromise` to access the SQLite database connection.
- * - Use `systemTables` and `SYSTEM_PATTERNS` to determine where to store or how to process system messages.
- * - `emojiCleanupTypes` defines system types that require special emoji cleanup logic.
- *
- * @module msgDbConstants
- */
-
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 require('dotenv').config();
-
-/**
- * @constant {Promise<Database>}
- * @description A promise that resolves to the open SQLite database connection.
- */
 const dbPromise = open({
     filename: 'src/data/messages.db',
     driver: sqlite3.Database,
 });
-
-/**
- * @constant {string[]}
- * @description An array of system message types that require emoji-based cleanup.
- */
 const emojiCleanupTypes = ['DROP', 'QUESTS', 'COLLECTION_LOG', 'PERSONAL_BEST', 'PVP', 'PET_DROP', 'LEVEL_UP', 'COMBAT_ACHIEVEMENTS', 'CLUE_DROP', 'ATTENDANCE', 'DIARY'];
-
-/**
- * @constant {Object<string, string>}
- * @description An object mapping system message types to their corresponding database table names.
- */
 const systemTables = {
     DROP: 'drops',
     RAID_DROP: 'raid_drops',
@@ -53,14 +22,6 @@ const systemTables = {
     TASKS: 'combat_tasks_completed',
     KEYS: 'loot_key_rewards',
 };
-
-/**
- * @constant {Object<string, string[]>}
- * @description An object mapping system message types to arrays of string patterns. These patterns are used
- * to detect the type of system message based on its content.
- *
- * **Note:** The "DIARY" type is handled separately.
- */
 const SYSTEM_PATTERNS = {
     DROP: ['received a drop\\:'],
     RAID_DROP: ['received special loot from a raid\\:'],
@@ -77,7 +38,6 @@ const SYSTEM_PATTERNS = {
     TASKS: ['combat task\\:'],
     KEYS: ['has opened a loot key worth'],
 };
-
 module.exports = {
     dbPromise,
     systemTables,
