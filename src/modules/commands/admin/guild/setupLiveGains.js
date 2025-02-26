@@ -3,6 +3,12 @@ const { PermissionsBitField, EmbedBuilder, ChannelType, ActionRowBuilder, Button
 const db = require('../../../utils/essentials/dbUtils');
 const logger = require('../../../utils/essentials/logger');
 const { ensureLiveGainsCategory } = require('../../../utils/essentials/ensureLiveGainsCategory');
+/**
+ *
+ * @param compType
+ * @param channel
+ * @param guild
+ */
 async function ensureWebhookAssignment(compType, channel, guild) {
     try {
         const webhookMapping = {
@@ -108,7 +114,7 @@ module.exports = {
                         flags: 64,
                     });
                 }
-                const channelRow = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', [compType]);
+                const channelRow = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [compType]);
                 const currentChannelId = channelRow?.channel_id || null;
                 if (currentChannelId === channel.id) {
                     return await interaction.reply({
@@ -116,7 +122,7 @@ module.exports = {
                         flags: 64,
                     });
                 }
-                await db.guild.runQuery('INSERT INTO setup_channels (setup_key, channel_id) VALUES (?, ?) ON CONFLICT(setup_key) DO UPDATE SET channel_id = ?', [compType, channel.id, channel.id]);
+                await db.guild.runQuery('INSERT INTO ensured_channels (channel_key, channel_id) VALUES (?, ?) ON CONFLICT(channel_key) DO UPDATE SET channel_id = ?', [compType, channel.id, channel.id]);
                 await ensureWebhookAssignment(compType, channel, interaction.guild);
                 logger.info(`✅ Channel for '${compType}' set to #${channel.name} (${channel.id}).`);
                 if (compType === 'clanchat_channel') {
@@ -134,7 +140,7 @@ module.exports = {
                     });
                 }
             } else if (subcommand === 'list') {
-                const logChannels = await db.guild.getAll('SELECT setup_key, channel_id FROM setup_channels');
+                const logChannels = await db.guild.getAll('SELECT channel_key, channel_id FROM ensured_channels');
                 if (logChannels.length === 0) {
                     return await interaction.reply({
                         content: '📜 **No basic channels are currently assigned.** Use `/live_gains set` to configure them.',
@@ -144,7 +150,7 @@ module.exports = {
                 const embed = new EmbedBuilder()
                     .setTitle('📋 Assigned Live Gain Channels')
                     .setColor(0x3498db)
-                    .setDescription(logChannels.map((row) => `🔹 **\`${row.setup_key}\`** → <#${row.channel_id}>`).join('\n'))
+                    .setDescription(logChannels.map((row) => `🔹 **\`${row.channel_key}\`** → <#${row.channel_id}>`).join('\n'))
                     .setTimestamp();
                 return await interaction.reply({ embeds: [embed], flags: 64 });
             } else if (subcommand === 'setup') {
@@ -153,11 +159,11 @@ module.exports = {
                 }
                 try {
                     await ensureLiveGainsCategory(interaction.guild);
-                    const assignedChannels = await db.guild.getAll('SELECT setup_key, channel_id FROM setup_channels');
-                    for (const { setup_key, channel_id } of assignedChannels) {
+                    const assignedChannels = await db.guild.getAll('SELECT channel_key, channel_id FROM ensured_channels');
+                    for (const { channel_key, channel_id } of assignedChannels) {
                         const channel = interaction.guild.channels.cache.get(channel_id);
                         if (channel) {
-                            await ensureWebhookAssignment(setup_key, channel, interaction.guild);
+                            await ensureWebhookAssignment(channel_key, channel, interaction.guild);
                         }
                     }
                     logger.info('✅ Successfully generated basic channels.');
@@ -175,7 +181,7 @@ module.exports = {
                     await interaction.deferReply({ flags: 64 });
                 }
                 try {
-                    const logChannels = await db.guild.getAll('SELECT channel_id FROM setup_channels');
+                    const logChannels = await db.guild.getAll('SELECT channel_id FROM ensured_channels');
                     const loggingCategory = interaction.guild.channels.cache.find((ch) => ch.type === ChannelType.GuildCategory && ch.name === '🌐 ‣ LIVE GAINS');
                     if (logChannels.length === 0 && !loggingCategory) {
                         return await interaction.editReply({
@@ -188,7 +194,7 @@ module.exports = {
                             await channelToDelete.delete().catch((err) => logger.warn(`⚠️ Failed to delete channel ${channelToDelete.id}: ${err.message}`));
                         }
                     }
-                    await db.guild.runQuery('DELETE FROM setup_channels');
+                    await db.guild.runQuery('DELETE FROM ensured_channels');
                     if (loggingCategory) {
                         await loggingCategory.delete().catch((err) => logger.warn(`⚠️ Failed to delete logging category: ${err.message}`));
                     }

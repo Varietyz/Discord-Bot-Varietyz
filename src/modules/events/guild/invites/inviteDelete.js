@@ -23,7 +23,7 @@ module.exports = {
                 { name: expiryDate, value: '\u200b', inline: false },
             )
             .setTimestamp();
-        const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['invite_logs']);
+        const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['invite_logs']);
         if (logChannelData) {
             const logChannel = await client.channels.fetch(logChannelData.channel_id);
             if (logChannel) {

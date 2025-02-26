@@ -52,7 +52,7 @@ module.exports = [
     {
         name: 'handleHiscoresData',
         func: async (client) => {
-            const guild = client.guilds.cache.get(process.env.GUILD_ID);
+            const guild = await client.guilds.cache.get(process.env.GUILD_ID);
             if (!guild) {
                 logger.error('Guild not found');
                 return;
@@ -75,7 +75,7 @@ module.exports = [
     },
     {
         name: 'updateBingoProgress',
-        func: async () => await updateBingoProgress(),
+        func: async (client) => await updateBingoProgress(client),
         interval: 60 * 30,
         runOnStart: true,
         runAsTask: true,

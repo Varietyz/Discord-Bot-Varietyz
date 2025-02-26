@@ -3,9 +3,17 @@ const logger = require('../utils/essentials/logger');
 const { runQuery, getAll } = require('../utils/essentials/dbUtils');
 const { sleep } = require('../utils/helpers/sleepUtil');
 const { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable } = require('../utils/fetchers/lastFetchedTime');
+const { updateEventBaseline } = require('./bingo/bingoTaskManager');
+/**
+ *
+ * @param str
+ */
 function normalize(str) {
     return String(str).toLowerCase().replace(/\s+/g, '_');
 }
+/**
+ *
+ */
 async function ensurePlayerDataTable() {
     await runQuery(`
     CREATE TABLE IF NOT EXISTS player_data (
@@ -23,6 +31,10 @@ async function ensurePlayerDataTable() {
     );
   `);
 }
+/**
+ *
+ * @param rawData
+ */
 function transformPlayerData(rawData) {
     const rows = [];
     const rsn = normalize(rawData.username);
@@ -97,6 +109,11 @@ function transformPlayerData(rawData) {
     }
     return rows;
 }
+/**
+ *
+ * @param playerName
+ * @param rawData
+ */
 async function savePlayerDataToDb(playerName, rawData) {
     await ensurePlayerDataTable();
     const cleanedPlayerName = playerName.toLowerCase().trim();
@@ -125,6 +142,9 @@ async function savePlayerDataToDb(playerName, rawData) {
     }
     logger.info(`✅ Upserted data for ${playerName} (player_id: ${player_id}, rsn: ${rsn})`);
 }
+/**
+ *
+ */
 async function loadRegisteredRsnData() {
     try {
         const query = `
@@ -144,6 +164,9 @@ async function loadRegisteredRsnData() {
         return {};
     }
 }
+/**
+ *
+ */
 async function fetchAndSaveRegisteredPlayerData() {
     logger.info('🔄 Starting fetch for registered player data...');
     try {
@@ -162,7 +185,7 @@ async function fetchAndSaveRegisteredPlayerData() {
                 let playerData;
                 if (lastFetched) {
                     const hoursSinceLastFetch = (now.getTime() - lastFetched.getTime()) / (1000 * 60 * 60);
-                    if (hoursSinceLastFetch > 24) {
+                    if (hoursSinceLastFetch > 4) {
                         logger.info(`🔄 Updating player ${rsn} on WOM API...`);
                         playerData = await WOMApiClient.request('players', 'updatePlayer', rsn);
                         await setLastFetchedTime(playerId);
@@ -188,6 +211,10 @@ async function fetchAndSaveRegisteredPlayerData() {
         return { fetchFailed: true };
     }
 }
+/**
+ *
+ * @param currentClanUsers
+ */
 async function removeNonMatchingPlayers(currentClanUsers) {
     const allPlayers = await getAll('SELECT DISTINCT player_id FROM player_data');
     for (const { player_id } of allPlayers) {
@@ -197,6 +224,9 @@ async function removeNonMatchingPlayers(currentClanUsers) {
         }
     }
 }
+/**
+ *
+ */
 async function fetchAndUpdatePlayerData() {
     logger.info('🔄 Starting player data update process.');
     await ensurePlayerDataTable();
@@ -215,6 +245,7 @@ async function fetchAndUpdatePlayerData() {
     } catch (err) {
         logger.error(`❌ Failed to remove non-matching players: ${err.message}`);
     }
+    await updateEventBaseline();
     logger.info('✅ Player data update process completed.');
 }
 module.exports = {

@@ -16,14 +16,27 @@ const { buildPollDropdown } = require('./embedHandler');
 const { recordCompetitionWinner, updateFinalLeaderboard } = require('./competitionWinners');
 const { updateAllTimeLeaderboard } = require('./alltimeCompetitionWinners');
 const migrateEndedCompetitions = require('../../../migrations/migrateEndedCompetitions');
+/**
+ *
+ */
 class CompetitionService {
+    /**
+     *
+     * @param client
+     */
     constructor(client) {
         this.client = client;
         this.scheduledJobs = new Map();
     }
+    /**
+     *
+     */
     async initialize() {
         await scheduleRotationsOnStartup(db, () => this.startNextCompetitionCycle(), constants, this.scheduledJobs);
     }
+    /**
+     *
+     */
     async startNextCompetitionCycle() {
         try {
             const now = new Date().toISOString();
@@ -56,10 +69,18 @@ class CompetitionService {
             logger.error(`❌ Error in startNextCompetitionCycle: ${err.message}`);
         }
     }
+    /**
+     *
+     * @param competitionId
+     */
     async checkIfVotesExist(competitionId) {
         const votes = await db.getOne('SELECT COUNT(*) AS count FROM votes WHERE competition_id = ?', [competitionId]);
         return votes && votes.count > 0;
     }
+    /**
+     *
+     * @param type
+     */
     async getChannelId(type) {
         let channelKey;
         if (type === 'SOTW') {
@@ -70,15 +91,22 @@ class CompetitionService {
             logger.info(`⚠️ Unknown competition type: ${type}.`);
             return;
         }
-        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', [channelKey]);
+        const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [channelKey]);
         if (!row) {
-            logger.info(`⚠️ No channel_id is configured in comp_channels for ${channelKey}.`);
+            logger.info(`⚠️ No channel_id is configured in ensured_channels for ${channelKey}.`);
             return;
         }
         const channelId = row.channel_id;
         const channel = await this.client.channels.fetch(channelId);
         return channel;
     }
+    /**
+     *
+     * @param type
+     * @param lastCompetition
+     * @param votesExist
+     * @param pauseForRotationUpdate
+     */
     async createNewCompetitions(type, lastCompetition, votesExist, pauseForRotationUpdate) {
         const queuedCompetitions = await db.getAll('SELECT * FROM competition_queue WHERE type = ? ORDER BY queued_at ASC', [type]);
         const channel = await this.getChannelId(type);
@@ -99,6 +127,11 @@ class CompetitionService {
         }
         return pauseForRotationUpdate;
     }
+    /**
+     *
+     * @param type
+     * @param now
+     */
     async checkOngoingCompetitions(type, now) {
         const existingCompetitions = await db.getAll('SELECT * FROM competitions WHERE type = ? AND ends_at > ?', [type, now]);
         if (existingCompetitions.length > 0) {
@@ -107,6 +140,10 @@ class CompetitionService {
         }
         return null;
     }
+    /**
+     *
+     * @param type
+     */
     async processEndedCompetitions(type) {
         const now = new Date().toISOString();
         const endedCompetitions = await db.getAll(
@@ -124,11 +161,21 @@ class CompetitionService {
             logger.info(`📢 **Final Leaderboard:** Sent for competition ID \`${competition.competition_id}\`.`);
         }
     }
+    /**
+     *
+     * @param type
+     * @param lastCompetition
+     */
     async processLastCompetition(type, lastCompetition) {
         const channel = await this.getChannelId(type);
         await purgeChannel(channel);
         await this.createCompetitionFromVote(lastCompetition);
     }
+    /**
+     *
+     * @param type
+     * @param overallNearestEndTime
+     */
     async getNearestFutureCompetition(type, overallNearestEndTime) {
         const newActiveCompetitions = await db.getAll('SELECT * FROM competitions WHERE type = ? AND ends_at > ? ORDER BY ends_at ASC', [type, new Date().toISOString()]);
         if (newActiveCompetitions.length > 0) {
@@ -136,9 +183,19 @@ class CompetitionService {
         }
         return overallNearestEndTime;
     }
+    /**
+     *
+     * @param currentNearest
+     * @param newEndDate
+     */
     updateNearestEndTime(currentNearest, newEndDate) {
         return !currentNearest || newEndDate < currentNearest ? newEndDate : currentNearest;
     }
+    /**
+     *
+     * @param overallNearestEndTime
+     * @param pauseForRotationUpdate
+     */
     async finalizeRotation(overallNearestEndTime, pauseForRotationUpdate) {
         logger.info('✅ **Success:** Next competition cycle setup completed.');
         if (pauseForRotationUpdate) {
@@ -152,6 +209,9 @@ class CompetitionService {
             logger.info('ℹ️ **Info:** No active or scheduled competitions found. Rotation not scheduled.');
         }
     }
+    /**
+     *
+     */
     async updateCompetitionData() {
         try {
             await updateActiveCompetitionEmbed('SOTW', db, this.client, constants);
@@ -160,6 +220,10 @@ class CompetitionService {
             logger.error(`❌ Error in updateCompetitionData: ${err.message}`);
         }
     }
+    /**
+     *
+     * @param type
+     */
     async createDefaultCompetitions(type) {
         try {
             const randomSkill = await this.getRandomMetric('Skill');
@@ -180,6 +244,10 @@ class CompetitionService {
             logger.error(`❌ Error createDefaultCompetitions: ${err.message}`);
         }
     }
+    /**
+     *
+     * @param competition
+     */
     async createCompetitionFromQueue(competition) {
         try {
             const { type, metric } = competition;
@@ -193,6 +261,9 @@ class CompetitionService {
             logger.error(`❌ Error createCompetitionFromQueue: ${err.message}`);
         }
     }
+    /**
+     *
+     */
     async scheduleRotationsOnStartup() {
         try {
             await scheduleRotationsOnStartup(db, () => this.startNextCompetitionCycle(), constants, this.scheduledJobs, womclient);
@@ -200,6 +271,10 @@ class CompetitionService {
             logger.error(`❌ Error scheduling rotations on startup: ${err.message}`);
         }
     }
+    /**
+     *
+     * @param competition
+     */
     async createCompetitionFromVote(competition) {
         const now = new Date();
         if (new Date(competition.ends_at) > now) {
@@ -228,6 +303,10 @@ class CompetitionService {
         await createCompetition(womclient, db, newType, winningMetric, startsAt, endsAt, constants);
         logger.info(`🏆 New \`${newType}\` competition created successfully with metric \`${winningMetric}\`.`);
     }
+    /**
+     *
+     * @param type
+     */
     async getRandomMetric(type) {
         try {
             const lastComp = await db.getOne('SELECT metric FROM competitions WHERE type = ? ORDER BY ends_at DESC LIMIT 1', [type === 'Skill' ? 'SOTW' : 'BOTW']);
@@ -250,6 +329,10 @@ class CompetitionService {
             throw err;
         }
     }
+    /**
+     *
+     * @param interaction
+     */
     async handleVote(interaction) {
         const discordId = interaction.user.id;
         const selectedOption = interaction.values[0];

@@ -14,7 +14,7 @@ module.exports = {
         try {
             logger.info(`🗑️ [EmojiDelete] Emoji "${emoji.name}" (ID: ${emoji.id}) was deleted from guild: ${emoji.guild.name}`);
             await runQuery('DELETE FROM guild_emojis WHERE emoji_id = ?', [emoji.id]);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['server_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['server_logs']);
             if (!logChannelData) return;
             const logChannel = await emoji.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;

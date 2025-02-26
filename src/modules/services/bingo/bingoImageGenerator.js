@@ -98,7 +98,7 @@ function formatTarget(target) {
     if (!target) return '';
     return target
         .split('_')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 }
 
@@ -209,21 +209,26 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
                 }
             }
 
+            // Determine if the task is of type Exp/Level
+            const isType = t.type === 'Exp' || t.type === 'Level';
+
             if (iconImg) {
                 // ✅ Resize local images
                 const originalWidth = iconImg.width;
                 const originalHeight = iconImg.height;
 
                 // 🔄 Shrink the image more by reducing the scale factor
-                const scaleFactor = Math.min(CROSS_SIZE / originalWidth, CROSS_SIZE / originalHeight) * 0.6;
+                const scaleModifier = isType ? 0.4 : 0.6;
+                const scaleFactor = Math.min(CROSS_SIZE / originalWidth, CROSS_SIZE / originalHeight) * scaleModifier;
 
                 // Calculate new dimensions for the image
                 const newWidth = originalWidth * scaleFactor;
                 const newHeight = originalHeight * scaleFactor;
 
+                const centralOffset = isType ? 45 : 55;
                 // Center the image within the box
                 const xOffset = (CROSS_SIZE - newWidth) / 2;
-                const yOffset = (CROSS_SIZE - newHeight) / 2 + 55;
+                const yOffset = (CROSS_SIZE - newHeight) / 2 + centralOffset;
 
                 ctx.drawImage(iconImg, coords.x + xOffset, coords.y + yOffset, newWidth, newHeight);
             } else if (urlImg) {
@@ -232,7 +237,7 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
                 const originalHeight = urlImg.height;
 
                 // 🔄 Shrink the image more by reducing the scale factor
-                const scaleFactor = Math.min(CROSS_SIZE / originalWidth, CROSS_SIZE / originalHeight) * 0.2;
+                const scaleFactor = Math.min(CROSS_SIZE / originalWidth, CROSS_SIZE / originalHeight) * 0.4;
 
                 // Calculate new dimensions for the image
                 const newWidth = originalWidth * scaleFactor;
@@ -325,6 +330,41 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
             ctx.fillText(progressText, coords.x + CROSS_SIZE - 10, coords.y + CROSS_SIZE - 10);
         }
 
+        const eventId = await getEventId(boardId);
+        if (eventId) {
+            // Ensure overall is treated as a number
+            const overallStr = await calculateOverallProgress(eventId, playerId, isTeam);
+            const overall = Number(overallStr);
+
+            const coordsX = 16;
+            const coordsY = 58;
+
+            // Calculate color from Red (0%) to Green (100%)
+            const hue = Math.floor((overall / 100) * 120);
+            const progressColor = `hsl(${hue}, 100%, 50%)`;
+
+            ctx.font = '32px RuneScape';
+            ctx.textAlign = 'left';
+
+            // Draw "Overall:" with a static orange color
+            ctx.fillStyle = '#dc8a00';
+            ctx.fillText('Overall:', coordsX, coordsY);
+
+            // Calculate the width of "Overall:" to correctly align the percentage
+            const overallWidth = ctx.measureText('Overall:').width + 4;
+
+            // Draw black outline for percentage for better visibility
+            ctx.fillStyle = '#000000';
+            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY - 1);
+            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY - 1);
+            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY + 1);
+            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY + 1);
+
+            // Now draw the percentage using the computed progressColor
+            ctx.fillStyle = progressColor;
+            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth, coordsY);
+        }
+
         // 5) Convert canvas to PNG buffer
         const finalBuffer = canvas.toBuffer('image/png');
         return finalBuffer;
@@ -399,6 +439,7 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
     LEFT JOIN bingo_task_progress btp 
         ON btp.task_id = bt.task_id 
         AND ${idColumn} IN (${placeholders})
+        AND btp.event_id = ?
     JOIN bingo_state bs 
         ON bs.board_id = bbc.board_id
     WHERE bbc.board_id = ?
@@ -409,20 +450,47 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
 `;
 
     logger.info(`[BingoImageGenerator] Running SQL: ${sql}`);
-    const params = [...playerIdsArray, boardId];
+    const eventId = await getEventId(boardId); // Assuming you have a function to get eventId
+    const params = [...playerIdsArray, eventId, boardId];
     const rows = await db.getAll(sql, params);
     logger.info(`[BingoImageGenerator] Using parameters: ${JSON.stringify(params)}`);
     logger.info(`[BingoImageGenerator] Collected tasks: ${JSON.stringify(rows, null, 2)}`);
 
     // Retrieve image paths for Skill/Boss and Drop tasks
     for (const row of rows) {
-        if (['Kill', 'Exp', 'Level'].includes(row.type)) {
+        if (['Exp', 'Level'].includes(row.type)) {
+            const imageSkillRow = await db.image.getOne(
+                `
+            SELECT file_path
+            FROM bingo
+            WHERE file_name = ?
+            `,
+                [row.parameter],
+            );
+            if (imageSkillRow) {
+                row.imagePath = imageSkillRow.file_path;
+            }
+        } else if (row.type === 'Kill') {
+            // For Score tasks, check the guild emoji table instead.
             const imageRow = await db.image.getOne(
                 `
-                SELECT file_path
-                FROM skills_bosses
-                WHERE file_name = ?
-                `,
+            SELECT file_path
+            FROM skills_bosses
+            WHERE file_name = ?
+            `,
+                [row.parameter],
+            );
+            if (imageRow) {
+                row.imagePath = imageRow.file_path;
+            }
+        } else if (row.type === 'Score') {
+            // For Score tasks, check the guild emoji table instead.
+            const imageRow = await db.image.getOne(
+                `
+            SELECT file_path
+            FROM hiscores_activities
+            WHERE file_name = ?
+            `,
                 [row.parameter],
             );
             if (imageRow) {
@@ -431,7 +499,7 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
         }
         if (row.type === 'Drop' && row.parameter) {
             const normalizedParam = normalizeItemParam(row.parameter);
-            row.urlImagePath = `https://oldschool.runescape.wiki/images/${normalizedParam}.png`;
+            row.urlImagePath = `https://oldschool.runescape.wiki/images/${normalizedParam}_detail.png`;
         }
     }
 
@@ -487,7 +555,74 @@ function calculateProgressPercentage(progressValue, target) {
     return percentage.toFixed(2);
 }
 
+/**
+ * Calculates overall progress as an average of individual task percentages.
+ * - Capped at 100% for each task.
+ * - Overall percentage reflects the average completion across all tasks.
+ *
+ * @param {number} eventId - The current event ID.
+ * @param {number} id - The player_id or team_id depending on `isTeam`.
+ * @param {boolean} isTeam - Whether the calculation is for a team card.
+ * @returns {Promise<string>} - A string representing the overall progress percentage with two decimals.
+ */
+async function calculateOverallProgress(eventId, id, isTeam = false) {
+    const idColumn = isTeam ? 'btp.team_id' : 'btp.player_id';
+
+    // Query all non-drop tasks for this event and player/team
+    const tasks = await db.getAll(
+        `
+        SELECT bt.value AS target_value, 
+               COALESCE(SUM(btp.progress_value), 0) AS progress_value
+        FROM bingo_board_cells bbc
+        JOIN bingo_tasks bt ON bbc.task_id = bt.task_id
+        LEFT JOIN bingo_task_progress btp
+          ON btp.task_id = bt.task_id 
+          AND ${idColumn} = ?
+          AND btp.event_id = ?
+        JOIN bingo_state bs ON bs.board_id = bbc.board_id
+        WHERE bs.event_id = ?
+          AND bt.type != 'Drop'
+        GROUP BY bt.task_id
+        `,
+        [id, eventId, eventId],
+    );
+
+    // No tasks found (e.g., all drop tasks) - Return 0%
+    if (tasks.length === 0) return '0.00';
+
+    // Calculate progress percentages for each task
+    const percentages = tasks.map(({ target_value, progress_value }) => {
+        // Calculate percentage for this task, capping at 100%
+        const taskPercentage = Math.min((progress_value / target_value) * 100, 100);
+        return taskPercentage;
+    });
+
+    // Calculate the overall average
+    const overall = percentages.reduce((sum, p) => sum + p, 0) / tasks.length;
+    return overall.toFixed(2); // Rounded to 2 decimals
+}
+
+/**
+ * Retrieves the event ID for a given board ID.
+ *
+ * @param {number} boardId - The ID of the board.
+ * @returns {Promise<number>} - The event ID.
+ */
+async function getEventId(boardId) {
+    const row = await db.getOne(
+        `
+        SELECT event_id
+        FROM bingo_boards
+        WHERE board_id = ?
+        `,
+        [boardId],
+    );
+    return row ? row.event_id : null;
+}
+
 module.exports = {
     generateBingoCard,
     getPlayerTasks,
+    getEventId,
+    calculateOverallProgress,
 };

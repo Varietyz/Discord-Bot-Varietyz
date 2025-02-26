@@ -4,6 +4,11 @@ const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const db = require('../utils/essentials/dbUtils');
 const { calculateInactivity, calculateProgressCount } = require('../utils/helpers/calculateActivity');
 
+/**
+ *
+ * @param maxRetries
+ * @param baseDelay
+ */
 async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
     let retryCount = 0;
     logger.info(`📡 Using WOM Group ID: ${WOMApiClient.groupId}`);
@@ -45,13 +50,17 @@ async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
         }
     }
 }
+/**
+ *
+ * @param client
+ */
 async function updateVoiceChannel(client) {
     try {
         const guild = client.guilds.cache.get(process.env.GUILD_ID);
         if (guild) {
-            const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['activity_voice_channel']);
+            const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['activity_voice_channel']);
             if (!row) {
-                logger.info('⚠️ No channel_id is configured in comp_channels for activity_voice_channel.');
+                logger.info('⚠️ No channel_id is configured in ensured_channels for activity_voice_channel.');
                 return;
             }
             const channelId = row.channel_id;

@@ -16,15 +16,11 @@ module.exports = {
                 logger.info(`🛑 [MessageDeleteBulk] Ignoring messages from deleted thread: ${channel.name}`);
                 return;
             }
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['message_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['message_logs']);
             if (!logChannelData) return;
             const logChannel = await guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;
-            const embed = new EmbedBuilder()
-                .setColor(0xe74c3c)
-                .setTitle('🗑️ Bulk Messages Deleted')
-                .setDescription(`**${messages.size}** messages were deleted in <#${channel.id}>.`)
-                .setTimestamp();
+            const embed = new EmbedBuilder().setColor(0xe74c3c).setTitle('🗑️ Bulk Messages Deleted').setDescription(`**${messages.size}** messages were deleted in <#${channel.id}>.`).setTimestamp();
             await logChannel.send({ embeds: [embed] });
             logger.info(`📋 Successfully logged bulk message deletion in ${channel.name}`);
         } catch (error) {

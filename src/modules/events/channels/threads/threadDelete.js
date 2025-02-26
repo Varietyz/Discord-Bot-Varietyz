@@ -15,7 +15,7 @@ module.exports = {
             setTimeout(() => deletedThreads.delete(thread.id), 30000);
             await runQuery('DELETE FROM guild_channels WHERE channel_id = ?', [thread.id]);
             logger.info(`🗑️ [Database] Removed thread "${thread.name}" (ID: ${thread.id}) from guild_channels table.`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['thread_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['thread_logs']);
             if (!logChannelData) return;
             const logChannel = await thread.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;

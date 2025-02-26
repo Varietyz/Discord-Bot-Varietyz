@@ -96,7 +96,9 @@ const initializeMainTables = async () => {
             hiscores_activities: `        
                 idx INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                type TEXT CHECK(type IN ('Activity')) NOT NULL`,
+                type TEXT CHECK(type IN ('Activity')) NOT NULL,
+                last_selected_at DATETIME
+                `,
             competition_queue: `
                 idx INTEGER PRIMARY KEY AUTOINCREMENT,
                 type TEXT CHECK(type IN ('SOTW', 'BOTW')) NOT NULL,
@@ -121,6 +123,13 @@ const initializeMainTables = async () => {
                 modal_key TEXT NOT NULL,
                 registered_by TEXT NOT NULL,
                 registered_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            `,
+            player_points: `
+                player_id INTEGER NOT NULL,
+                type TEXT NOT NULL,                  
+                points INTEGER DEFAULT 0,             
+                last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (player_id, type)
             `,
         };
 

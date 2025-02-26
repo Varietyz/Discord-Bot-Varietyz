@@ -7,7 +7,16 @@ const { getRanks } = require('../utils/fetchers/fetchRankEmojis');
 const { purgeChannel } = require('../utils/helpers/purgeChannel');
 const db = require('../utils/essentials/dbUtils');
 const { syncClanRankEmojis } = require('../utils/essentials/syncClanRanks');
+const { cleanupOrphanedPlayers } = require('../utils/essentials/orphanCleaner');
 require('dotenv').config();
+/**
+ *
+ * @param member
+ * @param roleName
+ * @param guild
+ * @param player
+ * @param rank
+ */
 async function handleMemberRoles(member, roleName, guild, player, rank) {
     if (!player || rank.toLowerCase() === 'private') return;
     const targetRole = guild.roles.cache.find((r) => r.name.toLowerCase() === roleName.toLowerCase());
@@ -23,9 +32,9 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
     if (rolesToRemove.size > 0) {
         const removedRoles = await Promise.all(rolesToRemove.map(async (r) => `${await getRankEmoji(r.name)} <@&${r.id}>`));
         await member.roles.remove(rolesToRemove);
-        const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['auto_roles_channel']);
+        const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['auto_roles_channel']);
         if (!row) {
-            logger.info('⚠️ No channel_id is configured in comp_channels for auto_roles_channel.');
+            logger.info('⚠️ No channel_id is configured in ensured_channels for auto_roles_channel.');
             return;
         }
         const channelId = row.channel_id;
@@ -44,6 +53,12 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
         logger.info(`✅ [handleMemberRoles] Assigned role '${roleName}' to ${player} 🎉`);
     }
 }
+/**
+ *
+ * @param client
+ * @param root0
+ * @param root0.forceChannelUpdate
+ */
 async function updateData(client, { forceChannelUpdate = false } = {}) {
     try {
         logger.info('📡 Fetching clan members from Wise Old Man API...');
@@ -103,6 +118,10 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
         logger.error(`❌ Failed to update clan data: ${error.message}`);
     }
 }
+/**
+ *
+ * @param newData
+ */
 async function updateDatabase(newData) {
     try {
         const currentData = await db.getAll('SELECT player_id, rsn, rank, joined_at FROM clan_members');
@@ -170,6 +189,11 @@ async function updateDatabase(newData) {
         return false;
     }
 }
+/**
+ *
+ * @param array
+ * @param chunkSize
+ */
 function chunkArray(array, chunkSize) {
     const chunks = [];
     for (let i = 0; i < array.length; i += chunkSize) {
@@ -177,6 +201,11 @@ function chunkArray(array, chunkSize) {
     }
     return chunks;
 }
+/**
+ *
+ * @param channel
+ * @param embeds
+ */
 async function sendEmbedsInBatches(channel, embeds) {
     const batches = chunkArray(embeds, 10);
     for (const batch of batches) {
@@ -187,10 +216,15 @@ async function sendEmbedsInBatches(channel, embeds) {
         }
     }
 }
+/**
+ *
+ * @param client
+ * @param cachedData
+ */
 async function updateClanChannel(client, cachedData) {
-    const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['clan_members_channel']);
+    const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['clan_members_channel']);
     if (!row) {
-        logger.info('⚠️ No channel_id is configured in comp_channels for clan_members_channel.');
+        logger.info('⚠️ No channel_id is configured in ensured_channels for clan_members_channel.');
         return;
     }
     const channelId = row.channel_id;
@@ -227,6 +261,7 @@ async function updateClanChannel(client, cachedData) {
         index++;
     }
     await sendEmbedsInBatches(channel, embeds);
+    await cleanupOrphanedPlayers();
     logger.info('✅ Clan channel updated with new data. 🎉');
 }
 module.exports = { updateData, updateClanChannel };

@@ -3,9 +3,9 @@ const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder } = require('discord.js');
 const updateAllTimeLeaderboard = async (client) => {
     try {
-        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', ['top_10_channel']);
+        const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['top_10_channel']);
         if (!row) {
-            logger.info('⚠️ No channel_id is configured in comp_channels for top_10_channel.');
+            logger.info('⚠️ No channel_id is configured in ensured_channels for top_10_channel.');
             return;
         }
         const channelId = row.channel_id;

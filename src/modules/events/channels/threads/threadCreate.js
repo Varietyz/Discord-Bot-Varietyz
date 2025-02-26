@@ -14,7 +14,7 @@ module.exports = {
         if (!thread.guild) return;
         try {
             logger.info(`🧵 [ThreadCreate] Thread "${thread.name}" (ID: ${thread.id}) created in channel: ${thread.parent?.name || 'Unknown'}`);
-            const logChannelData = await db.guild.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['thread_logs']);
+            const logChannelData = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['thread_logs']);
             if (!logChannelData) return;
             const logChannel = await thread.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;
@@ -40,14 +40,7 @@ module.exports = {
                      type = excluded.type, 
                      category = excluded.category, 
                      permissions = excluded.permissions`,
-                [
-                    thread.id,
-                    threadKey,
-                    thread.name,
-                    thread.type,
-                    thread.parent?.name || 'general',
-                    0,
-                ],
+                [thread.id, threadKey, thread.name, thread.type, thread.parent?.name || 'general', 0],
             );
             const embed = new EmbedBuilder()
                 .setColor(0x3498db)

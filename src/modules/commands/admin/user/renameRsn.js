@@ -97,6 +97,7 @@ module.exports = {
                         `,
                         [newRsn, new Date().toISOString(), targetUserID, normalizedCurrentRsn],
                     );
+
                     logger.info(`✅ RSN \`${currentRsn}\` renamed to \`${newRsn}\` for user \`${targetUserID}\` by admin \`${interaction.user.id}\`.`);
                     const userEmbed = new EmbedBuilder()
                         .setColor(0x00ffff)

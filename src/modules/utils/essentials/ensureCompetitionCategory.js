@@ -3,6 +3,10 @@ const {
     guild: { runQuery, getOne },
 } = require('./dbUtils');
 const logger = require('./logger');
+/**
+ *
+ * @param guild
+ */
 async function ensureCompetitionCategory(guild) {
     try {
         const compCategoryName = '🏆∙Competitions of the Week';
@@ -43,7 +47,7 @@ async function ensureCompetitionCategory(guild) {
             logger.info(`✅ Created category: ${competitionCategory.name}`);
         }
         for (const { key, name, topic } of compChannels) {
-            const storedChannel = await getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', [key]);
+            const storedChannel = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [key]);
             let channel = storedChannel ? guild.channels.cache.get(storedChannel.channel_id) : null;
             if (!channel) {
                 channel = await guild.channels.create({
@@ -62,9 +66,9 @@ async function ensureCompetitionCategory(guild) {
                 logger.info(`✅ Created channel: ${name}`);
             }
             if (!storedChannel) {
-                await runQuery('INSERT INTO comp_channels (comp_key, channel_id) VALUES (?, ?)', [key, channel.id]);
+                await runQuery('INSERT INTO ensured_channels (channel_key, channel_id) VALUES (?, ?)', [key, channel.id]);
             } else {
-                await runQuery('UPDATE comp_channels SET channel_id = ? WHERE comp_key = ?', [channel.id, key]);
+                await runQuery('UPDATE ensured_channels SET channel_id = ? WHERE channel_key = ?', [channel.id, key]);
             }
         }
         logger.info('🎉 Competitions setup complete.');

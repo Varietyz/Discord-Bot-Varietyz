@@ -6,6 +6,9 @@ const db = require('../utils/essentials/dbUtils');
 const {
     messages: { getAll: getAllMessages, runQuery: runMessagesQuery },
 } = require('../utils/essentials/dbUtils');
+/**
+ *
+ */
 async function fetchNameChanges() {
     try {
         const response = await WOMApiClient.request('groups', 'getGroupNameChanges', WOMApiClient.groupId);
@@ -22,6 +25,10 @@ async function fetchNameChanges() {
         return [];
     }
 }
+/**
+ *
+ * @param nameChanges
+ */
 async function appendNameChangesToDb(nameChanges) {
     if (!nameChanges || !nameChanges.length) return;
     await db.runQuery(`
@@ -54,6 +61,9 @@ async function appendNameChangesToDb(nameChanges) {
         logger.error(`❌ [appendNameChangesToDb] Failed: ${err.message}`);
     }
 }
+/**
+ *
+ */
 async function getFinalNamesMap() {
     const rows = await db.getAll(`
     SELECT player_id, old_rsn, new_rsn, resolved_at
@@ -71,6 +81,10 @@ async function getFinalNamesMap() {
     }
     return latestByPlayer;
 }
+/**
+ *
+ * @param username
+ */
 async function getUserNamesHistory(username) {
     try {
         const nameChanges = await WOMApiClient.players.getPlayerNames(username);
@@ -80,6 +94,11 @@ async function getUserNamesHistory(username) {
         return [];
     }
 }
+/**
+ *
+ * @param knownRsn
+ * @param finalRsn
+ */
 async function userHasRsnInHistory(knownRsn, finalRsn) {
     const history = await getUserNamesHistory(knownRsn);
     if (!history || !history.length) return false;
@@ -92,6 +111,12 @@ async function userHasRsnInHistory(knownRsn, finalRsn) {
     }
     return false;
 }
+/**
+ *
+ * @param requestingPlayerId
+ * @param oldRsn
+ * @param finalRsn
+ */
 async function resolveConflictByNameHistory(requestingPlayerId, oldRsn, finalRsn) {
     const conflict = await db.getOne(
         `
@@ -117,6 +142,11 @@ async function resolveConflictByNameHistory(requestingPlayerId, oldRsn, finalRsn
         return false;
     }
 }
+/**
+ *
+ * @param finalNamesMap
+ * @param channelManager
+ */
 async function updateAllRegisteredRSNs(finalNamesMap, channelManager) {
     const changedRecords = [];
     const registeredRows = await db.getAll(`
@@ -144,9 +174,9 @@ async function updateAllRegisteredRSNs(finalNamesMap, channelManager) {
         changedRecords.push({ discord_id, oldRsn, newRsn: finalRsn });
     }
     if (channelManager && changedRecords.length) {
-        const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['name_change_channel']);
+        const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['name_change_channel']);
         if (!row) {
-            logger.info('⚠️ No channel_id is configured in comp_channels for name_change_channel.');
+            logger.info('⚠️ No channel_id is configured in ensured_channels for name_change_channel.');
             return;
         }
         const channelId = row.channel_id;
@@ -164,6 +194,10 @@ async function updateAllRegisteredRSNs(finalNamesMap, channelManager) {
     }
     return changedRecords;
 }
+/**
+ *
+ * @param changedRecords
+ */
 async function updateNamesInMessagesDB(changedRecords) {
     if (!changedRecords.length) return;
     const tables = await getAllMessages('SELECT name FROM sqlite_master WHERE type=\'table\'');
@@ -182,6 +216,10 @@ async function updateNamesInMessagesDB(changedRecords) {
         }
     }
 }
+/**
+ *
+ * @param changedRecords
+ */
 async function updateNamesInMainDB(changedRecords) {
     if (!changedRecords.length) return;
     const excludeTables = ['recent_name_changes', 'skills_bosses'];
@@ -202,6 +240,10 @@ async function updateNamesInMainDB(changedRecords) {
         }
     }
 }
+/**
+ *
+ * @param changedRecords
+ */
 async function updateReferencesEverywhere(changedRecords) {
     if (!changedRecords.length) return;
     try {
@@ -212,6 +254,10 @@ async function updateReferencesEverywhere(changedRecords) {
         logger.error(`❌ [updateReferencesEverywhere] Error: ${err.message}`);
     }
 }
+/**
+ *
+ * @param client
+ */
 async function processNameChanges(client) {
     const nameChanges = await fetchNameChanges();
     if (!nameChanges.length) {

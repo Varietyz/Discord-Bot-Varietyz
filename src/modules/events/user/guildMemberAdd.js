@@ -19,7 +19,7 @@ module.exports = {
         }
         try {
             logger.info(`✅ [Onboarding Complete] ${onboardedMember.user.tag} has entered the server.`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['member_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['member_logs']);
             if (!logChannelData) {
                 logger.warn('⚠️ No log channel found for "member_logs" in database.');
                 return;
@@ -66,6 +66,10 @@ module.exports = {
         }
     },
 };
+/**
+ *
+ * @param member
+ */
 async function waitForOnboarding(member) {
     if (!member.pending) return member;
     return new Promise((resolve) => {
@@ -80,6 +84,10 @@ async function waitForOnboarding(member) {
         member.guild.client.on(Events.GuildMemberUpdate, updateListener);
     });
 }
+/**
+ *
+ * @param flags
+ */
 function getBadges(flags) {
     if (!flags || !flags.bitfield) return '`None`';
     const BADGE_EMOJIS = {
@@ -108,9 +116,17 @@ function getBadges(flags) {
         return '`None`';
     }
 }
+/**
+ *
+ * @param member
+ */
 function isUserSuspicious(member) {
     return Date.now() - member.user.createdTimestamp < 7 * 24 * 60 * 60 * 1000;
 }
+/**
+ *
+ * @param member
+ */
 function getNitroStatus(member) {
     if (member.user.avatar && member.user.avatar.startsWith('a_')) return '`✨ Nitro (Animated Avatar)`';
     if (member.user.banner) return '`🎨 Nitro (Profile Banner)`';

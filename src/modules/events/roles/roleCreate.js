@@ -1,6 +1,7 @@
 const {
     guild: { getOne, runQuery, getAll },
 } = require('../../utils/essentials/dbUtils');
+const client = require('../../../main');
 const logger = require('../../utils/essentials/logger');
 const { EmbedBuilder, Events, AuditLogEvent } = require('discord.js');
 const { normalizeKey } = require('../../utils/normalizing/normalizeKey');
@@ -9,7 +10,6 @@ module.exports = {
     once: false,
     async execute(role) {
         try {
-            const client = role.guild.client;
             client.setMaxListeners(Math.max(client.getMaxListeners() || 10, 15));
             if (!client.activeRoleListeners) client.activeRoleListeners = new WeakSet();
             if (client.activeRoleListeners.has(role)) return;
@@ -54,7 +54,7 @@ module.exports = {
                 [baseKey, updatedRole.id, parseInt(updatedRole.permissions.bitfield.toString(), 10) || 0],
             );
             logger.info(`🆕 [RoleCreate] Role "${updatedRole.name}" (ID: ${updatedRole.id}) created in guild: ${updatedRole.guild.name}`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['role_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['role_logs']);
             if (!logChannelData) return;
             const logChannel = updatedRole.guild.channels.cache.get(logChannelData.channel_id);
             if (!logChannel) return;

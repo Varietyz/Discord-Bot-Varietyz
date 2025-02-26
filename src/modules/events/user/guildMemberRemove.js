@@ -17,7 +17,7 @@ module.exports = {
             return;
         }
         try {
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['member_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['member_logs']);
             if (!logChannelData) {
                 logger.warn('⚠️ No log channel found for "member_logs" in database.');
                 return;

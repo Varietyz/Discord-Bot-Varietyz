@@ -67,7 +67,7 @@ function initializeDatabase() {
  */
 async function dropTables(db) {
     const tables = [
-        'player_data',
+        //'player_data',
         //'player_fetch_times',
         //'recent_name_changes',
         //'clan_members',
@@ -76,6 +76,7 @@ async function dropTables(db) {
         //'hiscores_activities',
         //'skills_bosses',
         //'clanchat_config',
+        'player_points',
     ];
 
     try {

@@ -5,7 +5,7 @@ module.exports = {
     name: 'messageCreate',
     once: false,
     async execute(message) {
-        const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['clanchat_channel']);
+        const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['clanchat_channel']);
         if (!row) {
             return;
         }

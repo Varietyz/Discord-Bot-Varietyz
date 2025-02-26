@@ -17,7 +17,7 @@ module.exports = {
             logger.info(`🚨 [GuildBanAdd] ${user.tag} (ID: ${user.id}) was banned from guild: ${guild.name}`);
             recentBans.add(user.id);
             setTimeout(() => recentBans.delete(user.id), 10000);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['moderation_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['moderation_logs']);
             if (!logChannelData) {
                 logger.warn('⚠️ No log channel found for "moderation_logs" in database.');
                 return;

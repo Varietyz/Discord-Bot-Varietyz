@@ -5,15 +5,24 @@ const { easterEggs } = require('../../../config/easterEggs');
 const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
 const { validateRsn } = require('../../utils/helpers/validateRsn');
 const { fetchPlayerData } = require('../../utils/fetchers/fetchPlayerData');
+const { updateEventBaseline } = require('../../services/bingo/bingoTaskManager');
+const { fetchAndProcessMember } = require('../../services/autoRoles');
+const { updatePlayerData } = require('../../utils/essentials/updatePlayerData');
+const getEmoji = require('../../utils/fetchers/getEmoji');
+
 const RATE_LIMIT = 5;
 const RATE_LIMIT_DURATION = 60 * 1000;
 const rateLimitMap = new Map();
+
 module.exports.data = new SlashCommandBuilder()
     .setName('rsn')
     .setDescription('Register your Old School RuneScape Name (RSN)')
     .addStringOption((option) => option.setName('name').setDescription('Your Old School RuneScape Name to register').setRequired(true).setMinLength(1).setMaxLength(12));
 module.exports.execute = async (interaction) => {
+    const loadingEmoji = await getEmoji('emoji_1_loading');
+
     let rsn = '';
+
     try {
         rsn = interaction.options.getString('name');
         const lowerRsn = rsn.toLowerCase();
@@ -105,8 +114,41 @@ module.exports.execute = async (interaction) => {
         `,
                 [womPlayerId, discordId, rsn, new Date().toISOString()],
             );
+
             await interaction.reply({
-                content: `🎉 **Success!** The RSN \`${rsn} (WOM ID: ${womPlayerId})\` has been successfully registered to your account. 🏆`,
+                content: `${loadingEmoji} Collecting player data for \`${rsn} (WOM ID: ${womPlayerId})\`...`,
+                flags: 64,
+            });
+            await updatePlayerData(rsn, womPlayerId);
+            const guild = interaction.guild;
+            await fetchAndProcessMember(guild, discordId);
+
+            // Query for clan membership by joining registered_rsn and clan_members
+            const validRegistration = await getOne(
+                `
+    SELECT r.*, cm.player_id AS clan_player_id
+    FROM registered_rsn AS r
+    INNER JOIN clan_members AS cm 
+      ON r.player_id = cm.player_id
+      AND LOWER(r.rsn) = LOWER(cm.rsn)
+    WHERE r.player_id = ?
+    LIMIT 1
+    `,
+                [womPlayerId],
+            );
+
+            if (validRegistration && validRegistration.clan_player_id) {
+                await interaction.editReply({
+                    content: `${loadingEmoji} \`${rsn} (WOM ID: ${womPlayerId})\` is confirmed as a clan member. Registering for bingo...`,
+                    flags: 64,
+                });
+                await updateEventBaseline();
+            } else {
+                logger.info(`Player with WOM ID ${womPlayerId} and RSN ${rsn} is not a clan member. Skipping baseline update.`);
+            }
+
+            await interaction.editReply({
+                content: `✅ **Success!** The RSN \`${rsn} (WOM ID: ${womPlayerId})\` has been successfully registered to your account. 🏆`,
                 flags: 64,
             });
             logger.info(`✅ RSN \`${rsn}\` (WOM ID: \`${womPlayerId}\`) successfully registered for user \`${discordId}\`.`);

@@ -30,7 +30,7 @@ module.exports = {
                 [newEmoji.name, formatEmoji(newEmoji), newEmoji.id],
             );
             logger.info(`📌 [EmojiUpdate] Successfully updated emoji name: "${oldEmoji.name}" → "${newEmoji.name}" (Key: "${uniqueKey}")`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['server_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['server_logs']);
             if (!logChannelData) return;
             const logChannel = await newEmoji.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;
@@ -60,6 +60,10 @@ module.exports = {
         }
     },
 };
+/**
+ *
+ * @param emoji
+ */
 function formatEmoji(emoji) {
     return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
 }

@@ -3,6 +3,10 @@ const {
     guild: { runQuery, getOne },
 } = require('./dbUtils');
 const logger = require('./logger');
+/**
+ *
+ * @param guild
+ */
 async function ensureLoggingCategory(guild) {
     try {
         const loggingCategoryName = '📁 ‣‣ Logging';
@@ -35,7 +39,7 @@ async function ensureLoggingCategory(guild) {
             logger.info(`✅ Created category: ${loggingCategory.name}`);
         }
         for (const { key, name, topic } of logChannels) {
-            const storedChannel = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', [key]);
+            const storedChannel = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [key]);
             let channel = storedChannel ? guild.channels.cache.get(storedChannel.channel_id) : null;
             if (channel && channel.parentId !== loggingCategory.id) {
                 logger.warn(`⚠️ Channel ${channel.id} is in the wrong category. Moving it...`);
@@ -58,9 +62,9 @@ async function ensureLoggingCategory(guild) {
                 logger.info(`✅ Created channel: ${name}`);
             }
             if (!storedChannel) {
-                await runQuery('INSERT INTO log_channels (log_key, channel_id) VALUES (?, ?)', [key, channel.id]);
+                await runQuery('INSERT INTO ensured_channels (channel_key, channel_id) VALUES (?, ?)', [key, channel.id]);
             } else {
-                await runQuery('UPDATE log_channels SET channel_id = ? WHERE log_key = ?', [channel.id, key]);
+                await runQuery('UPDATE ensured_channels SET channel_id = ? WHERE channel_key = ?', [channel.id, key]);
             }
         }
         logger.info('🎉 Logging system setup complete.');

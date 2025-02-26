@@ -38,7 +38,7 @@ module.exports = {
                 ],
             );
             logger.info(`✅ [Database] Stored event "${event.name}" (ID: ${event.id}) in 'guild_events' table.`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['event_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['event_logs']);
             if (!logChannelData) return;
             const logChannel = await event.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;

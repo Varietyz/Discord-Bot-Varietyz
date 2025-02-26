@@ -178,19 +178,6 @@
 - **Ease of Integration:**  
   Because my project already uses Discord.js, SQLite, and various utilities, these commands can be implemented using similar patterns to the existing ones. They follow the same async/await and error-handling conventions, ensuring consistency throughout the codebase.
 
----
-
-### **Dynamic Resources**
-
-1. **Dynamic Emoji Tag Collection:**
-    - Collect all emojis available in the server and make them accessible for bot use.
-    - Categorize emojis for use in:
-        - Event messages
-        - Role reactions
-        - Fun and engagement activities
-
----
-
 ## **Background and Maintenance Tasks**
 
 1. **Scheduled Maintenance:**
@@ -206,13 +193,34 @@
         - Discord rate-limit handling
     - Notify admins in Discord of critical bot issues.
 
-# CLAN CHAT GENERATION
+something seems to be wrong with the code for cleanup.
 
-- Generate the Clan Chat channel '💬clan-chat'
-- Generate a webhook url for that channel named '💬OSRS | Clan Chat'
-- Append image from image_cache 'hook_avatars' table under the file_name 'cc_webhook_avatar'
-- Send message to channel collected from guild.db channel_key 'channel_staff_chat' informing user of clanchat generation and prompting them with modal to register the cc webhook
-    - set modal title to: Register Clanchat Webhook
-    - implement fields: secret key, clan name, endpoint url (end point url default = https://clanchat.net)
-    - add a message prompting them to click the register webhook button on the message that was sent if the modal gets cancelled, informing them its necessary to register the secret key for guaranteed functionality.
-      the embed with the current created webhook and channel with a permanent button to quickly re-open the modal to register it should be sent to the channel in log_channels table under log_key 'critical_alerts'
+we should refactor it entirely to:
+
+Check all player_ids in registered_rsn and the discord_ids against the discord server members.
+table:
+player_id discord_id rsn registered_at
+206963 130449849735839744 MrDiesALot 2025-01-22T22:18:43.268Z
+206966 218544532302725120 DankGoldList 2025-01-22T22:18:43.268Z
+256416 748433954234826853 Adrime 2025-01-22T22:18:43.268Z
+362451 415031271413121025 Monotony503 2025-01-22T22:18:43.268Z
+503949 337304920401248266 Shadows2250 2025-01-22T22:18:43.268Z
+
+if a discord_id in registered_rsn does not match a discord guild member (not in the server anymore) cleanup the row from registered_rsn and all associated table rows with that player id in the database (excluding clan_members table) we must handle the database tables dynamically, there are alot of tables and more are subjected to be added overtime.
+
+then we should check clan_members and registered_rsn for the player_ids, if a player_id in registered_rsn is not inside clan_members,
+
+For the table bingo_teams instead of just removing, replace the player_id with a player_id from bingo_team_members that matches the team_id from the player_id set to be replaced. team_id is in both tables to determine the members, a member takes over the team. if player_id to be replaced has no replacement because only member, remove the row
+
+we should also check the following tables only instead of the whole db which rows to remove (no replacement, just removal):
+
+- bingo_event_baseline
+- bingo_history
+- bingo_leaderboard
+- bingo_patterns_awarded
+- bingo_task_progress
+- bingo_team_members
+- bingo_teams
+- users
+- votes (discord_id instead of player_id)
+- winners

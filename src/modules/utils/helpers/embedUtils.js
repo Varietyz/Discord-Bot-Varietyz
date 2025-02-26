@@ -2,33 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuild
 const path = require('path');
 const logger = require('../essentials/logger');
 const db = require('../essentials/dbUtils');
-function normalizeString(str) {
-    return str
-        .toLowerCase()
-        .trim()
-        .replace(/[\s_-]+/g, '_');
-}
-async function getImagePath(metric) {
-    try {
-        const normalizedMetric = normalizeString(metric);
-        const allEntries = await db.getAll('SELECT file_name, file_path FROM image_cache');
-        const query = `
-            SELECT file_path 
-            FROM image_cache 
-            WHERE REPLACE(TRIM(LOWER(file_name)), '-', '_') = ?
-        `;
-        const result = await db.getOne(query, [normalizedMetric]);
 
-        if (!result) {
-            logger.warn(`⚠️ No matching file path found for metric: "${normalizedMetric}"`);
-            throw new Error(`No file path found for metric: "${metric}"`);
-        }
-        return result.file_path;
-    } catch (err) {
-        logger.error(`🚨 Error retrieving file path for metric "${metric}": ${err.message}`);
-        throw err;
-    }
-}
 const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, competitionId) => {
     let emojiFormat;
     if (type === 'SOTW') {
@@ -99,6 +73,10 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
         .setImage(type === 'SOTW' ? 'https://i.ibb.co/DP2F5L9/sotw-banner.png' : 'https://i.ibb.co/MGLHPrk/botw-banner.png');
     return { embeds: [embed], files: [imageAttachment] };
 };
+/**
+ *
+ * @param dateString
+ */
 function formatTimestamp(dateString) {
     const date = new Date(dateString);
     const unixTimestamp = Math.floor(date.getTime() / 1000); // Convert to UNIX time (seconds)

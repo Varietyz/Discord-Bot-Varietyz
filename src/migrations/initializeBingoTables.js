@@ -118,7 +118,7 @@ const initializeBingoTables = async () => {
       team_id INTEGER PRIMARY KEY AUTOINCREMENT,
       event_id INTEGER NOT NULL,
       team_name TEXT NOT NULL,
-      captain_player_id INTEGER DEFAULT NULL,
+      player_id INTEGER DEFAULT NULL,
       passkey TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (team_name, event_id)
@@ -131,6 +131,19 @@ const initializeBingoTables = async () => {
       UNIQUE (team_id, player_id),
       FOREIGN KEY (team_id) REFERENCES bingo_teams(team_id) ON DELETE CASCADE
   `,
+            bingo_embeds: ` 
+    embed_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    player_id INTEGER DEFAULT NULL,
+    team_id INTEGER DEFAULT NULL,
+    task_id INTEGER DEFAULT NULL,
+    message_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    embed_type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `,
         };
         for (const [table, schema] of Object.entries(tables)) {
             await runQuery(`CREATE TABLE IF NOT EXISTS ${table} (${schema});`);

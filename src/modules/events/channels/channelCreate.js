@@ -12,7 +12,7 @@ module.exports = {
         }
         try {
             logger.info(`📢 [ChannelCreate] Channel "${channel.name}" (ID: ${channel.id}) created in guild: ${channel.guild.name}`);
-            const logChannelData = await db.guild.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['channel_logs']);
+            const logChannelData = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['channel_logs']);
             if (!logChannelData) {
                 logger.warn('⚠️ No log channel found for "channel_logs" in database.');
                 return;
@@ -35,12 +35,12 @@ module.exports = {
             }
             const existingChannel = await db.guild.getOne('SELECT channel_id, channel_key FROM guild_channels WHERE channel_id = ?', [channel.id]);
             let ensuredChannelKey = null;
-            const setupChannel = await db.guild.getOne('SELECT setup_key FROM setup_channels WHERE channel_id = ?', [channel.id]);
-            const logChannelEntry = await db.guild.getOne('SELECT log_key FROM log_channels WHERE channel_id = ?', [channel.id]);
-            const compChannel = await db.guild.getOne('SELECT comp_key FROM comp_channels WHERE channel_id = ?', [channel.id]);
-            if (setupChannel) ensuredChannelKey = setupChannel.setup_key;
-            else if (logChannelEntry) ensuredChannelKey = logChannelEntry.log_key;
-            else if (compChannel) ensuredChannelKey = compChannel.comp_key;
+            const setupChannel = await db.guild.getOne('SELECT channel_key FROM ensured_channels WHERE channel_id = ?', [channel.id]);
+            const logChannelEntry = await db.guild.getOne('SELECT channel_key FROM ensured_channels WHERE channel_id = ?', [channel.id]);
+            const compChannel = await db.guild.getOne('SELECT channel_key FROM ensured_channels WHERE channel_id = ?', [channel.id]);
+            if (setupChannel) ensuredChannelKey = setupChannel.channel_key;
+            else if (logChannelEntry) ensuredChannelKey = logChannelEntry.channel_key;
+            else if (compChannel) ensuredChannelKey = compChannel.channel_key;
             let channelKey;
             if (existingChannel) {
                 channelKey = existingChannel.channel_key;

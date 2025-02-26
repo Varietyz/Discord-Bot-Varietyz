@@ -37,7 +37,7 @@ const populateHiscoreActivities = async (client) => {
         logger.info(`🎉 Migration completed successfully. Inserted: ${insertedCount} activities, Excluded: ${excludedCount} properties.`);
         if (insertedActivities.length > 0) {
             try {
-                const logChannelData = await db.guild.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['database_logs']);
+                const logChannelData = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['database_logs']);
                 if (!logChannelData) {
                     logger.warn('⚠️ No log channel found for "database_logs" in the logging database.');
                 } else {

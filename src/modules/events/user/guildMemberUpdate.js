@@ -42,7 +42,7 @@ module.exports = {
                 const updateData = roleUpdateQueue.get(queueKey);
                 roleUpdateQueue.delete(queueKey);
                 const { addedRoles, removedRoles, timeoutChanged, isTimedOut } = updateData;
-                const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['moderation_logs']);
+                const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['moderation_logs']);
                 if (!logChannelData) return;
                 const logChannel = await newMember.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
                 if (!logChannel) return;
@@ -78,15 +78,7 @@ module.exports = {
                         inline: false,
                     });
                 }
-                const embedColor = timeoutChanged
-                    ? isTimedOut
-                        ? 0xff0000
-                        : 0x2ecc71
-                    : addedRoles.length && removedRoles.length
-                        ? 0x3498db
-                        : addedRoles.length
-                            ? 0x00ff00
-                            : 0xff0000;
+                const embedColor = timeoutChanged ? (isTimedOut ? 0xff0000 : 0x2ecc71) : addedRoles.length && removedRoles.length ? 0x3498db : addedRoles.length ? 0x00ff00 : 0xff0000;
                 embed.setColor(embedColor).setTimestamp();
                 await logChannel.send({ embeds: [embed] });
                 logger.info(`📋 Successfully logged update for ${newMember.user.tag}.`);

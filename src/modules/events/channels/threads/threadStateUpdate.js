@@ -9,7 +9,7 @@ module.exports = {
     async execute(oldThread, newThread) {
         if (!newThread.guild) return;
         try {
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['thread_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['thread_logs']);
             if (!logChannelData) return;
             const logChannel = await newThread.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;

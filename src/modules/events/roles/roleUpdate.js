@@ -43,7 +43,7 @@ module.exports = {
                 [parseInt(newRole.permissions.bitfield.toString(), 10) || 0, newRole.id],
             );
             logger.info(`✏️ [RoleUpdate] Role "${newRole.name}" (ID: ${newRole.id}) updated in guild: ${newRole.guild.name}`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['role_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['role_logs']);
             if (!logChannelData) return;
             const logChannel = newRole.guild.channels.cache.get(logChannelData.channel_id);
             if (!logChannel) return;

@@ -6,16 +6,8 @@ const initializeGuildTables = async () => {
     try {
         logger.info('🔄 Ensuring all necessary guild tables exist...');
         const tables = {
-            log_channels: `
-                log_key TEXT PRIMARY KEY,
-                channel_id TEXT NOT NULL UNIQUE
-            `,
-            comp_channels: `
-                comp_key TEXT PRIMARY KEY,
-                channel_id TEXT NOT NULL UNIQUE
-            `,
-            setup_channels: `
-                setup_key TEXT PRIMARY KEY,
+            ensured_channels: `
+                channel_key TEXT PRIMARY KEY,
                 channel_id TEXT NOT NULL UNIQUE
             `,
             guild_channels: `

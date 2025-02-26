@@ -2,6 +2,13 @@ const logger = require('../../utils/essentials/logger');
 const { createCompetitionEmbed, createVotingDropdown } = require('../../utils/helpers/embedUtils');
 const { chunkArray } = require('./helpers');
 const { updateLeaderboard } = require('./leaderboardUpdater');
+/**
+ *
+ * @param competitionType
+ * @param db
+ * @param client
+ * @param constants
+ */
 async function updateActiveCompetitionEmbed(competitionType, db, client, constants) {
     try {
         const nowISO = new Date().toISOString();
@@ -25,9 +32,9 @@ async function updateActiveCompetitionEmbed(competitionType, db, client, constan
             logger.info(`⚠️ Unknown competition type: ${competitionType}.`);
             return;
         }
-        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', [channelKey]);
+        const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [channelKey]);
         if (!row) {
-            logger.info(`⚠️ No channel_id is configured in comp_channels for ${channelKey}.`);
+            logger.info(`⚠️ No channel_id is configured in ensured_channels for ${channelKey}.`);
             return;
         }
         const channelId = row.channel_id;
@@ -45,8 +52,7 @@ async function updateActiveCompetitionEmbed(competitionType, db, client, constan
             if (comp.message_id) {
                 try {
                     oldMsg = await channel.messages.fetch(comp.message_id);
-                } catch (err) {
-                }
+                } catch (err) {}
             }
             await updateLeaderboard(comp.type, db, client, constants);
             const { embeds, files } = await createCompetitionEmbed(client, comp.type, comp.metric, comp.starts_at, comp.ends_at, comp.competition_id);
@@ -67,6 +73,11 @@ async function updateActiveCompetitionEmbed(competitionType, db, client, constan
         logger.error(`🚫 **Error in updateActiveCompetitionEmbed(${competitionType}):** ${err.message}`);
     }
 }
+/**
+ *
+ * @param compType
+ * @param db
+ */
 async function buildPollDropdown(compType, db) {
     const nowISO = new Date().toISOString();
     const competition = await db.getOne(

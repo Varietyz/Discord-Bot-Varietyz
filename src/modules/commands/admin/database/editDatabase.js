@@ -2,9 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const dbUtils = require('../../../utils/essentials/dbUtils');
 const logger = require('../../../utils/essentials/logger');
 const IMPORTANT_KEYS = {
-    log_channels: 'log_key',
-    setup_channels: 'setup_key',
-    comp_channels: 'comp_key',
+    ensured_channels: 'channel_key',
     guild_channels: 'channel_key',
     guild_emojis: 'emoji_key',
     guild_roles: 'role_key',
@@ -75,7 +73,7 @@ module.exports.execute = async (interaction) => {
             await interaction.editReply(`✅ Successfully updated **${column}** in table **${table}** from \`${field}\` to \`${newValue}\`.`);
             const logDbHandler = dbChoice === 'guild' ? dbHandler : dbUtils.guild;
             try {
-                const logChannelData = await logDbHandler.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['database_logs']);
+                const logChannelData = await logDbHandler.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['database_logs']);
                 if (!logChannelData) {
                     logger.warn('⚠️ No log channel found for "database_logs" in the logging database.');
                 } else {
@@ -112,7 +110,7 @@ module.exports.execute = async (interaction) => {
             await dbUtils.guild.runQuery(query, params);
             await interaction.editReply(`✅ Successfully updated key **${keyColumn}** in **${table}** from \`${key}\` to \`${newValue}\`.`);
             try {
-                const logChannelData = await dbUtils.guild.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['database_logs']);
+                const logChannelData = await dbUtils.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['database_logs']);
                 if (!logChannelData) {
                     logger.warn('⚠️ No log channel found for "database_logs" in the logging database.');
                 } else {

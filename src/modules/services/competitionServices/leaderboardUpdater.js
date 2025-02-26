@@ -3,6 +3,12 @@ const logger = require('../../utils/essentials/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 const db = require('../../utils/essentials/dbUtils');
 const { getMetricEmoji } = require('../../utils/fetchers/getCompMetricEmoji');
+/**
+ *
+ * @param competitionType
+ * @param db
+ * @param client
+ */
 async function updateLeaderboard(competitionType, db, client) {
     try {
         let channelKey;
@@ -14,9 +20,9 @@ async function updateLeaderboard(competitionType, db, client) {
             logger.info(`⚠️ Unknown competition type: ${competitionType}.`);
             return;
         }
-        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', [channelKey]);
+        const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [channelKey]);
         if (!row) {
-            logger.info(`⚠️ No channel_id is configured in comp_channels for ${channelKey}.`);
+            logger.info(`⚠️ No channel_id is configured in ensured_channels for ${channelKey}.`);
             return;
         }
         const channelId = row.channel_id;
@@ -49,6 +55,11 @@ async function updateLeaderboard(competitionType, db, client) {
         logger.error(`🚫 **Error in updateLeaderboard:** ${err.message}`);
     }
 }
+/**
+ *
+ * @param competitionType
+ * @param db
+ */
 async function getActiveCompetition(competitionType, db) {
     return await db.getOne(
         `
@@ -61,6 +72,13 @@ async function getActiveCompetition(competitionType, db) {
         [competitionType, new Date().toISOString(), new Date().toISOString()],
     );
 }
+/**
+ *
+ * @param participants
+ * @param competitionType
+ * @param metric
+ * @param guild
+ */
 async function formatLeaderboardDescription(participants, competitionType, metric, guild) {
     try {
         let metricEmoji = await getMetricEmoji(guild, metric, competitionType); // ✅ Await the function
@@ -84,6 +102,12 @@ async function formatLeaderboardDescription(participants, competitionType, metri
         return '⚠️ Error generating leaderboard.';
     }
 }
+/**
+ *
+ * @param competitionType
+ * @param description
+ * @param competitionId
+ */
 async function buildLeaderboardEmbed(competitionType, description, competitionId) {
     let emojiFormat;
     if (competitionType === 'SOTW') {
@@ -102,6 +126,13 @@ async function buildLeaderboardEmbed(competitionType, description, competitionId
         .setFooter({ text: '🕓 Last Updated' })
         .setTimestamp();
 }
+/**
+ *
+ * @param channel
+ * @param competition
+ * @param embed
+ * @param db
+ */
 async function sendOrUpdateEmbed(channel, competition, embed, db) {
     if (competition.leaderboard_message_id) {
         try {

@@ -47,7 +47,7 @@ module.exports = {
                 changes.push('ℹ️ **Changes detected, but nothing significant or impactful.**');
                 return;
             }
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['server_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['server_logs']);
             if (!logChannelData) return;
             const logChannel = await client.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;

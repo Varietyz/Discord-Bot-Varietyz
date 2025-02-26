@@ -10,7 +10,7 @@ module.exports = {
         if (!stageInstance.guild) return;
         try {
             logger.info(`🗑️ [StageInstanceDelete] Stage instance in channel "${stageInstance.channel?.name || 'Unknown'}" was deleted`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['stage_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['stage_logs']);
             if (!logChannelData) return;
             const logChannel = await stageInstance.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) {

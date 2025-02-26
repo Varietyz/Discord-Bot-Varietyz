@@ -2,6 +2,105 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');
 
+/**
+ * Recalculates and consolidates team task progress by summing individual contributions.
+ * This ensures accurate totals after a player joins or leaves a team.
+ *
+ * @param {number} eventId - The ID of the current event.
+ * @param {number} teamId - The ID of the team whose progress needs recalculating.
+ */
+async function recalculateTeamTaskProgress(eventId, teamId) {
+    logger.info(`[TeamProgress] Recalculating progress for Team ${teamId} in Event ${eventId}`);
+
+    // Query to aggregate progress for each task by team.
+    const teamProgressRecords = await db.getAll(
+        `
+        SELECT task_id, SUM(progress_value) AS totalProgress
+        FROM bingo_task_progress
+        WHERE event_id = ?
+          AND team_id = ?
+        GROUP BY task_id
+        `,
+        [eventId, teamId],
+    );
+
+    for (const record of teamProgressRecords) {
+        const { task_id, totalProgress } = record;
+
+        // Retrieve the target value for the task from the bingo_tasks table.
+        const task = await db.getOne(
+            `
+            SELECT value
+            FROM bingo_tasks
+            WHERE task_id = ?
+            `,
+            [task_id],
+        );
+
+        if (!task) continue;
+        const targetValue = task.value;
+
+        logger.info(`[TeamProgress] Team ${teamId} total progress for Task ${task_id}: ${totalProgress} / ${targetValue}`);
+
+        // Update the task's progress for the team in bingo_task_progress
+        let status = 'incomplete';
+        if (totalProgress >= targetValue) {
+            status = 'completed';
+        } else if (totalProgress > 0) {
+            status = 'in-progress';
+        }
+
+        await db.runQuery(
+            `
+            UPDATE bingo_task_progress
+            SET progress_value = ?,
+                status = ?,
+                last_updated = CURRENT_TIMESTAMP
+            WHERE event_id = ?
+              AND team_id = ?
+              AND task_id = ?
+            `,
+            [totalProgress, status, eventId, teamId, task_id],
+        );
+
+        logger.info(`[TeamProgress] Team ${teamId} Task ${task_id} updated to ${status} with ${totalProgress} progress.`);
+    }
+}
+
+/**
+ * Re-assigns team ID for all existing progress records of a player.
+ * If leaving the team, sets `team_id` to NULL.
+ *
+ * @param {number} eventId - The ID of the ongoing event.
+ * @param {number} playerId - The player's ID.
+ * @param {number|null} newTeamId - The new team ID or NULL if leaving the team.
+ */
+async function reassignTeamProgress(eventId, playerId, newTeamId = null) {
+    logger.info(`[TeamProgress] Re-assigning progress for Player ${playerId} in Event ${eventId} to Team ${newTeamId}`);
+
+    await db.runQuery('BEGIN TRANSACTION');
+
+    try {
+        await db.runQuery(
+            `
+        UPDATE bingo_task_progress
+        SET team_id = ?
+        WHERE event_id = ?
+          AND player_id = ?
+    `,
+            [newTeamId, eventId, playerId],
+        );
+
+        await db.runQuery('COMMIT');
+        logger.info(`[TeamProgress] Successfully updated team_id to ${newTeamId} for Player ${playerId} in Event ${eventId}`);
+    } catch (err) {
+        await db.runQuery('ROLLBACK');
+        logger.error(`[TeamProgress] Failed to update team_id for Player ${playerId} in Event ${eventId}: ${err.message}`);
+    }
+
+    logger.info(`[TeamProgress] Updated team_id to ${newTeamId} for Player ${playerId} in Event ${eventId}`);
+}
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('bingo-team')
@@ -108,7 +207,7 @@ async function handleCreate(interaction) {
     // Insert new team
     await db.runQuery(
         `
-        INSERT INTO bingo_teams (event_id, team_name, captain_player_id, passkey)
+        INSERT INTO bingo_teams (event_id, team_name, player_id, passkey)
         VALUES (?, ?, ?, ?)
         `,
         [eventId, teamName, playerId, passkey],
@@ -314,6 +413,9 @@ async function handleJoin(interaction) {
         }
     }
 
+    await reassignTeamProgress(eventId, playerId, teamRow.team_id);
+    await recalculateTeamTaskProgress(eventId, teamRow.team_id);
+
     const embed = new EmbedBuilder().setTitle('✅ Joined Team').setDescription(`You have successfully joined **${teamRow.team_name}** (ID #${teamRow.team_id}).`).setColor(0x3498db).setFooter({ text: 'Bingo Team Join' }).setTimestamp();
 
     await interaction.reply({ embeds: [embed], flags: 64 });
@@ -337,7 +439,7 @@ async function handleLeave(interaction) {
     // Find the team membership for the current event
     const memberRow = await db.getOne(
         `
-        SELECT tm.team_id, t.team_name
+        SELECT tm.team_id, t.team_name, t.player_id
         FROM bingo_team_members tm
         JOIN bingo_teams t ON t.team_id = tm.team_id
         WHERE tm.player_id = ?
@@ -350,28 +452,110 @@ async function handleLeave(interaction) {
         return interaction.reply({ content: '❌ You are not in any team for this event.', flags: 64 });
     }
 
-    // Remove membership
-    await db.runQuery(
-        `
-        DELETE FROM bingo_team_members
-        WHERE team_id = ?
-          AND player_id = ?
-        `,
-        [memberRow.team_id, playerId],
-    );
+    // If the leaving user is the team captain, assign the next in line
+    if (memberRow.player_id === playerId) {
+        // Find the next member (earliest join date) in the team, excluding the leaving captain.
+        const newCaptain = await db.getOne(
+            `
+            SELECT player_id
+            FROM bingo_team_members
+            WHERE team_id = ?
+              AND player_id != ?
+            ORDER BY joined_at ASC
+            LIMIT 1
+            `,
+            [memberRow.team_id, playerId],
+        );
 
-    // Optionally remove team_id from progress rows
-    await db.runQuery(
-        `
-        UPDATE bingo_task_progress
-        SET team_id = 0
-        WHERE event_id = ?
-          AND player_id = ?
-        `,
-        [eventId, playerId],
-    );
+        if (newCaptain) {
+            // Reassign captaincy to the next member.
+            await db.runQuery(
+                `
+                UPDATE bingo_teams
+                SET player_id = ?
+                WHERE team_id = ?
+                `,
+                [newCaptain.player_id, memberRow.team_id],
+            );
+            // Remove the leaving member's record.
+            await db.runQuery(
+                `
+                DELETE FROM bingo_team_members
+                WHERE team_id = ? AND player_id = ?
+                `,
+                [memberRow.team_id, playerId],
+            );
+            // Optionally update the player's progress to remove team association.
+            await db.runQuery(
+                `
+                UPDATE bingo_task_progress
+                SET team_id = NULL
+                WHERE event_id = ? AND player_id = ?
+                `,
+                [eventId, playerId],
+            );
+            return interaction.reply({
+                content: `✅ You have left team **${memberRow.team_name}**. New captain has been assigned.`,
+                flags: 64,
+            });
+        } else {
+            // No other members exist: dissolve the team.
+            await db.runQuery(
+                `
+                DELETE FROM bingo_team_members
+                WHERE team_id = ?
+                `,
+                [memberRow.team_id],
+            );
+            await db.runQuery(
+                `
+                DELETE FROM bingo_teams
+                WHERE team_id = ?
+                `,
+                [memberRow.team_id],
+            );
+            await db.runQuery(
+                `
+                UPDATE bingo_task_progress
+                SET team_id = NULL
+                WHERE event_id = ? AND player_id = ?
+                `,
+                [eventId, playerId],
+            );
 
-    return interaction.reply({ content: `✅ You have left team: **${memberRow.team_name}**.`, flags: 64 });
+            await reassignTeamProgress(eventId, playerId, null);
+            await recalculateTeamTaskProgress(eventId, memberRow.team_id);
+
+            return interaction.reply({
+                content: `✅ You have left team **${memberRow.team_name}**. As you were the only member, the team has been dissolved.`,
+                flags: 64,
+            });
+        }
+    } else {
+        // If the leaving user is not the captain, simply remove their membership.
+        await db.runQuery(
+            `
+            DELETE FROM bingo_team_members
+            WHERE team_id = ? AND player_id = ?
+            `,
+            [memberRow.team_id, playerId],
+        );
+        await db.runQuery(
+            `
+            UPDATE bingo_task_progress
+            SET team_id = NULL
+            WHERE event_id = ? AND player_id = ?
+            `,
+            [eventId, playerId],
+        );
+        await reassignTeamProgress(eventId, playerId, null);
+        await recalculateTeamTaskProgress(eventId, memberRow.team_id);
+
+        return interaction.reply({
+            content: `✅ You have left team **${memberRow.team_name}**.`,
+            flags: 64,
+        });
+    }
 }
 
 /**
@@ -387,7 +571,7 @@ async function handleList(interaction) {
     // Fetch all teams for the event
     const teams = await db.getAll(
         `
-        SELECT t.team_id, t.team_name, t.captain_player_id
+        SELECT t.team_id, t.team_name, t.player_id
         FROM bingo_teams t
         WHERE t.event_id = ?
         ORDER BY t.team_name COLLATE NOCASE ASC
@@ -443,7 +627,7 @@ async function handleList(interaction) {
         // Create Team Description
         let teamDescription = `**🔸 Team ID:** ${team.team_id}\n`;
         teamDescription += `**🏷️ Team Name:** ${team.team_name}\n`;
-        teamDescription += `**👑 Captain:** ${members.find((m) => m.player_id === team.captain_player_id)?.rsn || 'Unknown'}\n`;
+        teamDescription += `**👑 Captain:** ${members.find((m) => m.player_id === team.player_id)?.rsn || 'Unknown'}\n`;
         teamDescription += '**👥 Members:**\n';
 
         if (members.length === 0) {
@@ -451,7 +635,7 @@ async function handleList(interaction) {
         } else {
             members.forEach((m) => {
                 // Don't list captain twice
-                if (m.player_id !== team.captain_player_id) {
+                if (m.player_id !== team.player_id) {
                     teamDescription += `     👤 ${m.rsn || `(Player #${m.player_id})`}\n`;
                 }
             });

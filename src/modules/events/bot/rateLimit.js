@@ -8,7 +8,7 @@ module.exports = {
     once: false,
     async execute(rateLimitData, client) {
         logger.warn(`🚨 Rate Limit Hit: ${JSON.stringify(rateLimitData)}`);
-        const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['bot_logs']);
+        const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['bot_logs']);
         if (!logChannelData) return;
         const logChannel = await client.channels.fetch(logChannelData.channel_id).catch(() => null);
         if (!logChannel) return;

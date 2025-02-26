@@ -63,9 +63,9 @@ const updateFinalLeaderboard = async (competition, client) => {
             return;
         }
         const sortedParticipants = details.participations.filter((p) => p.progress.gained > 0).sort((a, b) => b.progress.gained - a.progress.gained);
-        const row = await db.guild.getOne('SELECT channel_id FROM comp_channels WHERE comp_key = ?', ['results_channel']);
+        const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['results_channel']);
         if (!row) {
-            logger.info('⚠️ No channel_id is configured in comp_channels for results_channel.');
+            logger.info('⚠️ No channel_id is configured in ensured_channels for results_channel.');
             return;
         }
         const channelId = row.channel_id;

@@ -3,6 +3,10 @@ const {
     guild: { runQuery, getOne },
 } = require('./dbUtils');
 const logger = require('./logger');
+/**
+ *
+ * @param guild
+ */
 async function ensureLiveGainsCategory(guild) {
     try {
         const loggingCategoryName = '🌐 ‣ Live Gains';
@@ -59,7 +63,7 @@ async function ensureLiveGainsCategory(guild) {
             logger.info(`✅ Created category: ${loggingCategory.name}`);
         }
         for (const { key, name, topic } of logChannels) {
-            const storedChannel = await getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', [key]);
+            const storedChannel = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [key]);
             let channel = storedChannel ? guild.channels.cache.get(storedChannel.channel_id) : null;
             if (channel && channel.parentId !== loggingCategory.id) {
                 logger.warn(`⚠️ Channel ${channel.id} is in the wrong category. Moving it...`);
@@ -74,17 +78,8 @@ async function ensureLiveGainsCategory(guild) {
                     permissionOverwrites: [
                         {
                             id: guild.roles.everyone.id,
-                            allow: [
-                                PermissionsBitField.Flags.ViewChannel,
-                                PermissionsBitField.Flags.ReadMessageHistory,
-                                PermissionsBitField.Flags.AddReactions,
-                            ],
-                            deny: [
-                                PermissionsBitField.Flags.SendMessages,
-                                PermissionsBitField.Flags.CreatePublicThreads,
-                                PermissionsBitField.Flags.CreatePrivateThreads,
-                                PermissionsBitField.Flags.SendMessagesInThreads,
-                            ],
+                            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.AddReactions],
+                            deny: [PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.CreatePublicThreads, PermissionsBitField.Flags.CreatePrivateThreads, PermissionsBitField.Flags.SendMessagesInThreads],
                         },
                         {
                             id: guild.roles.cache.find((role) => role.permissions.has(PermissionsBitField.Flags.Administrator))?.id,
@@ -95,9 +90,9 @@ async function ensureLiveGainsCategory(guild) {
                 logger.info(`✅ Created channel: ${name}`);
             }
             if (!storedChannel) {
-                await runQuery('INSERT INTO setup_channels (setup_key, channel_id) VALUES (?, ?)', [key, channel.id]);
+                await runQuery('INSERT INTO ensured_channels (channel_key, channel_id) VALUES (?, ?)', [key, channel.id]);
             } else {
-                await runQuery('UPDATE setup_channels SET channel_id = ? WHERE setup_key = ?', [channel.id, key]);
+                await runQuery('UPDATE ensured_channels SET channel_id = ? WHERE channel_key = ?', [channel.id, key]);
             }
         }
         logger.info('🎉 Logging system setup complete.');

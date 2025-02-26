@@ -15,7 +15,7 @@ module.exports = {
             }
             await db.runQuery('DELETE FROM modal_tracking WHERE registered_by = ? AND modal_key = ?', [interaction.user.id, 'open_register_clanchat_modal']);
             const newChannel = interaction.options.getChannel('channel');
-            const channelRow = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['clanchat_channel']);
+            const channelRow = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['clanchat_channel']);
             const currentChannelId = channelRow?.channel_id || null;
             if (currentChannelId === newChannel.id) {
                 return interaction.editReply({
@@ -60,13 +60,7 @@ module.exports = {
                             content: '✅ Moving the webhook to the new channel...',
                             flags: 64,
                         });
-                        await finalizeClanChatSetup(
-                            interaction,
-                            newChannel,
-                            currentChannelId,
-                            oldWebhookRow,
-                            true,
-                        );
+                        await finalizeClanChatSetup(interaction, newChannel, currentChannelId, oldWebhookRow, true);
                     } else {
                         await btnInt.reply({
                             content: '❌ Setup canceled. No changes were made.',
@@ -95,11 +89,19 @@ module.exports = {
         }
     },
 };
+/**
+ *
+ * @param interaction
+ * @param newChannel
+ * @param currentChannelId
+ * @param oldWebhookRow
+ * @param moveOldWebhook
+ */
 async function finalizeClanChatSetup(interaction, newChannel, currentChannelId, oldWebhookRow, moveOldWebhook) {
     if (currentChannelId) {
-        await db.guild.runQuery('UPDATE setup_channels SET channel_id = ? WHERE setup_key = ?', [newChannel.id, 'clanchat_channel']);
+        await db.guild.runQuery('UPDATE ensured_channels SET channel_id = ? WHERE channel_key = ?', [newChannel.id, 'clanchat_channel']);
     } else {
-        await db.guild.runQuery('INSERT INTO setup_channels (setup_key, channel_id) VALUES (?, ?)', ['clanchat_channel', newChannel.id]);
+        await db.guild.runQuery('INSERT INTO ensured_channels (channel_key, channel_id) VALUES (?, ?)', ['clanchat_channel', newChannel.id]);
     }
     logger.info(`Updated Clan Chat channel to: ${newChannel.name} (${newChannel.id})`);
     let webhook;

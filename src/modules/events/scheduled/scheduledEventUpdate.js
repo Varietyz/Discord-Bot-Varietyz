@@ -18,7 +18,7 @@ module.exports = {
             }
             if (changes.length === 0) return;
             await runQuery('UPDATE guild_events SET name = ?, description = ?, start_time = ? WHERE event_id = ?', [newEvent.name, newEvent.description || 'No description', newEvent.scheduledStartTimestamp, newEvent.id]);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['event_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['event_logs']);
             if (!logChannelData) return;
             const logChannel = await newEvent.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;

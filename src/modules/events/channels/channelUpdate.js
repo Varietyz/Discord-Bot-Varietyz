@@ -51,7 +51,7 @@ module.exports = {
             }
             if (changes.length === 0) return;
             logger.info(`🔄 [ChannelUpdate] Channel updated: "${oldChannel.name}" → "${newChannel.name}" in guild: ${newChannel.guild.name}`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['channel_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['channel_logs']);
             if (!logChannelData) return;
             const logChannel = await newChannel.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) {
@@ -63,9 +63,7 @@ module.exports = {
             let updatedBy = '`Unknown`';
             try {
                 const fetchedLogs = await newChannel.guild.fetchAuditLogs({ type: AuditLogEvent.ChannelUpdate, limit: 5 });
-                const updateLog = fetchedLogs.entries.find(
-                    (entry) => entry.target.id === newChannel.id && Date.now() - entry.createdTimestamp < 10000,
-                );
+                const updateLog = fetchedLogs.entries.find((entry) => entry.target.id === newChannel.id && Date.now() - entry.createdTimestamp < 10000);
                 if (updateLog) {
                     updatedBy = `<@${updateLog.executor.id}>`;
                     logger.info(`🔄 Channel updated by: ${updatedBy}`);
@@ -80,12 +78,12 @@ module.exports = {
                 logger.warn(`⚠️ Could not fetch audit log for channel update: ${auditError.message}`);
             }
             let ensuredChannelKey = null;
-            const setupChannel = await getOne('SELECT setup_key FROM setup_channels WHERE channel_id = ?', [newChannel.id]);
-            const logChannelEntry = await getOne('SELECT log_key FROM log_channels WHERE channel_id = ?', [newChannel.id]);
-            const compChannel = await getOne('SELECT comp_key FROM comp_channels WHERE channel_id = ?', [newChannel.id]);
-            if (setupChannel) ensuredChannelKey = setupChannel.setup_key;
-            else if (logChannelEntry) ensuredChannelKey = logChannelEntry.log_key;
-            else if (compChannel) ensuredChannelKey = compChannel.comp_key;
+            const setupChannel = await getOne('SELECT channel_key FROM ensured_channels WHERE channel_id = ?', [newChannel.id]);
+            const logChannelEntry = await getOne('SELECT channel_key FROM ensured_channels WHERE channel_id = ?', [newChannel.id]);
+            const compChannel = await getOne('SELECT channel_key FROM ensured_channels WHERE channel_id = ?', [newChannel.id]);
+            if (setupChannel) ensuredChannelKey = setupChannel.channel_key;
+            else if (logChannelEntry) ensuredChannelKey = logChannelEntry.channel_key;
+            else if (compChannel) ensuredChannelKey = compChannel.channel_key;
             await runQuery(
                 `UPDATE guild_channels 
                  SET name = ?, type = ?, category = ?, permissions = ? 

@@ -74,18 +74,18 @@ function initializeDatabase() {
  */
 function createTables(db) {
     db.run(`
-        CREATE TABLE IF NOT EXISTS log_channels (
-                log_key TEXT PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS ensured_channels (
+                channel_key TEXT PRIMARY KEY,
                 channel_id TEXT NOT NULL UNIQUE
         );`);
     db.run(`
-        CREATE TABLE IF NOT EXISTS comp_channels (
-                comp_key TEXT PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS ensured_channels (
+                channel_key TEXT PRIMARY KEY,
                 channel_id TEXT NOT NULL UNIQUE
         );`);
     db.run(`
-        CREATE TABLE IF NOT EXISTS setup_channels (
-                setup_key TEXT PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS ensured_channels (
+                channel_key TEXT PRIMARY KEY,
                 channel_id TEXT NOT NULL UNIQUE
         );`);
     db.run(`

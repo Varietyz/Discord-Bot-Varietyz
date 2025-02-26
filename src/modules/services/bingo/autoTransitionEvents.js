@@ -2,7 +2,7 @@
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const { endBingoEvent } = require('./bingoService');
-const generateDynamicTasks = require('./dynamicTaskGenerator');
+const { generateDynamicTasks, clearDynamicTasks } = require('./dynamicTaskGenerator');
 const { rotateBingoTasks, startBingoEvent } = require('./bingoUtils');
 
 /**
@@ -26,12 +26,28 @@ async function autoTransitionEvents() {
         logger.info(`[autoTransitionEvents] Ongoing event found (event_id=${ongoingEvent.event_id}). No new event will be scheduled.`);
         return; // Exit to prevent creating another event
     }
+    // Get the last completed event (assuming your event IDs increase)
+    const lastCompletedEvent = await db.getOne(`
+  SELECT event_id
+  FROM bingo_state
+  WHERE state = 'completed'
+  ORDER BY event_id DESC
+  LIMIT 1
+`);
+
+    await clearDynamicTasks();
+    await generateDynamicTasks();
 
     const { newEventId, newBoardId } = await rotateBingoTasks();
     if (!newEventId || !newBoardId) {
         logger.error('[autoTransitionEvents] Failed to create new event or board.');
         return;
     }
+
+    if (lastCompletedEvent) {
+        await db.runQuery('UPDATE bingo_teams SET event_id = ? WHERE event_id = ?', [newEventId, lastCompletedEvent.event_id]);
+    }
+
     if (newEventId && newBoardId) {
         const eventDuration = 28 * 24 * 60 * 60 * 1000; // 4 weeks
         const newStart = new Date(now.getTime());
@@ -39,7 +55,6 @@ async function autoTransitionEvents() {
 
         // Generate Dynamic Tasks BEFORE setting state to 'ongoing'
         logger.info(`[autoTransitionEvents] Generating dynamic tasks for event #${newEventId}, board #${newBoardId}`);
-        await generateDynamicTasks(newBoardId);
 
         // Only update the start and end time after tasks are generated
         await db.runQuery(

@@ -3,6 +3,9 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const logger = require('../../utils/essentials/logger');
 const { runQuery, getAll } = require('../../utils/essentials/dbUtils');
 const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
+const { cleanupOrphanedPlayers } = require('../../utils/essentials/orphanCleaner');
+const { fetchAndProcessMember } = require('../../services/autoRoles');
+
 const RATE_LIMIT = 5;
 const RATE_LIMIT_DURATION = 60 * 1000;
 const rateLimitMap = new Map();
@@ -76,6 +79,11 @@ module.exports = {
                         components: [],
                         flags: 64,
                     });
+
+                    await cleanupOrphanedPlayers();
+
+                    const guild = interaction.guild;
+                    await fetchAndProcessMember(guild, discordID);
                 } else if (i.customId === 'cancel_removersn') {
                     await i.update({
                         content: '❌ **Canceled:** RSN removal has been canceled.',

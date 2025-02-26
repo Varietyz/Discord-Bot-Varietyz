@@ -7,37 +7,13 @@ const bingoLeaderboard = require('./bingoLeaderboard');
 const bingoNotifications = require('./bingoNotifications');
 const bingoStateManager = require('./bingoStateManager');
 const { startBingoEvent, rotateBingoTasks } = require('./bingoUtils');
-const generateDynamicTasks = require('./dynamicTaskGenerator');
-
-/**
- * Clears dynamic tasks from the bingo_tasks table.
- * Ensures that new dynamic tasks are generated for each new event.
- */
-async function clearDynamicTasks() {
-    try {
-        logger.info('[BingoService] clearDynamicTasks() → Starting...');
-
-        const result = await db.runQuery(
-            `
-            DELETE FROM bingo_tasks
-            WHERE is_dynamic = 1
-            `,
-        );
-
-        if (result.changes > 0) {
-            logger.info(`[BingoService] Cleared ${result.changes} dynamic tasks.`);
-        } else {
-            logger.info('[BingoService] No dynamic tasks found to clear.');
-        }
-    } catch (err) {
-        logger.error(`[BingoService] clearDynamicTasks() error: ${err.message}`);
-    }
-}
+const { purgeStaleEmbeds } = require('./bingoEmbedManager');
 
 /**
  * This is called every 30 mins (or on slash command).
+ * @param client
  */
-async function updateBingoProgress() {
+async function updateBingoProgress(client) {
     try {
         logger.info('[BingoService] updateBingoProgress() → Starting...');
 
@@ -50,9 +26,10 @@ async function updateBingoProgress() {
         for (const { event_id } of ongoingEvents) {
             await bingoTaskManager.consolidateTeamTaskProgress(event_id);
         }
+        await purgeStaleEmbeds(client);
         await bingoPatternRecognition.checkPatterns();
-        await bingoLeaderboard.updateLeaderboard();
-        await bingoNotifications.sendProgressUpdates();
+        await bingoLeaderboard.updateLeaderboard(client);
+        await bingoNotifications.sendProgressUpdates(client);
 
         logger.info('[BingoService] updateBingoProgress() → Complete.');
     } catch (err) {
@@ -94,10 +71,6 @@ async function endBingoEvent(eventId) {
             `,
             [eventId],
         );
-
-        // Step 3: Clear dynamic tasks
-        await clearDynamicTasks();
-        await generateDynamicTasks();
 
         // Step 4: Announce final results
         await bingoNotifications.sendFinalResults(eventId);

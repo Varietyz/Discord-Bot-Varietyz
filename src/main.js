@@ -10,7 +10,7 @@ const { initializeMsgTables } = require('./modules/collection/msgDatabase');
 const { fetchAndStoreChannelHistory } = require('./modules/collection/msgFetcher');
 const { registerModal } = require('./modules/utils/essentials/modalHandler');
 const CompetitionService = require('./modules/services/competitionServices/competitionService');
-const generateDynamicTasks = require('./modules/services/bingo/dynamicTaskGenerator');
+const { generateDynamicTasks } = require('./modules/services/bingo/dynamicTaskGenerator');
 
 const commands = [];
 const functions = [];
@@ -117,3 +117,5 @@ const initializeBot = async () => {
     }
 };
 initializeBot();
+
+module.exports = client;

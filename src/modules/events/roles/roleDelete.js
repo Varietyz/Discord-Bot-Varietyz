@@ -11,7 +11,7 @@ module.exports = {
             logger.info(`🗑️ [RoleDelete] Role "${role.name}" (ID: ${role.id}) was deleted from guild: ${role.guild.name}`);
             await runQuery('DELETE FROM guild_roles WHERE role_id = ?', [role.id]);
             logger.info(`🗑️ [Database] Removed role "${role.name}" (ID: ${role.id}) from the database.`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['role_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['role_logs']);
             if (!logChannelData) return;
             const logChannel = role.guild.channels.cache.get(logChannelData.channel_id);
             if (!logChannel) return;

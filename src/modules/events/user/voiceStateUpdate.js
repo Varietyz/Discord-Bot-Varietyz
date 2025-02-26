@@ -11,7 +11,7 @@ module.exports = {
         try {
             const member = newState.member || oldState.member;
             if (!member) return;
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['voice_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['voice_logs']);
             if (!logChannelData) return;
             const logChannel = await newState.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;

@@ -39,7 +39,7 @@ module.exports = {
             logger.warn('⚠️ Error not found in database after insert/update.');
             return;
         }
-        const logChannelData = await db.guild.getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['bot_logs']);
+        const logChannelData = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['bot_logs']);
         const logChannel = logChannelData ? await client.channels.fetch(logChannelData.channel_id).catch(() => null) : null;
         if (!logChannel) {
             logger.warn(`⚠️ Could not fetch log channel ID ${logChannelData?.channel_id}.`);

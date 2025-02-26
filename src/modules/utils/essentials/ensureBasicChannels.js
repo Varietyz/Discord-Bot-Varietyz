@@ -25,11 +25,6 @@ async function ensureBasicChannels(guild) {
                 name: '🔃∙-auto-roles',
                 topic: 'Logs and announces the automatic role changes.',
             },
-            {
-                key: 'bingo_updates_channel',
-                name: '🎲∙-bingo-news',
-                topic: 'Logs and announces the automatic bingo.',
-            },
         ];
         const basicVoiceChannels = [
             {
@@ -38,7 +33,7 @@ async function ensureBasicChannels(guild) {
             },
         ];
         for (const { key, name, topic } of basicChannels) {
-            const storedChannel = await getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', [key]);
+            const storedChannel = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [key]);
             let channel = storedChannel ? guild.channels.cache.get(storedChannel.channel_id) : null;
             if (!channel) {
                 channel = await guild.channels.create({
@@ -56,13 +51,13 @@ async function ensureBasicChannels(guild) {
                 logger.info(`✅ Created channel: ${name}`);
             }
             if (!storedChannel) {
-                await runQuery('INSERT INTO setup_channels (setup_key, channel_id) VALUES (?, ?)', [key, channel.id]);
+                await runQuery('INSERT INTO ensured_channels (channel_key, channel_id) VALUES (?, ?)', [key, channel.id]);
             } else if (storedChannel.channel_id !== channel.id) {
-                await runQuery('UPDATE setup_channels SET channel_id = ? WHERE setup_key = ?', [channel.id, key]);
+                await runQuery('UPDATE ensured_channels SET channel_id = ? WHERE channel_key = ?', [channel.id, key]);
             }
         }
         for (const { key, name } of basicVoiceChannels) {
-            const storedChannel = await getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', [key]);
+            const storedChannel = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [key]);
             let channel = storedChannel ? guild.channels.cache.get(storedChannel.channel_id) : null;
             if (!channel) {
                 channel = await guild.channels.create({
@@ -73,9 +68,9 @@ async function ensureBasicChannels(guild) {
                 logger.info(`✅ Created voice channel: ${name}`);
             }
             if (!storedChannel) {
-                await runQuery('INSERT INTO setup_channels (setup_key, channel_id) VALUES (?, ?)', [key, channel.id]);
+                await runQuery('INSERT INTO ensured_channels (channel_key, channel_id) VALUES (?, ?)', [key, channel.id]);
             } else {
-                await runQuery('UPDATE setup_channels SET channel_id = ? WHERE setup_key = ?', [channel.id, key]);
+                await runQuery('UPDATE ensured_channels SET channel_id = ? WHERE channel_key = ?', [channel.id, key]);
             }
         }
         logger.info('🎉 Basic channels setup complete.');

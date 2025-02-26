@@ -5,16 +5,25 @@ const { saveMessage } = require('./msgDbSave');
 const { reorderAllTables } = require('./msgReorder');
 const logger = require('../utils/essentials/logger');
 const db = require('../utils/essentials/dbUtils');
+/**
+ *
+ * @param idA
+ * @param idB
+ */
 function isNewerSnowflake(idA, idB) {
     if (idA.length !== idB.length) {
         return idA.length > idB.length;
     }
     return idA > idB;
 }
+/**
+ *
+ * @param client
+ */
 async function fetchAndStoreChannelHistory(client) {
-    const row = await db.guild.getOne('SELECT channel_id FROM setup_channels WHERE setup_key = ?', ['clanchat_channel']);
+    const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['clanchat_channel']);
     if (!row) {
-        logger.info('⚠️ No channel_id is configured in setup_channels for clanchat_channel.');
+        logger.info('⚠️ No channel_id is configured in ensured_channels for clanchat_channel.');
         return;
     }
     const channelId = row.channel_id;
@@ -112,6 +121,10 @@ async function fetchAndStoreChannelHistory(client) {
         logger.info(`🎉 Incremental fetch complete. Total new messages stored: ${totalSaved}.`);
     }
 }
+/**
+ *
+ * @param messageIds
+ */
 async function getExistingMessageIds(messageIds) {
     if (messageIds.length === 0) return new Set();
     const placeholders = messageIds.map(() => '?').join(',');
@@ -156,11 +169,18 @@ async function getExistingMessageIds(messageIds) {
         return new Set();
     }
 }
+/**
+ *
+ */
 async function getLastFetchedMessageId() {
     const db = await dbPromise;
     const row = await db.get('SELECT value FROM meta_info WHERE key = "last_fetched_message_id"');
     return row ? row.value : null;
 }
+/**
+ *
+ * @param messageId
+ */
 async function setLastFetchedMessageId(messageId) {
     const db = await dbPromise;
     await db.run(

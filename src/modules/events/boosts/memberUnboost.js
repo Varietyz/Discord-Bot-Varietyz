@@ -13,7 +13,7 @@ module.exports = {
         }
         try {
             logger.info(`⏬ [MemberUnboost] ${member.user.tag} removed their boost from ${member.guild.name}.`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['boost_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['boost_logs']);
             if (!logChannelData) {
                 logger.warn('⚠️ No log channel found for "boost_logs" in database.');
                 return;

@@ -9,7 +9,7 @@ module.exports = {
     async execute(event, id, client) {
         logger.warn(`🔌 Shard ${id} Disconnected.`);
 
-        const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['bot_logs']);
+        const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['bot_logs']);
         if (!logChannelData) return;
 
         const logChannel = await client.channels.fetch(logChannelData.channel_id).catch(() => null);

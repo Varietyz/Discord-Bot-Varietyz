@@ -32,14 +32,14 @@ module.exports = {
                         flags: 64,
                     });
                 }
-                await runQuery('INSERT INTO comp_channels (comp_key, channel_id) VALUES (?, ?) ON CONFLICT(comp_key) DO UPDATE SET channel_id = ?', [compType, channel.id, channel.id]);
+                await runQuery('INSERT INTO ensured_channels (channel_key, channel_id) VALUES (?, ?) ON CONFLICT(channel_key) DO UPDATE SET channel_id = ?', [compType, channel.id, channel.id]);
                 logger.info(`✅ Log channel for '${compType}' set to #${channel.name} (ID: ${channel.id}).`);
                 return await interaction.reply({
                     content: `✅ **Success:** The comp channel for \`${compType}\` has been updated to <#${channel.id}>.`,
                     flags: 64,
                 });
             } else if (subcommand === 'list') {
-                const logChannels = await getAll('SELECT comp_key, channel_id FROM comp_channels');
+                const logChannels = await getAll('SELECT channel_key, channel_id FROM ensured_channels');
                 if (logChannels.length === 0) {
                     return await interaction.reply({
                         content: '📜 **No competition channels are currently assigned.** Use `/comp_channel set` to configure them.',
@@ -49,7 +49,7 @@ module.exports = {
                 const embed = new EmbedBuilder()
                     .setTitle('📋 Assigned Competition Channels🏆')
                     .setColor(0x3498db)
-                    .setDescription(logChannels.map((row) => `🔹 **\`${row.comp_key}\`** → <#${row.channel_id}>`).join('\n'))
+                    .setDescription(logChannels.map((row) => `🔹 **\`${row.channel_key}\`** → <#${row.channel_id}>`).join('\n'))
                     .setTimestamp();
                 return await interaction.reply({ embeds: [embed], flags: 64 });
             } else if (subcommand === 'setup') {
@@ -73,10 +73,8 @@ module.exports = {
                     await interaction.deferReply({ flags: 64 });
                 }
                 try {
-                    const logChannels = await getAll('SELECT channel_id FROM comp_channels');
-                    const loggingCategory = interaction.guild.channels.cache.find(
-                        (ch) => ch.type === 4 && ch.name === '🏆Competitions of the Week',
-                    );
+                    const logChannels = await getAll('SELECT channel_id FROM ensured_channels');
+                    const loggingCategory = interaction.guild.channels.cache.find((ch) => ch.type === 4 && ch.name === '🏆Competitions of the Week');
                     if (logChannels.length === 0 && !loggingCategory) {
                         return await interaction.editReply({
                             content: '📜 **No competition channels or categories exist to remove.**',
@@ -88,7 +86,7 @@ module.exports = {
                             await channel.delete().catch((err) => logger.warn(`⚠️ Failed to delete channel ${channel.id}: ${err.message}`));
                         }
                     }
-                    await runQuery('DELETE FROM comp_channels');
+                    await runQuery('DELETE FROM ensured_channels');
                     if (loggingCategory) {
                         await loggingCategory.delete().catch((err) => logger.warn(`⚠️ Failed to delete logging category: ${err.message}`));
                     }

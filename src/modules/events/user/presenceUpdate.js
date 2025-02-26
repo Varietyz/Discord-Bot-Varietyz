@@ -12,7 +12,7 @@ module.exports = {
         try {
             const member = newPresence.member || oldPresence?.member;
             if (!member) return;
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['member_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['member_logs']);
             if (!logChannelData) return;
             const logChannel = await newPresence.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;

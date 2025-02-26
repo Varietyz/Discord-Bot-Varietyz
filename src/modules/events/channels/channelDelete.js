@@ -26,7 +26,7 @@ module.exports = {
         if (!channel.guild) return;
         try {
             logger.info(`🗑️ [ChannelDelete] Channel "${channel.name}" (ID: ${channel.id}) was deleted in guild: ${channel.guild.name}`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['channel_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['channel_logs']);
             if (!logChannelData) {
                 logger.warn('⚠️ No log channel found for "channel_logs" in database.');
                 return;
@@ -42,9 +42,7 @@ module.exports = {
                 type: AuditLogEvent.ChannelDelete,
                 limit: 5,
             });
-            const deleteLog = fetchedLogs.entries.find(
-                (entry) => entry.target.id === channel.id && Date.now() - entry.createdTimestamp < 10000,
-            );
+            const deleteLog = fetchedLogs.entries.find((entry) => entry.target.id === channel.id && Date.now() - entry.createdTimestamp < 10000);
             let deletedBy = '`Unknown`';
             if (deleteLog) {
                 deletedBy = `<@${deleteLog.executor.id}>`;
@@ -56,15 +54,15 @@ module.exports = {
             const channelRecord = await getOne('SELECT channel_key FROM guild_channels WHERE channel_id = ?', [channel.id]);
             const logKey = channelRecord ? channelRecord.channel_key : '`Not Found`';
             let ensuredChannelKey = null;
-            const setupChannel = await getOne('SELECT setup_key FROM setup_channels WHERE channel_id = ?', [channel.id]);
-            const logChannelEntry = await getOne('SELECT log_key FROM log_channels WHERE channel_id = ?', [channel.id]);
-            const compChannel = await getOne('SELECT comp_key FROM comp_channels WHERE channel_id = ?', [channel.id]);
+            const setupChannel = await getOne('SELECT channel_key FROM ensured_channels WHERE channel_id = ?', [channel.id]);
+            const logChannelEntry = await getOne('SELECT channel_key FROM ensured_channels WHERE channel_id = ?', [channel.id]);
+            const compChannel = await getOne('SELECT channel_key FROM ensured_channels WHERE channel_id = ?', [channel.id]);
             if (setupChannel) {
-                ensuredChannelKey = setupChannel.setup_key;
+                ensuredChannelKey = setupChannel.channel_key;
             } else if (logChannelEntry) {
-                ensuredChannelKey = logChannelEntry.log_key;
+                ensuredChannelKey = logChannelEntry.channel_key;
             } else if (compChannel) {
-                ensuredChannelKey = compChannel.comp_key;
+                ensuredChannelKey = compChannel.channel_key;
             }
             await runQuery('DELETE FROM guild_channels WHERE channel_id = ?', [channel.id]);
             const embed = new EmbedBuilder()

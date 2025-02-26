@@ -5,6 +5,11 @@ const { runQuery, getOne } = require('../../../utils/essentials/dbUtils');
 const { normalizeRsn } = require('../../../utils/normalizing/normalizeRsn');
 const { validateRsn } = require('../../../utils/helpers/validateRsn');
 const { fetchPlayerData } = require('../../../utils/fetchers/fetchPlayerData');
+const { updatePlayerData } = require('../../../utils/essentials/updatePlayerData');
+const getEmoji = require('../../../utils/fetchers/getEmoji');
+const { updateEventBaseline } = require('../../../services/bingo/bingoTaskManager');
+const { fetchAndProcessMember } = require('../../../services/autoRoles');
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('assign_rsn')
@@ -13,6 +18,8 @@ module.exports = {
         .addUserOption((option) => option.setName('target').setDescription('The guild member to assign an RSN to.').setRequired(true))
         .addStringOption((option) => option.setName('rsn').setDescription('The RuneScape Name to assign.').setRequired(true)),
     async execute(interaction) {
+        const loadingEmoji = await getEmoji('emoji_1_loading');
+
         try {
             const targetUser = interaction.options.getUser('target');
             const rsn = interaction.options.getString('rsn');
@@ -59,7 +66,43 @@ module.exports = {
             collector.on('collect', async (i) => {
                 if (i.customId === 'confirm_assign_rsn') {
                     await runQuery('INSERT INTO registered_rsn (player_id, discord_id, rsn, registered_at) VALUES (?, ?, ?, ?)', [womPlayerId, targetUser.id, rsn, new Date().toISOString()]);
-                    logger.info(`✅ RSN "\`${rsn}\`" (WOM ID: \`${womPlayerId}\`) assigned to user \`${targetUser.id}\` by admin ${interaction.user.id}.`);
+                    await interaction.reply({
+                        content: `${loadingEmoji} Collecting player data for \`${rsn} (WOM ID: ${womPlayerId})\`...`,
+                        flags: 64,
+                    });
+                    await updatePlayerData(rsn, womPlayerId);
+                    const guild = interaction.guild;
+                    await fetchAndProcessMember(guild, targetUser.id);
+
+                    // Query for clan membership by joining registered_rsn and clan_members
+                    const validRegistration = await getOne(
+                        `
+    SELECT r.*, cm.player_id AS clan_player_id
+    FROM registered_rsn AS r
+    INNER JOIN clan_members AS cm 
+      ON r.player_id = cm.player_id
+      AND LOWER(r.rsn) = LOWER(cm.rsn)
+    WHERE r.player_id = ?
+    LIMIT 1
+    `,
+                        [womPlayerId],
+                    );
+
+                    if (validRegistration && validRegistration.clan_player_id) {
+                        await interaction.editReply({
+                            content: `${loadingEmoji} \`${rsn} (WOM ID: ${womPlayerId})\` is confirmed as a clan member. Registering for bingo...`,
+                            flags: 64,
+                        });
+                        await updateEventBaseline();
+                    } else {
+                        logger.info(`Player with WOM ID ${womPlayerId} and RSN ${rsn} is not a clan member. Skipping baseline update.`);
+                    }
+
+                    await interaction.editReply({
+                        content: `✅ **Success!** The RSN "\`${rsn}\`" (WOM ID: \`${womPlayerId}\`) assigned to user \`${targetUser.id}\` by admin ${interaction.user.id}`,
+                        flags: 64,
+                    });
+                    logger.info(`✅ RSN "\`${rsn}\`" (WOM ID: \`${womPlayerId}\`) assigned to user \`${targetUser.id}\` by admin ${interaction.user.id}`);
                     const userEmbed = new EmbedBuilder()
                         .setColor(0x00ff00)
                         .setTitle('✅ RSN Registered')

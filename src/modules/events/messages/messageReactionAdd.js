@@ -8,15 +8,13 @@ module.exports = {
     async execute(reaction, user) {
         if (!reaction.message.guild) return;
         try {
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['reacted_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['reacted_logs']);
             if (!logChannelData) return;
             const logChannel = await reaction.message.guild.channels.cache.get(logChannelData.channel_id);
             if (!logChannel) return;
             let emoji;
             if (reaction.emoji.id) {
-                emoji = reaction.emoji.animated
-                    ? `<a:${reaction.emoji.name}:${reaction.emoji.id}>`
-                    : `<:${reaction.emoji.name}:${reaction.emoji.id}>`;
+                emoji = reaction.emoji.animated ? `<a:${reaction.emoji.name}:${reaction.emoji.id}>` : `<:${reaction.emoji.name}:${reaction.emoji.id}>`;
             } else {
                 emoji = reaction.emoji.name;
             }

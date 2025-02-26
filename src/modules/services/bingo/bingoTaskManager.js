@@ -1,6 +1,7 @@
 // /modules/services/bingo/bingoTaskManager.js
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
+const { updatePlayerPoints } = require('../../utils/essentials/updatePlayerPoints');
 
 /**
  * Updates all tasks for both data-based and message-based tasks.
@@ -73,12 +74,8 @@ function getDataAttributes(type, parameter) {
 }
 
 /**
- * Process a single data-based task by calculating incremental progress and updating status.
- * This version calculates:
- *   incremental progress = currentValue - baselineValue
- * so that only progress made during the event counts.
  *
- * @param {Object} task - The task object containing task_id, type, parameter, value, and description.
+ * @param task
  */
 async function processDataTask(task) {
     const { task_id, type, parameter, value, description } = task;
@@ -96,65 +93,90 @@ async function processDataTask(task) {
     if (ongoingEvents.length === 0) return;
 
     for (const { event_id } of ongoingEvents) {
-        // Get team members for the event
+        // Process team members
         const teamMembers = await db.getAll(
             `
             SELECT btm.team_id, btm.player_id
             FROM bingo_team_members btm
             JOIN bingo_teams bt ON btm.team_id = bt.team_id
             WHERE bt.event_id = ?
-        `,
+            `,
             [event_id],
         );
-
         for (const member of teamMembers) {
-            const { player_id } = member;
+            await processPlayerTask(event_id, member.player_id, task_id, dataColumn, dataType, dataMetric, value);
+        }
 
-            // Get current absolute value from player_data
-            const currentRow = await db.getOne(
-                `
-                SELECT ${dataColumn} AS currentValue
-                FROM player_data
-                WHERE player_id = ?
-                  AND type = ?
-                  AND metric = ?
+        // Process individuals (players who are not in any team)
+        const individuals = await db.getAll(
+            `
+            SELECT rr.player_id
+            FROM registered_rsn rr
+            JOIN clan_members cm ON rr.player_id = cm.player_id
+            JOIN bingo_state bs ON bs.event_id = ?
+            WHERE rr.player_id NOT IN (
+                SELECT player_id FROM bingo_team_members
+            )
             `,
-                [player_id, dataType, dataMetric],
-            );
-            const currentValue = currentRow?.currentValue || 0;
-
-            // Get baseline value from bingo_event_baseline
-            const dataKey = `${dataType}_${dataMetric}_${dataColumn}`;
-            const baselineRow = await db.getOne(
-                `
-                SELECT data_value AS baselineValue
-                FROM bingo_event_baseline
-                WHERE event_id = ?
-                  AND player_id = ?
-                  AND data_key = ?
-            `,
-                [event_id, player_id, dataKey],
-            );
-            const baselineValue = baselineRow?.baselineValue || 0;
-
-            // Calculate incremental progress made during the event
-            const progressIncrement = Math.max(0, currentValue - baselineValue);
-
-            // Determine the task status based solely on incremental progress:
-            // - If progressIncrement is at least the target value, mark as completed.
-            // - If progressIncrement is positive but less than target, mark as in-progress.
-            // - Otherwise, it remains incomplete.
-            let status = 'incomplete';
-            if (progressIncrement >= value) {
-                status = 'completed';
-            } else if (progressIncrement > 0) {
-                status = 'in-progress';
-            }
-
-            // Upsert the progress using the incremental progress
-            await upsertTaskProgress(event_id, player_id, task_id, progressIncrement, status);
+            [event_id],
+        );
+        for (const indiv of individuals) {
+            await processPlayerTask(event_id, indiv.player_id, task_id, dataColumn, dataType, dataMetric, value);
         }
     }
+}
+
+/**
+ *
+ * @param event_id
+ * @param player_id
+ * @param task_id
+ * @param dataColumn
+ * @param dataType
+ * @param dataMetric
+ * @param targetValue
+ */
+async function processPlayerTask(event_id, player_id, task_id, dataColumn, dataType, dataMetric, targetValue) {
+    // Get current value from player_data
+    const currentRow = await db.getOne(
+        `
+        SELECT ${dataColumn} AS currentValue
+        FROM player_data
+        WHERE player_id = ?
+          AND type = ?
+          AND metric = ?
+        `,
+        [player_id, dataType, dataMetric],
+    );
+    const currentValue = currentRow?.currentValue || 0;
+
+    // Get baseline value from bingo_event_baseline
+    const dataKey = `${dataType}_${dataMetric}_${dataColumn}`;
+    const baselineRow = await db.getOne(
+        `
+        SELECT data_value AS baselineValue
+        FROM bingo_event_baseline
+        WHERE event_id = ?
+          AND player_id = ?
+          AND data_key = ?
+        `,
+        [event_id, player_id, dataKey],
+    );
+    const baselineValue = baselineRow?.baselineValue || 0;
+
+    // Calculate incremental progress made during the event
+    const progressIncrement = Math.max(0, currentValue - baselineValue);
+
+    // Determine status
+    let status = 'incomplete';
+    if (progressIncrement >= targetValue) {
+        status = 'completed';
+    } else if (progressIncrement > 0) {
+        status = 'in-progress';
+    }
+
+    // Upsert the progress
+    await upsertTaskProgress(event_id, player_id, task_id, progressIncrement, status);
 }
 
 /**
@@ -355,9 +377,12 @@ async function consolidateTeamTaskProgress(eventId) {
 }
 
 /**
- * Helper to upsert a row in bingo_task_progress.
- * - Handles progress for individual players and updates team_id if applicable.
- * - Only inserts if the task is on the board for the event.
+ * 🎯 Enhanced Task Progress Upsert Function
+ * - Calculates points proportionally and rounds up for fairness.
+ * - Distributes the exact base points without over or under.
+ * - Adjusts the last contributor to balance the total.
+ * - Supports both individual and team contributions.
+ *
  * @param {number} event_id - The ID of the bingo event
  * @param {number} player_id - The ID of the player
  * @param {number} task_id - The ID of the task
@@ -366,51 +391,149 @@ async function consolidateTeamTaskProgress(eventId) {
  */
 async function upsertTaskProgress(event_id, player_id, task_id, progressVal, status) {
     try {
+        // ✅ Check if the task is already marked as completed
+        const isCompleted = await db.getOne(
+            `
+            SELECT status
+            FROM bingo_task_progress
+            WHERE event_id = ?
+              AND player_id = ?
+              AND task_id = ?
+            `,
+            [event_id, player_id, task_id],
+        );
+
+        // ✅ Skip upsert if task is already completed
+        if (isCompleted?.status === 'completed') {
+            logger.info(`[BingoTaskManager] Task #${task_id} is already completed for Player #${player_id}. Skipping upsert.`);
+            return;
+        }
+
         // Retrieve the player's team ID internally
         const team_id = await getPlayerTeamId(player_id);
 
         // Check if the task progress already exists
         const existing = await db.getOne(
             `
-            SELECT progress_id, progress_value, status
+            SELECT progress_id, progress_value, status, points_awarded
             FROM bingo_task_progress
             WHERE event_id = ?
               AND player_id = ?
               AND task_id = ?
-        `,
+            `,
             [event_id, player_id, task_id],
         );
 
-        if (!existing) {
-            // Check if task is on the board before inserting
-            const isOnBoard = await isTaskOnBoard(event_id, task_id);
-            if (!isOnBoard) {
-                logger.warn(`[BingoTaskManager] Task #${task_id} is not on the board for Event #${event_id}. Skipping insert.`);
-                return;
+        // ✅ Only upsert progress for incomplete or in-progress tasks
+        if (status === 'incomplete' || status === 'in-progress') {
+            // Calculate Points Proportionally with Rounding Up
+            let points = 0;
+            let basePoints = 0;
+            let totalRequirement = 0;
+            let totalPointsDistributed = 0;
+            let lastPlayerIndex = -1;
+            const allPoints = [];
+
+            const task = await db.getOne(
+                `
+                SELECT base_points, value
+                FROM bingo_tasks 
+                WHERE task_id = ?
+                `,
+                [task_id],
+            );
+            basePoints = task?.base_points || 0;
+            totalRequirement = task?.value || 1;
+
+            // Get all contributors for this task
+            const contributors = await db.getAll(
+                `
+                SELECT player_id, progress_value
+                FROM bingo_task_progress
+                WHERE event_id = ?
+                  AND task_id = ?
+                  AND (status = 'in-progress' OR status = 'incomplete')
+                `,
+                [event_id, task_id],
+            );
+
+            // Include current player in contributors
+            contributors.push({ player_id, progress_value: progressVal });
+
+            // Calculate points for each contributor with rounding up
+            for (const contributor of contributors) {
+                const contributionPercentage = (contributor.progress_value / totalRequirement) * 100;
+                const calculatedPoints = Math.ceil((contributionPercentage / 100) * basePoints);
+
+                // Store calculated points and total
+                allPoints.push({ playerId: contributor.player_id, points: calculatedPoints });
+                totalPointsDistributed += calculatedPoints;
+                lastPlayerIndex++;
             }
-            // Insert new record if not present
-            await db.runQuery(
-                `
-                INSERT INTO bingo_task_progress (event_id, player_id, task_id, progress_value, status, team_id)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `,
-                [event_id, player_id, task_id, progressVal, status, team_id],
-            );
-            logger.info(`[BingoTaskManager] New progress record added for Player #${player_id}, Task #${task_id} - Progress: ${progressVal} (${status}), Team ID: ${team_id}`);
-        } else {
-            // Update the existing record
-            await db.runQuery(
-                `
-                UPDATE bingo_task_progress
-                SET progress_value = ?,
-                    status = ?,
-                    team_id = ?,
-                    last_updated = CURRENT_TIMESTAMP
-                WHERE progress_id = ?
-            `,
-                [progressVal, status, team_id, existing.progress_id],
-            );
-            logger.info(`[BingoTaskManager] Updated progress for Player #${player_id}, Task #${task_id} - New Progress: ${progressVal} (${status}), Team ID: ${team_id}`);
+
+            // Adjust the last contributor's points to balance the total
+            const pointDifference = totalPointsDistributed - basePoints;
+            if (pointDifference !== 0) {
+                allPoints[lastPlayerIndex].points -= pointDifference;
+            }
+
+            // Get points for current player
+            points = allPoints.find((p) => p.playerId === player_id)?.points || 0;
+
+            await updatePlayerPoints(player_id, 'Bingo', points);
+
+            // If player is in a team, also add points to the team's total
+            if (team_id) {
+                await db.runQuery(
+                    `
+                    UPDATE bingo_task_progress
+                    SET progress_value = ?,
+                        status = ?,
+                        points_awarded = ?,
+                        team_id = ?,
+                        last_updated = CURRENT_TIMESTAMP
+                    WHERE event_id = ?
+                      AND team_id = ?
+                      AND task_id = ?
+                      AND player_id = ?
+                    `,
+                    [progressVal, status, points, team_id, event_id, team_id, task_id, player_id],
+                );
+                logger.info(`[BingoTaskManager] Awarded ${points} points to Player #${player_id} in Team #${team_id} for Task #${task_id}`);
+            }
+
+            if (!existing) {
+                // Check if task is on the board before inserting
+                const isOnBoard = await isTaskOnBoard(event_id, task_id);
+                if (!isOnBoard) {
+                    logger.warn(`[BingoTaskManager] Task #${task_id} is not on the board for Event #${event_id}. Skipping insert.`);
+                    return;
+                }
+                // Insert new record if not present
+                await db.runQuery(
+                    `
+                    INSERT INTO bingo_task_progress (event_id, player_id, task_id, progress_value, status, team_id, points_awarded)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    `,
+                    [event_id, player_id, task_id, progressVal, status, team_id, points],
+                );
+                logger.info(`[BingoTaskManager] New progress record added for Player #${player_id}, Task #${task_id} - Progress: ${progressVal} (${status}), Team ID: ${team_id}, Points: ${points}`);
+            } else {
+                // Update the existing record
+                await db.runQuery(
+                    `
+                    UPDATE bingo_task_progress
+                    SET progress_value = ?,
+                        status = ?,
+                        points_awarded = ?,
+                        team_id = ?,
+                        last_updated = CURRENT_TIMESTAMP
+                    WHERE progress_id = ?
+                    `,
+                    [progressVal, status, points, team_id, existing.progress_id],
+                );
+                logger.info(`[BingoTaskManager] Updated progress for Player #${player_id}, Task #${task_id} - New Progress: ${progressVal} (${status}), Team ID: ${team_id}, Points: ${points}`);
+            }
         }
     } catch (error) {
         logger.error(`[BingoTaskManager] Error upserting progress for Player #${player_id}, Task #${task_id}: ${error.message}`);
@@ -567,6 +690,96 @@ async function initializeTaskProgress(eventId) {
     logger.info(`[BingoTaskManager] Task progress initialized for event #${eventId}`);
 }
 
+// /modules/services/bingo/bingoTaskManager.js
+
+/**
+ * Updates event baseline for new members who joined after the event started.
+ * - Checks ongoing events and adds baselines for newly registered players.
+ */
+async function updateEventBaseline() {
+    logger.info('[BingoTaskManager] updateEventBaseline() → Start');
+
+    // Get all ongoing events
+    const ongoingEvents = await db.getAll(`
+        SELECT event_id
+        FROM bingo_state
+        WHERE state = 'ongoing'
+    `);
+
+    for (const { event_id } of ongoingEvents) {
+        // Get all players who registered after the event started and don't have a baseline
+        const newPlayers = await db.getAll(
+            `
+            SELECT rr.player_id, rr.rsn
+            FROM registered_rsn rr
+            JOIN clan_members cm ON rr.player_id = cm.player_id
+            LEFT JOIN bingo_event_baseline beb
+                ON beb.player_id = rr.player_id AND beb.event_id = ?
+            WHERE beb.event_id IS NULL
+        `,
+            [event_id],
+        );
+
+        if (newPlayers.length === 0) {
+            logger.info(`[BingoTaskManager] No new players found for event #${event_id}`);
+            continue;
+        }
+
+        for (const player of newPlayers) {
+            logger.info(`[BingoTaskManager] Recording baseline for new player: ${player.rsn} (player_id=${player.player_id})`);
+
+            // Get dynamic tasks linked to this board (excluding 'Drop')
+            const tasks = await db.getAll(
+                `
+                SELECT bbc.task_id, bt.type, bt.parameter
+                FROM bingo_board_cells bbc
+                JOIN bingo_tasks bt ON bbc.task_id = bt.task_id
+                JOIN bingo_state bs ON bs.board_id = bbc.board_id
+                WHERE bs.event_id = ?
+                  AND bt.is_dynamic = 1
+                  AND bt.type IN ('Kill', 'Exp', 'Level', 'Score')
+            `,
+                [event_id],
+            );
+
+            for (const task of tasks) {
+                const { type, parameter } = task;
+                const dataColumn = getDataColumn(type);
+                const { dataType, dataMetric } = getDataAttributes(type, parameter);
+
+                // Fetch current value from player_data
+                const dataRow = await db.getOne(
+                    `
+                    SELECT ${dataColumn} AS baselineValue
+                    FROM player_data
+                    WHERE player_id = ?
+                      AND type = ?
+                      AND metric = ?
+                    `,
+                    [player.player_id, dataType, dataMetric],
+                );
+
+                const baselineValue = dataRow?.baselineValue || 0;
+                const dataKey = `${dataType}_${dataMetric}_${dataColumn}`;
+
+                // Insert baseline into bingo_event_baseline
+                await db.runQuery(
+                    `
+                    INSERT OR REPLACE INTO bingo_event_baseline
+                    (event_id, player_id, rsn, data_key, data_value, baseline_type)
+                    VALUES (?, ?, ?, ?, ?, 'late_join')
+                    `,
+                    [event_id, player.player_id, player.rsn, dataKey, baselineValue],
+                );
+
+                logger.info(`[BingoTaskManager] Baseline recorded for new player ${player.rsn} (player_id=${player.player_id}) - ${dataKey}: ${baselineValue}`);
+            }
+        }
+    }
+
+    logger.info('[BingoTaskManager] updateEventBaseline() → Completed');
+}
+
 module.exports = {
     updateAllTasks,
     updateDataBasedTasks,
@@ -574,4 +787,8 @@ module.exports = {
     recordEventBaseline,
     initializeTaskProgress,
     consolidateTeamTaskProgress,
+    getDataColumn,
+    getDataAttributes,
+    upsertTaskProgress,
+    updateEventBaseline,
 };

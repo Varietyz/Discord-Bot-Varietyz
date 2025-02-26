@@ -24,7 +24,7 @@ module.exports = {
                     return;
                 }
             }
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['message_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['message_logs']);
             if (!logChannelData) return;
             const logChannel = await newMessage.guild.channels.cache.get(logChannelData.channel_id);
             if (!logChannel) return;

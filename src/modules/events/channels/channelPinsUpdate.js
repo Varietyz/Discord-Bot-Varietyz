@@ -10,7 +10,7 @@ module.exports = {
         if (!channel.guild) return;
         try {
             logger.info(`📌 [ChannelPinsUpdate] Pins updated in channel "${channel.name}" (ID: ${channel.id})`);
-            const logChannelData = await getOne('SELECT channel_id FROM log_channels WHERE log_key = ?', ['channel_logs']);
+            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['channel_logs']);
             if (!logChannelData) return;
             const logChannel = await channel.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
             if (!logChannel) return;
@@ -24,9 +24,7 @@ module.exports = {
                     type: AuditLogEvent.MessagePin,
                     limit: 5,
                 });
-                pinLog = fetchedLogs.entries.find(
-                    (entry) => entry.extra.channel.id === channel.id && Date.now() - entry.createdTimestamp < 15000,
-                );
+                pinLog = fetchedLogs.entries.find((entry) => entry.extra.channel.id === channel.id && Date.now() - entry.createdTimestamp < 15000);
                 if (pinLog) {
                     changedBy = `<@${pinLog.executor.id}>`;
                     logger.info(`📌 Pin action detected by: ${changedBy}`);
