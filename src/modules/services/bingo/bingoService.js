@@ -2,104 +2,72 @@
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const bingoTaskManager = require('./bingoTaskManager');
-const bingoPatternRecognition = require('./bingoPatternRecognition');
-const bingoLeaderboard = require('./bingoLeaderboard');
-const bingoNotifications = require('./bingoNotifications');
+const bingoEmbedHelper = require('./bingoEmbedHelper');
 const bingoStateManager = require('./bingoStateManager');
-const { startBingoEvent, rotateBingoTasks } = require('./bingoUtils');
-const { purgeStaleEmbeds } = require('./bingoEmbedManager');
+const { appendBingoProgression } = require('../../utils/helpers/commands/bingo/teams/teamCommandHelpers');
+const { endEvent } = require('./bingoEventUtils');
 
 /**
- * This is called every 30 mins (or on slash command).
+ *
  * @param client
  */
 async function updateBingoProgress(client) {
+    logger.info('[BingoService] updateBingoProgress() → Starting...');
     try {
-        logger.info('[BingoService] updateBingoProgress() → Starting...');
-
         await bingoTaskManager.updateAllTasks();
-        const ongoingEvents = await db.getAll(`
-            SELECT event_id
-            FROM bingo_state
-            WHERE state = 'ongoing'
-        `);
-        for (const { event_id } of ongoingEvents) {
-            await bingoTaskManager.consolidateTeamTaskProgress(event_id);
-        }
-        await purgeStaleEmbeds(client);
-        await bingoPatternRecognition.checkPatterns();
-        await bingoLeaderboard.updateLeaderboard(client);
-        await bingoNotifications.sendProgressUpdates(client);
-
-        logger.info('[BingoService] updateBingoProgress() → Complete.');
     } catch (err) {
-        logger.error(`[BingoService] updateBingoProgress() error: ${err.message}`);
+        logger.error(`[BingoService] updateAllTasks() error: ${err.message}`);
     }
+
+    await appendBingoProgression(client);
+
+    logger.info('[BingoService] updateBingoProgress() → Complete.');
 }
 
 /**
- * Called automatically from autoTransitionEvents when time is up or card fully completed.
+ *
  * @param eventId
  */
 async function endBingoEvent(eventId) {
     try {
         logger.info(`[BingoService] endBingoEvent(#${eventId})...`);
 
-        // Step 1: Archive tasks
+        // Archive event data into bingo_history.
         await db.runQuery(
             `
             INSERT INTO bingo_history (event_id, board_id, player_id, team_id, task_id, status, points_awarded, completed_at)
             SELECT btp.event_id,
-                (SELECT board_id FROM bingo_state WHERE event_id = btp.event_id),
-                btp.player_id,
-                COALESCE(btp.team_id, 0),
-                btp.task_id,
-                btp.status,
-                btp.extra_points,
-                DATETIME('now')
+                   (SELECT board_id FROM bingo_state WHERE event_id = btp.event_id),
+                   btp.player_id,
+                   COALESCE(btp.team_id, 0),
+                   btp.task_id,
+                   btp.status,
+                   DATETIME('now')
             FROM bingo_task_progress btp
-            WHERE btp.event_id=?
+            WHERE btp.event_id = ?
             `,
             [eventId],
         );
 
-        // Step 2: Clear tasks from progress
+        // Clear the progress for the event.
         await db.runQuery(
             `
             DELETE FROM bingo_task_progress
-            WHERE event_id=?
+            WHERE event_id = ?
             `,
             [eventId],
         );
 
-        // Step 4: Announce final results
-        await bingoNotifications.sendFinalResults(eventId);
+        // Send out final results.
+        await bingoEmbedHelper.sendFinalResults(eventId);
         logger.info(`[BingoService] Bingo event #${eventId} ended & archived.`);
 
-        // ✅ Step 5: Now set the state to completed
+        // Mark the event as completed.
         await bingoStateManager.setEventState(eventId, 'completed');
         logger.info(`[BingoService] Event #${eventId} marked as completed.`);
 
-        // Step 6: Check for no ongoing event and auto-start the next event
-        const ongoingCheck = await db.getOne(`
-            SELECT event_id
-            FROM bingo_state
-            WHERE state = 'ongoing'
-            LIMIT 1
-        `);
-
-        if (!ongoingCheck) {
-            // Only create a new event if no ongoing event exists
-            const { newEventId, newBoardId } = await rotateBingoTasks();
-            if (newEventId && newBoardId) {
-                // Auto-start the new event immediately
-                const newStart = new Date().toISOString();
-                await startBingoEvent(newEventId, newStart);
-                logger.info(`[BingoService] Automatically started new event #${newEventId}`);
-            }
-        } else {
-            logger.info('[BingoService] Ongoing event already present. No new event will be created.');
-        }
+        await endEvent();
+        // (Removed redundant new event scheduling from here.)
     } catch (err) {
         logger.error(`[BingoService] endBingoEvent() error: ${err.message}`);
     }

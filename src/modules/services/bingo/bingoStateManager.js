@@ -3,6 +3,7 @@ const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 
 /**
+ *
  * @param eventId
  * @param newState
  */
@@ -25,8 +26,7 @@ async function setEventState(eventId, newState) {
 }
 
 /**
- * If startTime > now, set state='upcoming'. If startTime <= now, set state='ongoing'.
- * E.g. used in startBingoEvent
+ *
  * @param eventId
  * @param startTime
  */
@@ -55,7 +55,7 @@ async function scheduleEventStart(eventId, startTime) {
 }
 
 /**
- * If endTime is set, we can have a cron job checking if end_time < now => set state='completed'.
+ *
  * @param eventId
  * @param endTime
  */

@@ -4,16 +4,13 @@ const db = require('../../utils/essentials/dbUtils');
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const path = require('path');
 
-// Register the custom font
 const fontPath = path.join(__dirname, '../../../assets/runescape_bold.ttf');
 registerFont(fontPath, { family: 'RuneScape' });
 
-// Dimensions from your Python code
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1248;
 const CROSS_SIZE = 359;
 
-// For each of the 15 tasks, a static coordinate on the 1920×1248 card
 const TASK_COORDINATES = {
     1: { x: 19, y: 92 },
     2: { x: 400, y: 92 },
@@ -32,45 +29,9 @@ const TASK_COORDINATES = {
     15: { x: 1542, y: 854 },
 };
 
-/**
- * Normalizes the parameter for item image URL construction.
- * - Capitalizes only the first letter of the entire item name
- * - Converts all other letters to lowercase
- *
- * @param {string} param - The item parameter to normalize.
- * @returns {string} - Normalized parameter for image URL.
- */
-function normalizeItemParam(param) {
-    if (!param) return '';
-
-    // Lowercase everything first
-    param = param.toLowerCase();
-
-    // Capitalize only the first letter of the whole string
-    return param.charAt(0).toUpperCase() + param.slice(1);
-}
-
-/**
- * Splits the task name into action and target.
- * - If a colon is present, the text before it is the action, and after it is the target.
- * - Otherwise, it keeps "XP in" together.
- * - If no special patterns, the first two words are the action, and the rest is the target.
- *
- * @param {string} name - The original task name.
- * @returns {Object} - An object containing action and target strings.
- */
 function splitTaskName(name) {
     if (!name) return { action: '', target: '' };
 
-    // Check if there's a colon (e.g., Drop tasks like "Receive a drop: Avernic Defender")
-    if (name.includes(':')) {
-        const [actionPart, targetPart] = name.split(/:(.+)/); // Split only at the first colon
-        const action = actionPart.trim() + ':';
-        const target = targetPart.trim();
-        return { action, target };
-    }
-
-    // Handle "XP in" pattern to keep them together
     const xpInMatch = name.match(/(.+?) XP in (.+)/i);
     if (xpInMatch) {
         const action = xpInMatch[1] + ' XP';
@@ -78,7 +39,6 @@ function splitTaskName(name) {
         return { action, target };
     }
 
-    // Default behavior for other tasks
     const words = name.split(' ');
     const action = words.slice(0, 2).join(' ');
     const target = words.slice(2).join(' ');
@@ -86,14 +46,6 @@ function splitTaskName(name) {
     return { action, target };
 }
 
-/**
- * Formats the target by:
- * - Replacing underscores with spaces
- * - Capitalizing the first letter of each word
- *
- * @param {string} target - The target part of the task name.
- * @returns {string} - Formatted target string.
- */
 function formatTarget(target) {
     if (!target) return '';
     return target
@@ -102,15 +54,7 @@ function formatTarget(target) {
         .join(' ');
 }
 
-/**
- * Helper function to wrap text into multiple lines.
- * Dynamically adjusts the number of lines based on the box width.
- *
- * @param {CanvasRenderingContext2D} ctx - Canvas context
- * @param {string} text - Text to wrap
- * @param {number} maxWidth - Maximum width for each line
- * @returns {string[]} - Array of wrapped text lines
- */
+
 function getWrappedText(ctx, text, maxWidth) {
     const words = text.split(' ');
     const lines = [];
@@ -132,33 +76,24 @@ function getWrappedText(ctx, text, maxWidth) {
     return lines;
 }
 
-/**
- *
- * @param boardId
- * @param playerId
- * @param isTeam
- */
+
 async function generateBingoCard(boardId, playerId, isTeam = false) {
     logger.info(`[BingoImageGenerator] Generating card for board=${boardId}, player=${playerId}`);
 
     try {
-        // 1) Create a blank canvas (1920×1248) to match your Python layout
         const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
         const ctx = canvas.getContext('2d');
 
-        // 1) Load background image from DB
         const backgroundPath = await getImagePath('template_card');
         let backgroundImg = null;
         if (backgroundPath) {
             backgroundImg = await loadImage(backgroundPath);
             ctx.drawImage(backgroundImg, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         } else {
-            // fallback: fillRect
             ctx.fillStyle = '#2c2f33';
             ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         }
 
-        // 2) Load your "completed" cross image from DB
         const completedCrossPath = await getImagePath('validated_cross');
         let completedCrossImg = null;
         if (completedCrossPath) {
@@ -168,12 +103,10 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
         const playerIdsArray = Array.isArray(playerId) ? playerId : [playerId];
         const tasks = await getPlayerTasks(boardId, playerIdsArray, isTeam);
 
-        // 4) For each cell #1..#15, draw an outline box, the task text/icon, and overlay cross if completed
         for (let cellNum = 1; cellNum <= 15; cellNum++) {
             const coords = TASK_COORDINATES[cellNum];
             if (!coords) continue;
 
-            // Attempt to find a matching record from tasks[] by its "cell_num"
             const t = tasks.find((row) => parseInt(row.cell_num) === cellNum);
             if (!t) {
                 logger.warn(`[BingoImageGenerator] No task found for cellNum=${cellNum}. Drawing empty box.`);
@@ -181,15 +114,11 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
                 continue;
             }
 
-            // For clarity
             const { status, imagePath, task_name } = t;
 
-            // (A) Draw the empty box outline first
             drawEmptyBox(ctx, coords.x, coords.y, CROSS_SIZE);
 
-            // (C) Draw the Task Image (Center)
             let iconImg;
-            let urlImg;
 
             if (imagePath) {
                 try {
@@ -199,173 +128,120 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
                 }
             }
 
-            // ✅ Load URL Image if available
-            if (t.urlImagePath) {
-                try {
-                    urlImg = await loadImage(t.urlImagePath);
-                    logger.info(`[BingoImageGenerator] Loaded item image from OSRS Wiki: ${t.urlImagePath}`);
-                } catch (imgErr) {
-                    logger.warn(`[BingoImageGenerator] Could not load item image from OSRS Wiki for ${t.parameter}: ${imgErr.message}`);
-                }
-            }
-
-            // Determine if the task is of type Exp/Level
             const isType = t.type === 'Exp' || t.type === 'Level';
 
             if (iconImg) {
-                // ✅ Resize local images
                 const originalWidth = iconImg.width;
                 const originalHeight = iconImg.height;
 
-                // 🔄 Shrink the image more by reducing the scale factor
                 const scaleModifier = isType ? 0.4 : 0.6;
                 const scaleFactor = Math.min(CROSS_SIZE / originalWidth, CROSS_SIZE / originalHeight) * scaleModifier;
 
-                // Calculate new dimensions for the image
                 const newWidth = originalWidth * scaleFactor;
                 const newHeight = originalHeight * scaleFactor;
 
                 const centralOffset = isType ? 45 : 55;
-                // Center the image within the box
                 const xOffset = (CROSS_SIZE - newWidth) / 2;
                 const yOffset = (CROSS_SIZE - newHeight) / 2 + centralOffset;
 
                 ctx.drawImage(iconImg, coords.x + xOffset, coords.y + yOffset, newWidth, newHeight);
-            } else if (urlImg) {
-                // ✅ Draw URL images at original size without resizing
-                const originalWidth = urlImg.width;
-                const originalHeight = urlImg.height;
-
-                // 🔄 Shrink the image more by reducing the scale factor
-                const scaleFactor = Math.min(CROSS_SIZE / originalWidth, CROSS_SIZE / originalHeight) * 0.4;
-
-                // Calculate new dimensions for the image
-                const newWidth = originalWidth * scaleFactor;
-                const newHeight = originalHeight * scaleFactor;
-
-                // Center the image within the box
-                const xOffset = (CROSS_SIZE - newWidth) / 2;
-                const yOffset = (CROSS_SIZE - newHeight) / 2 + 55;
-
-                // ✅ Draw the image at its natural size
-                ctx.drawImage(urlImg, coords.x + xOffset, coords.y + yOffset, newWidth, newHeight);
             } else {
-                // Draw placeholder if no image was successfully loaded
                 ctx.fillStyle = '#ff0000';
                 ctx.font = '25px RuneScape';
                 ctx.textAlign = 'center';
                 ctx.fillText('No Image', coords.x + CROSS_SIZE / 2, coords.y + CROSS_SIZE / 2);
             }
 
-            // 🔄 Offset to move the text block downward
             const textOffset = 15;
 
-            // (B) Draw the Task Name (Split & Wrapped Text)
             const { action, target } = splitTaskName(task_name);
 
-            // Draw Action Line (Top) with 1px Black Outline
-            ctx.fillStyle = '#000000'; // Black outline
+            ctx.fillStyle = '#000000';
             ctx.font = '36px RuneScape';
             ctx.textAlign = 'center';
 
-            // 🔄 Draw outline by drawing text multiple times with slight offsets
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset - 1); // Top-Left
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset - 1); // Top-Right
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset + 1); // Bottom-Left
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset + 1); // Bottom-Right
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset - 1); 
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset - 1); 
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset + 1); 
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset + 1); 
 
-            // 🔄 Now draw the main text in the desired color on top
             ctx.fillStyle = '#dc8a00'; // Orange
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset); // Main Text
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset); 
 
-            // 🔄 Increase Vertical Space between Action and Target
-            const actionToTargetSpacing = 17; // Adjust as needed
-            const targetStartY = coords.y + 70 + actionToTargetSpacing + textOffset; // ⬇️ Add offset here
+            const actionToTargetSpacing = 17; 
+            const targetStartY = coords.y + 70 + actionToTargetSpacing + textOffset; 
 
-            // Draw Target Lines (Wrapped)
             const formattedTarget = formatTarget(target);
             const wrappedTargetLines = getWrappedText(ctx, formattedTarget, CROSS_SIZE - 20);
 
-            // Apply slightly more vertical space between lines
             const lineHeight = 28;
             wrappedTargetLines.forEach((line, index) => {
                 ctx.fillText(line, coords.x + CROSS_SIZE / 2, targetStartY + index * lineHeight);
             });
 
-            // If status === 'completed', overlay the cross
             if (status === 'completed' && completedCrossImg) {
                 ctx.drawImage(completedCrossImg, coords.x, coords.y, CROSS_SIZE, CROSS_SIZE);
             }
 
-            const pointsText = `${t.points_reward} pts`; // FIXED HERE
+            const pointsText = `${t.points_reward} pts`; 
             ctx.font = '32px RuneScape';
             ctx.textAlign = 'left';
             ctx.fillStyle = '#000000';
-            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 - 1); // Top-Left
-            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 - 1); // Top-Right
-            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 + 1); // Bottom-Left
-            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 + 1); // Bottom-Right
+            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 - 1); 
+            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 - 1); 
+            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 + 1); 
+            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 + 1); 
 
             ctx.fillStyle = '#00ff00';
             ctx.fillText(pointsText, coords.x + 10, coords.y + CROSS_SIZE - 10);
 
-            // (F) Draw the Progress Percentage (Bottom Right with Color Grading)
             const progressText = `${t.progress}%`;
             ctx.font = '28px RuneScape';
             ctx.textAlign = 'right';
 
-            // 🔄 Calculate color from Red (0%) to Green (100%)
             const hue = Math.floor((t.progress / 100) * 120);
             const progressColor = `hsl(${hue}, 100%, 50%)`;
 
-            // Draw outline (Black) for better visibility
             ctx.fillStyle = '#000000';
             ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 - 1); // Top-Left
             ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 - 1); // Top-Right
             ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 + 1); // Bottom-Left
             ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 + 1); // Bottom-Right
 
-            // Draw the main text with color grading
             ctx.fillStyle = progressColor;
             ctx.fillText(progressText, coords.x + CROSS_SIZE - 10, coords.y + CROSS_SIZE - 10);
         }
 
         const eventId = await getEventId(boardId);
         if (eventId) {
-            // Ensure overall is treated as a number
+
             const overallStr = await calculateOverallProgress(eventId, playerId, isTeam);
             const overall = Number(overallStr);
 
             const coordsX = 16;
             const coordsY = 58;
 
-            // Calculate color from Red (0%) to Green (100%)
             const hue = Math.floor((overall / 100) * 120);
             const progressColor = `hsl(${hue}, 100%, 50%)`;
 
             ctx.font = '32px RuneScape';
             ctx.textAlign = 'left';
 
-            // Draw "Overall:" with a static orange color
             ctx.fillStyle = '#dc8a00';
             ctx.fillText('Overall:', coordsX, coordsY);
 
-            // Calculate the width of "Overall:" to correctly align the percentage
             const overallWidth = ctx.measureText('Overall:').width + 4;
 
-            // Draw black outline for percentage for better visibility
             ctx.fillStyle = '#000000';
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY - 1);
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY - 1);
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY + 1);
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY + 1);
 
-            // Now draw the percentage using the computed progressColor
             ctx.fillStyle = progressColor;
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth, coordsY);
         }
 
-        // 5) Convert canvas to PNG buffer
         const finalBuffer = canvas.toBuffer('image/png');
         return finalBuffer;
     } catch (err) {
@@ -374,23 +250,13 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
     }
 }
 
-/**
- *
- * @param ctx
- * @param x
- * @param y
- * @param size
- */
+
 function drawEmptyBox(ctx, x, y, size) {
     ctx.strokeStyle = 'rgba(0, 0, 0, 0)';
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, size, size);
 }
 
-/**
- *
- * @param fileName
- */
 async function getImagePath(fileName) {
     const row = await db.image.getOne(
         `
@@ -403,19 +269,9 @@ async function getImagePath(fileName) {
     return row ? row.file_path : null;
 }
 
-/**
- * Retrieves tasks for the player's bingo card for an active board.
- * This version calculates `cell_num` from row and column and adjusts join logic.
- *
- * @param {number} boardId
- * @param {number|Array<number>} playerIds - For teams, pass the team id.
- * @param {boolean} isTeam - Whether to generate a team card.
- * @returns {Promise<Array>}
- */
 async function getPlayerTasks(boardId, playerIds, isTeam = false) {
     const playerIdsArray = Array.isArray(playerIds) ? playerIds : [playerIds];
 
-    // Use team_id (if team card) in the join; otherwise, use player_id.
     const idColumn = isTeam ? 'btp.team_id' : 'btp.player_id';
     const placeholders = playerIdsArray.map(() => '?').join(',');
 
@@ -450,13 +306,12 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
 `;
 
     logger.info(`[BingoImageGenerator] Running SQL: ${sql}`);
-    const eventId = await getEventId(boardId); // Assuming you have a function to get eventId
+    const eventId = await getEventId(boardId);
     const params = [...playerIdsArray, eventId, boardId];
     const rows = await db.getAll(sql, params);
     logger.info(`[BingoImageGenerator] Using parameters: ${JSON.stringify(params)}`);
     logger.info(`[BingoImageGenerator] Collected tasks: ${JSON.stringify(rows, null, 2)}`);
 
-    // Retrieve image paths for Skill/Boss and Drop tasks
     for (const row of rows) {
         if (['Exp', 'Level'].includes(row.type)) {
             const imageSkillRow = await db.image.getOne(
@@ -471,7 +326,6 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
                 row.imagePath = imageSkillRow.file_path;
             }
         } else if (row.type === 'Kill') {
-            // For Score tasks, check the guild emoji table instead.
             const imageRow = await db.image.getOne(
                 `
             SELECT file_path
@@ -484,7 +338,6 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
                 row.imagePath = imageRow.file_path;
             }
         } else if (row.type === 'Score') {
-            // For Score tasks, check the guild emoji table instead.
             const imageRow = await db.image.getOne(
                 `
             SELECT file_path
@@ -497,16 +350,10 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
                 row.imagePath = imageRow.file_path;
             }
         }
-        if (row.type === 'Drop' && row.parameter) {
-            const normalizedParam = normalizeItemParam(row.parameter);
-            row.urlImagePath = `https://oldschool.runescape.wiki/images/${normalizedParam}_detail.png`;
-        }
     }
 
     let teamSize = null;
     if (isTeam) {
-        // Query the team size from the database using the team id.
-        // Here, playerIdsArray[0] is assumed to be the team id.
         const teamInfo = await db.getOne(
             `
             SELECT COUNT(*) AS count 
@@ -519,12 +366,10 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
         logger.info(`[BingoImageGenerator] Team size for team ${playerIdsArray[0]}: ${teamSize}`);
     }
 
-    // Compute progress percentage for each row.
     rows.forEach((row) => {
         row.progress = calculateProgressPercentage(row.progress_value, row.value, isTeam, teamSize);
     });
 
-    // Map rows to the desired output structure.
     return rows.map((r) => ({
         cell_num: parseInt(r.cell_num),
         task_id: r.task_id,
@@ -535,40 +380,20 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
         urlImagePath: r.urlImagePath || null,
         points_reward: r.points_reward || 0,
         status: r.status,
-        progress: r.progress, // Computed percentage
+        progress: r.progress,
     }));
 }
 
-/**
- * Calculates progress percentage with two decimal places.
- *
- * @param {number} progressValue - The aggregated progress (incremental) for the team.
- * @param {number} target - The target value as stored in the task.
- * @param {boolean} isTeam - Whether this calculation is for a team card.
- * @param {number} [teamSize] - (Optional) The number of players on the team.
- * @returns {string} - A string representing the progress percentage with two decimals.
- */
+
 function calculateProgressPercentage(progressValue, target) {
-    // For consolidated team progress, we want the target to be the same as the individual target.
-    const effectiveTarget = target; // do not multiply by teamSize for consolidated progress
+    const effectiveTarget = target;
     const percentage = Math.min((progressValue / effectiveTarget) * 100, 100);
     return percentage.toFixed(2);
 }
 
-/**
- * Calculates overall progress as an average of individual task percentages.
- * - Capped at 100% for each task.
- * - Overall percentage reflects the average completion across all tasks.
- *
- * @param {number} eventId - The current event ID.
- * @param {number} id - The player_id or team_id depending on `isTeam`.
- * @param {boolean} isTeam - Whether the calculation is for a team card.
- * @returns {Promise<string>} - A string representing the overall progress percentage with two decimals.
- */
 async function calculateOverallProgress(eventId, id, isTeam = false) {
     const idColumn = isTeam ? 'btp.team_id' : 'btp.player_id';
 
-    // Query all non-drop tasks for this event and player/team
     const tasks = await db.getAll(
         `
         SELECT bt.value AS target_value, 
@@ -587,27 +412,17 @@ async function calculateOverallProgress(eventId, id, isTeam = false) {
         [id, eventId, eventId],
     );
 
-    // No tasks found (e.g., all drop tasks) - Return 0%
     if (tasks.length === 0) return '0.00';
 
-    // Calculate progress percentages for each task
     const percentages = tasks.map(({ target_value, progress_value }) => {
-        // Calculate percentage for this task, capping at 100%
         const taskPercentage = Math.min((progress_value / target_value) * 100, 100);
         return taskPercentage;
     });
 
-    // Calculate the overall average
     const overall = percentages.reduce((sum, p) => sum + p, 0) / tasks.length;
-    return overall.toFixed(2); // Rounded to 2 decimals
+    return overall.toFixed(2);
 }
 
-/**
- * Retrieves the event ID for a given board ID.
- *
- * @param {number} boardId - The ID of the board.
- * @returns {Promise<number>} - The event ID.
- */
 async function getEventId(boardId) {
     const row = await db.getOne(
         `

@@ -1,12 +1,10 @@
 // /modules/services/bingo/dynamicTaskGenerator.js
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
-const fs = require('fs');
-const path = require('path');
+const capitalizeName = require('../../utils/helpers/capitalizeName');
 
 /**
- * Clears dynamic tasks from the bingo_tasks table.
- * Ensures that new dynamic tasks are generated for each new event.
+ *
  */
 async function clearDynamicTasks() {
     try {
@@ -30,44 +28,29 @@ async function clearDynamicTasks() {
 }
 
 /**
- * Main entry point for generating dynamic Bingo tasks.
+ *
  */
 async function generateDynamicTasks() {
     logger.info('🔄 [DynamicTaskGenerator] Generating dynamic Bingo tasks...');
 
-    // Check if dynamic tasks already exist.
     const existingCount = await db.getOne('SELECT COUNT(*) AS count FROM bingo_tasks WHERE is_dynamic = 1');
-    // If any dynamic tasks already exist, skip generation.
     if (existingCount && existingCount.count > 0) {
         logger.info('Dynamic tasks already exist. Skipping generation to avoid duplicates.');
         return;
     }
 
-    // 1. Generate Skill Tasks (Exp Only)
     await generateSkillTasks();
 
-    // 2. Generate Boss Tasks
     await generateBossTasks();
 
-    // 3. Generate Drop Tasks from item_drops.json
-    await generateDropTasks();
-
     await generateActivityTasks();
-
-    // 4. (Removed) Message-Based Tasks for Clue, Collection & Pet
-    //    They are not processed in baseline. Only drops are handled via messages.
-
     logger.info('🎲 [DynamicTaskGenerator] Successfully generated dynamic Bingo tasks!');
 }
 
-/**
- * Centralized Points Configuration
- */
 const POINTS_CONFIG = {
     Exp: { multiplier: 4 / 100000, fixed: null },
     Kill: { multiplier: 1.25, fixed: null },
     Score: { multiplier: 1.5, fixed: null },
-    Drop: { multiplier: null, fixed: 50 },
     Message: { multiplier: null, fixed: 25 },
     Default: { multiplier: null, fixed: 10 },
 };
@@ -94,18 +77,6 @@ function generateRandomValue(min, max, step) {
     const steps = Math.floor((max - min) / step) + 1;
     const randomStep = Math.floor(Math.random() * steps);
     return min + randomStep * step;
-}
-
-/**
- *
- * @param str
- */
-function capitalizeName(str) {
-    return str
-        .replace(/_/g, ' ')
-        .split(' ')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
 }
 
 /**
@@ -186,7 +157,7 @@ async function generateBossTasks() {
         }
 
         if (SLAYER_BOSSES.includes(boss.name)) {
-            basePoints *= 5;
+            basePoints *= 2;
         }
 
         if (LOOT_BOSSES.includes(boss.name)) {
@@ -202,7 +173,7 @@ async function generateBossTasks() {
         }
 
         if (SPECIAL_BOSSES.includes(boss.name)) {
-            basePoints *= 10;
+            basePoints *= 3;
         }
 
         if (RARE_BOSSES.includes(boss.name)) {
@@ -221,12 +192,8 @@ async function generateBossTasks() {
 }
 
 /**
- * Rounds the XP value according to its magnitude.
- * - For XP values below THRESHOLD (1,000,000), round down to the nearest ROUND_STEP_BELOW (5,000).
- * - For XP values equal to or above THRESHOLD, round down to the nearest ROUND_STEP_ABOVE (10,000).
  *
- * @param {number} xp - The raw XP value.
- * @returns {number} - The rounded XP value.
+ * @param xp
  */
 function roundXP(xp) {
     const THRESHOLD = 1000000;
@@ -237,14 +204,11 @@ function roundXP(xp) {
 }
 
 /**
- * Generates dynamic skill tasks with rounded XP values.
- * For each skill, this function generates a random XP value,
- * rounds it using the `roundXP` function, and creates a new task.
+ *
  */
 async function generateSkillTasks() {
     const SLOW_SKILLS = ['slayer', 'runecrafting', 'hunter', 'agility', 'farming'];
     const EXPENSIVE_SKILLS = ['prayer', 'construction', 'herblore'];
-    // Configurable constants for XP generation.
     let MIN_XP = 250000;
     let MAX_RANDOM_XP = 2500000;
 
@@ -265,9 +229,7 @@ async function generateSkillTasks() {
             MAX_RANDOM_XP = 1500000;
         }
         const formattedName = capitalizeName(skill.name);
-        // Generate a raw XP value.
         const rawXP = Math.floor((Math.random() * MAX_RANDOM_XP) / 2) * 2 + MIN_XP;
-        // Round the XP value using the new function.
         const value = roundXP(rawXP);
         const description = `Gain ${value.toLocaleString()} XP in ${formattedName}`;
 
@@ -336,7 +298,6 @@ async function generateActivityTasks() {
             value = generateRandomValue(1, 1, 1);
         }
 
-        // Only generate a task if the activity is defined in one of the arrays.
         if (value === undefined) {
             continue;
         }
@@ -389,33 +350,4 @@ async function generateActivityTasks() {
     }
 }
 
-/**
- *
- */
-async function generateDropTasks() {
-    const filePath = path.join(__dirname, '../../../data/bingo/item_drops.json');
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    const dropList = data.droptask_list[0];
-    const drops = dropList.sort(() => 0.5 - Math.random()).slice(0, 5);
-
-    for (const drop of drops) {
-        const description = `Receive a drop: ${drop.replace(/_/g, ' ')}`;
-        const existing = await db.getOne('SELECT COUNT(*) AS count FROM bingo_tasks WHERE description = ?', [description]);
-        if (existing.count > 0) {
-            logger.warn(`⚠️ [DynamicTaskGenerator] Duplicate task detected: ${description}`);
-            continue;
-        }
-        const basePoints = calculateBasePoints('Drop', 1);
-        await db.runQuery(
-            `
-                INSERT INTO bingo_tasks 
-                (category, type, description, parameter, value, is_dynamic, base_points)
-                VALUES ('Drop', 'Drop', ?, ?, 1, 1, ?)
-            `,
-            [description, drop, basePoints],
-        );
-    }
-}
-
-// Note: We are now not generating any additional message-based tasks for Clue, Collection, or Pet.
 module.exports = { generateDynamicTasks, clearDynamicTasks };

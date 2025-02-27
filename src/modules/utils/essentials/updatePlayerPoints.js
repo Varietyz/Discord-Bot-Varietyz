@@ -33,7 +33,7 @@ async function updatePlayerPoints(player_id, type, points) {
             [player_id, type, points],
         );
 
-        logger.info(`[PlayerPoints] Updated ${points} points for Player #${player_id} in ${type}`);
+        //logger.info(`[PlayerPoints] Updated ${points} points for Player #${player_id} in ${type}`);
     } catch (error) {
         logger.error(`[PlayerPoints] Error updating points for Player #${player_id} in ${type}: ${error.message}`);
     }

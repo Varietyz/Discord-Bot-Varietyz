@@ -42,8 +42,8 @@ function transformPlayerData(rawData) {
     const last_changed = new Date(rawData.lastChangedAt).toISOString();
     const player_id = rawData.latestSnapshot?.playerId;
     if (!player_id) {
-        logger.warn('No player_id found in latestSnapshot');
-        return rows;
+        logger.warn(`❌ No player_id found for ${rsn}. Skipping data transformation.`);
+        return [];
     }
     if (rawData.combatLevel !== undefined) {
         rows.push({

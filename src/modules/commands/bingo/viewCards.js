@@ -2,19 +2,16 @@ const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, 
 const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');
 const { generateBingoCard, getPlayerTasks } = require('../../services/bingo/bingoImageGenerator');
-
-// Import the WOM client and necessary helpers
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
-const { savePlayerDataToDb } = require('../../services/playerDataExtractor'); // adjust path if needed
+const { savePlayerDataToDb } = require('../../services/playerDataExtractor');
 const { getLastFetchedTime, setLastFetchedTime } = require('../../utils/fetchers/lastFetchedTime');
 const { getDataAttributes, getDataColumn, upsertTaskProgress } = require('../../services/bingo/bingoTaskManager');
-
 const getEmoji = require('../../utils/fetchers/getEmoji');
+
 /**
- * Updates progression for a specific player for the current event.
- * This helper is identical in logic to the global update but limited to one player.
- * @param {number} eventId
- * @param {number} playerId
+ *
+ * @param eventId
+ * @param playerId
  */
 async function updateProgressForPlayer(eventId, playerId) {
     const tasks = await db.getAll(
@@ -29,7 +26,6 @@ async function updateProgressForPlayer(eventId, playerId) {
     );
 
     for (const task of tasks) {
-        // Skip drop tasks, as they're handled elsewhere
         if (task.type === 'Drop') continue;
 
         const { task_id, type, parameter, value } = task;
@@ -73,10 +69,10 @@ async function updateProgressForPlayer(eventId, playerId) {
 }
 
 /**
- * Updates the data for a given RSN using the WOM API.
- * @param {string} rsn
- * @param {number} playerId
- * @param {number} eventId
+ *
+ * @param rsn
+ * @param playerId
+ * @param eventId
  */
 async function updatePlayerData(rsn, playerId, eventId) {
     try {
@@ -117,7 +113,6 @@ module.exports = {
             const emoji = await getEmoji('emoji_1_loading');
             await interaction.deferReply({ flags: 64 });
 
-            // Retrieve the current ongoing event and board.
             const ongoing = await db.getOne(`
                 SELECT board_id, event_id
                 FROM bingo_state
@@ -129,11 +124,9 @@ module.exports = {
             }
             const { board_id: boardId, event_id: eventId } = ongoing;
 
-            // Check if an RSN was provided.
             const providedRsn = interaction.options.getString('rsn');
             let userRows;
             if (providedRsn) {
-                // Lookup the RSN in both registered_rsn and clan_members.
                 const userRow = await db.getOne(
                     `
                     SELECT rr.player_id, rr.rsn, bt.team_id, bt.team_name
@@ -156,7 +149,6 @@ module.exports = {
                 }
                 userRows = [userRow];
             } else {
-                // Otherwise, use the RSN(s) associated with the interaction user.
                 userRows = await db.getAll(
                     `
                     SELECT rr.player_id, rr.rsn, bt.team_id, bt.team_name
@@ -179,7 +171,6 @@ module.exports = {
                 }
             }
 
-            // Determine if the user (or provided RSN) is in a team.
             const teamMember = userRows.find((row) => row.team_id);
             if (teamMember) {
                 logger.info(`[BingoCards] RSN ${teamMember.rsn} is in a team (${teamMember.team_name}). Updating team member data...`);
@@ -220,7 +211,6 @@ module.exports = {
     async autocomplete(interaction) {
         try {
             const focusedValue = interaction.options.getFocused();
-            // Fetch RSNs from both registered_rsn and clan_members
             const results = await db.getAll(
                 `
                 SELECT DISTINCT rr.rsn
@@ -241,17 +231,16 @@ module.exports = {
 };
 
 /**
- * Paginate Individual Cards for Multiple RSNs
- * @param {Interaction} interaction - Discord interaction object
- * @param {number} boardId - The current Bingo board ID
- * @param {Array} userRows - Array of player objects
+ *
+ * @param interaction
+ * @param boardId
+ * @param userRows
  */
 async function paginateIndividualCards(interaction, boardId, userRows) {
     let currentIndex = 0;
     const total = userRows.length;
 
     const showCard = async (index) => {
-        // Boundary check for index
         if (index < 0 || index >= total) {
             return interaction.editReply({ content: '❌ No more Bingo cards to display.', components: [] });
         }
@@ -280,7 +269,6 @@ async function paginateIndividualCards(interaction, boardId, userRows) {
                 .setDisabled(index === total - 1),
         );
 
-        // Use editReply consistently for updates
         await interaction.editReply({ content: '\u200b', embeds: [embed], files: [file], components: [row] });
     };
 
@@ -288,10 +276,8 @@ async function paginateIndividualCards(interaction, boardId, userRows) {
 
     const collector = interaction.channel.createMessageComponentCollector({ time: 60000 });
     collector.on('collect', async (i) => {
-        // Always acknowledge the interaction
         await i.deferUpdate();
 
-        // Determine button click and update index
         if (i.customId === 'prev' && currentIndex > 0) {
             currentIndex--;
         } else if (i.customId === 'next' && currentIndex < total - 1) {
@@ -300,22 +286,20 @@ async function paginateIndividualCards(interaction, boardId, userRows) {
         await showCard(currentIndex);
     });
 
-    // Clear buttons after collector ends
     collector.on('end', async () => {
         await interaction.editReply({ content: '\u200b', components: [] });
     });
 }
 
 /**
- * Generates a Consolidated Team Card
- * @param {Interaction} interaction - Discord interaction object
- * @param {number} boardId - The current Bingo board ID
- * @param {number} teamId - The team ID
- * @param {string} teamName - The team's name
+ *
+ * @param interaction
+ * @param boardId
+ * @param teamId
+ * @param teamName
  */
 async function generateTeamCard(interaction, boardId, teamId, teamName) {
     try {
-        // Fetch tasks for the entire team by aggregating progress
         const tasks = await getPlayerTasks(boardId, teamId, true);
         if (!tasks || tasks.length === 0) {
             return interaction.editReply({
@@ -323,7 +307,6 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
                 flags: 64,
             });
         }
-        // Generate the card as an image buffer
         const buffer = await generateBingoCard(boardId, teamId, true);
         if (!buffer) {
             return interaction.editReply({
@@ -333,7 +316,6 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
         }
         const file = new AttachmentBuilder(buffer, { name: 'bingo_card_team.png' });
 
-        // Query team members for a neat list.
         const teamMembers = await db.getAll(
             `
             SELECT rr.player_id, rr.rsn
@@ -344,7 +326,6 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
             [teamId],
         );
 
-        // Get each member's total progress for the event.
         const progressResults = await db.getAll(
             `
             SELECT player_id, SUM(progress_value) AS total_progress
@@ -365,7 +346,6 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
             teamTotalProgress += row.total_progress;
         }
 
-        // Build a bullet list of team members with their contribution percentages.
         const membersList =
             teamMembers.length > 0
                 ? teamMembers

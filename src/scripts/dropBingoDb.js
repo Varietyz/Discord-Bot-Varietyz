@@ -36,9 +36,9 @@ async function dropTables(db) {
         'bingo_history',
         'bingo_leaderboard',
         'bingo_patterns_awarded',
-        'bingo_teams',
-        'bingo_team_members',
-        'bingo_embed_messages',
+        //'bingo_teams',
+        //'bingo_team_members',
+        'bingo_embeds',
     ];
     try {
         for (const table of tables) {

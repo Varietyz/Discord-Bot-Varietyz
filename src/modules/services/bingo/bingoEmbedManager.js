@@ -2,16 +2,6 @@
 const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');
 
-/**
- * Create a new embed record in the database
- * @param {number} eventId - The event ID
- * @param {number|null} playerId - The player ID (or null for global/event-level embeds)
- * @param {number|null} teamId - The team ID (or null for player-only embeds)
- * @param {number|null} taskId - The task ID (optional, for task-specific embeds)
- * @param {string} messageId - The Discord message ID
- * @param {string} channelId - The Discord channel ID
- * @param {string} embedType - The type of embed (e.g., 'progress', 'final_results')
- */
 async function createEmbedRecord(eventId, playerId, teamId, taskId, messageId, channelId, embedType) {
     try {
         await db.runQuery(
@@ -27,19 +17,13 @@ async function createEmbedRecord(eventId, playerId, teamId, taskId, messageId, c
     }
 }
 
-/**
- * Get all active embeds by event and type
- * @param {number} eventId - The event ID
- * @param {string} embedType - The type of embed (e.g., 'progress')
- * @returns {Promise<Array>} - Array of embed records
- */
 async function getActiveEmbeds(eventId, embedType) {
     try {
         return await db.getAll(
             `
             SELECT *
             FROM bingo_embeds
-            WHERE event_id = ?
+            WHERE (event_id = ? OR event_id = -1)
               AND embed_type = ?
               AND status = 'active'
             `,
@@ -51,35 +35,36 @@ async function getActiveEmbeds(eventId, embedType) {
     }
 }
 
-/**
- * Edit an existing Discord embed and update the database record
- * @param {Client} client - The Discord client
- * @param {string} channelId - The channel ID
- * @param {string} messageId - The message ID to edit
- * @param {Object} newEmbed - The new embed object to set
- */
-async function editEmbed(client, channelId, messageId, newEmbed) {
+async function editEmbed(client, channelId, messageId, newEmbed, eventId, embedType) {
     try {
         const channel = client.channels.cache.get(channelId);
         if (!channel) {
-            logger.warn(`[EmbedManager] Channel #${channelId} not found.`);
+            logger.warn(`[EmbedManager] Channel #${channelId} not found. Deleting embed record.`);
+            await db.runQuery('DELETE FROM bingo_embeds WHERE channel_id = ?', [channelId]);
             return;
         }
+
         const message = await fetchMessage(channel, messageId);
         if (message) {
             await message.edit({ embeds: [newEmbed] });
             logger.info(`[EmbedManager] Edited message #${messageId}`);
+        } else {
+            logger.warn(`[EmbedManager] Message #${messageId} not found. Deleting embed record.`);
+            await db.runQuery('DELETE FROM bingo_embeds WHERE message_id = ?', [messageId]);
+
+            const newMessage = await channel.send({ embeds: [newEmbed] });
+
+            const eventToUse = eventId ?? -1;
+
+            await createEmbedRecord(eventToUse, null, null, null, newMessage.id, channel.id, embedType);
+
+            logger.info(`[EmbedManager] Created new ${embedType} embed for event #${eventToUse} after missing message.`);
         }
     } catch (err) {
         logger.error(`[EmbedManager] Failed to edit embed #${messageId}: ${err.message}`);
     }
 }
 
-/**
- * Update embed status (e.g., 'active', 'archived', 'deleted')
- * @param {number} embedId - The embed ID to update
- * @param {string} newStatus - The new status (e.g., 'deleted')
- */
 async function updateEmbedStatus(embedId, newStatus) {
     try {
         await db.runQuery(
@@ -96,12 +81,7 @@ async function updateEmbedStatus(embedId, newStatus) {
     }
 }
 
-/**
- * Bulk update embed status by event and type
- * @param {number} eventId - The event ID
- * @param {string} embedType - The type of embed (e.g., 'progress')
- * @param {string} newStatus - The new status (e.g., 'archived')
- */
+
 async function bulkUpdateEmbedStatus(eventId, embedType, newStatus) {
     try {
         await db.runQuery(
@@ -120,13 +100,7 @@ async function bulkUpdateEmbedStatus(eventId, embedType, newStatus) {
     }
 }
 
-/**
- * Delete a Discord message and mark the embed as deleted in the database
- * @param {Client} client - The Discord client
- * @param {string} channelId - The channel ID
- * @param {string} messageId - The message ID to delete
- * @param {number} embedId - The embed ID in the database
- */
+
 async function deleteEmbed(client, channelId, messageId, embedId) {
     try {
         const channel = client.channels.cache.get(channelId);
@@ -145,12 +119,6 @@ async function deleteEmbed(client, channelId, messageId, embedId) {
     }
 }
 
-/**
- * Utility to safely fetch a message from a channel
- * @param {TextChannel} channel - The channel to fetch the message from
- * @param {string} messageId - The message ID to fetch
- * @returns {Promise<Message|null>} - The fetched message or null if not found
- */
 async function fetchMessage(channel, messageId) {
     try {
         return await channel.messages.fetch(messageId);
@@ -160,13 +128,8 @@ async function fetchMessage(channel, messageId) {
     }
 }
 
-/**
- *
- * @param client
- */
 async function purgeStaleEmbeds(client) {
     try {
-        // Retrieve all active progress embed records.
         const embeds = await db.getAll(`
             SELECT embed_id, message_id, channel_id
             FROM bingo_embeds
@@ -175,15 +138,19 @@ async function purgeStaleEmbeds(client) {
         `);
 
         for (const embed of embeds) {
-            const channel = client.channels.cache.get(embed.channel_id);
-            if (!channel) {
-                logger.warn(`[PurgeStaleEmbeds] Channel #${embed.channel_id} not found.`);
+            let channel;
+            try {
+                channel = await client.channels.fetch(embed.channel_id);
+            } catch (err) {
+                logger.warn(`[PurgeStaleEmbeds] Channel #${embed.channel_id} not found. Deleting record #${embed.embed_id}.`);
+                await db.runQuery('DELETE FROM bingo_embeds WHERE embed_id = ?', [embed.embed_id]);
                 continue;
             }
+
             try {
                 await channel.messages.fetch(embed.message_id);
             } catch (err) {
-                logger.info(`[PurgeStaleEmbeds] Message #${embed.message_id} not found. Deleting record ${embed.embed_id}.`);
+                logger.info(`[PurgeStaleEmbeds] Message #${embed.message_id} not found. Deleting record #${embed.embed_id}.`);
                 await db.runQuery('DELETE FROM bingo_embeds WHERE embed_id = ?', [embed.embed_id]);
             }
         }
