@@ -12,7 +12,7 @@ const logger = require('../../../../essentials/logger');
  * @param playerId
  * @param newTeamId
  */
-async function reassignTeamProgress(eventId, playerId, newTeamId = null) {
+async function reassignTeamProgress(eventId, playerId, newTeamId = 0) {
     logger.info(`[TeamProgress] Re-assigning progress for Player ${playerId} in Event ${eventId} to Team ${newTeamId}`);
 
     await db.runQuery('BEGIN TRANSACTION');

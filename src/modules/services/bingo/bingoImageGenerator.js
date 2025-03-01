@@ -91,13 +91,16 @@ function getWrappedText(ctx, text, maxWidth) {
 }
 
 /**
+ * Generates a Bingo card image.
  *
- * @param boardId
- * @param playerId
- * @param isTeam
+ * @param {number} boardId - The board identifier.
+ * @param {number} id - The player id (if individual) or team id (if team).
+ * @param {boolean} isTeam - Flag indicating team mode.
+ * @returns {Buffer} - The image buffer.
  */
-async function generateBingoCard(boardId, playerId, isTeam = false) {
-    logger.info(`[BingoImageGenerator] Generating card for board=${boardId}, player=${playerId}`);
+async function generateBingoCard(boardId, id, isTeam = false) {
+    // Log which id we received.
+    logger.info(`[BingoImageGenerator] Generating card for board=${boardId}, id=${id}, isTeam=${isTeam}`);
 
     try {
         const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -119,9 +122,23 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
             completedCrossImg = await loadImage(completedCrossPath);
         }
 
-        const playerIdsArray = Array.isArray(playerId) ? playerId : [playerId];
-        const tasks = await getPlayerTasks(boardId, playerIdsArray, isTeam);
+        // Determine what to pass to the SQL query:
+        // In team mode, we use [teamId]
+        // In individual mode, we want to use [playerId, 0] for the IN clause,
+        // but we also want to preserve the actual playerId for later calculations.
+        let queryIds;
+        let individualId = null;
+        if (isTeam) {
+            queryIds = [id];
+        } else {
+            queryIds = [id, 0];
+            individualId = id;
+        }
 
+        // Get tasks using our identifier array.
+        const tasks = await getPlayerTasks(boardId, queryIds, isTeam);
+
+        // Draw each cell.
         for (let cellNum = 1; cellNum <= 15; cellNum++) {
             const coords = TASK_COORDINATES[cellNum];
             if (!coords) continue;
@@ -138,7 +155,6 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
             drawEmptyBox(ctx, coords.x, coords.y, CROSS_SIZE);
 
             let iconImg;
-
             if (imagePath) {
                 try {
                     iconImg = await loadImage(imagePath);
@@ -148,21 +164,16 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
             }
 
             const isType = t.type === 'Exp' || t.type === 'Level';
-
             if (iconImg) {
                 const originalWidth = iconImg.width;
                 const originalHeight = iconImg.height;
-
                 const scaleModifier = isType ? 0.4 : 0.6;
                 const scaleFactor = Math.min(CROSS_SIZE / originalWidth, CROSS_SIZE / originalHeight) * scaleModifier;
-
                 const newWidth = originalWidth * scaleFactor;
                 const newHeight = originalHeight * scaleFactor;
-
                 const centralOffset = isType ? 45 : 55;
                 const xOffset = (CROSS_SIZE - newWidth) / 2;
                 const yOffset = (CROSS_SIZE - newHeight) / 2 + centralOffset;
-
                 ctx.drawImage(iconImg, coords.x + xOffset, coords.y + yOffset, newWidth, newHeight);
             } else {
                 ctx.fillStyle = '#ff0000';
@@ -171,28 +182,24 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
                 ctx.fillText('No Image', coords.x + CROSS_SIZE / 2, coords.y + CROSS_SIZE / 2);
             }
 
+            // Draw task text.
             const textOffset = 15;
-
             const { action, target } = splitTaskName(task_name);
-
             ctx.fillStyle = '#000000';
             ctx.font = '36px RuneScape';
             ctx.textAlign = 'center';
-
+            // Create a drop-shadow effect for better legibility.
             ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset - 1);
             ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset - 1);
             ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset + 1);
             ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset + 1);
-
             ctx.fillStyle = '#dc8a00'; // Orange
             ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset);
 
             const actionToTargetSpacing = 17;
             const targetStartY = coords.y + 70 + actionToTargetSpacing + textOffset;
-
             const formattedTarget = formatTarget(target);
             const wrappedTargetLines = getWrappedText(ctx, formattedTarget, CROSS_SIZE - 20);
-
             const lineHeight = 28;
             wrappedTargetLines.forEach((line, index) => {
                 ctx.fillText(line, coords.x + CROSS_SIZE / 2, targetStartY + index * lineHeight);
@@ -202,6 +209,7 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
                 ctx.drawImage(completedCrossImg, coords.x, coords.y, CROSS_SIZE, CROSS_SIZE);
             }
 
+            // Draw points text.
             const pointsText = `${t.points_reward} pts`;
             ctx.font = '32px RuneScape';
             ctx.textAlign = 'left';
@@ -210,52 +218,48 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
             ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 - 1);
             ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 + 1);
             ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 + 1);
-
             ctx.fillStyle = '#00ff00';
             ctx.fillText(pointsText, coords.x + 10, coords.y + CROSS_SIZE - 10);
 
+            // Draw progress text.
             const progressText = `${t.progress}%`;
             ctx.font = '28px RuneScape';
             ctx.textAlign = 'right';
-
             const hue = Math.floor((t.progress / 100) * 120);
             const progressColor = `hsl(${hue}, 100%, 50%)`;
-
             ctx.fillStyle = '#000000';
-            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 - 1); // Top-Left
-            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 - 1); // Top-Right
-            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 + 1); // Bottom-Left
-            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 + 1); // Bottom-Right
-
+            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 - 1);
+            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 - 1);
+            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 + 1);
+            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 + 1);
             ctx.fillStyle = progressColor;
             ctx.fillText(progressText, coords.x + CROSS_SIZE - 10, coords.y + CROSS_SIZE - 10);
         }
 
+        // Use the actual id for overall progress calculations.
         const eventId = await getEventId(boardId);
         if (eventId) {
-            const overallStr = await calculateOverallProgress(eventId, playerId, isTeam);
+            let overallStr;
+            if (isTeam) {
+                overallStr = await calculateOverallProgress(eventId, id, true);
+            } else {
+                overallStr = await calculateOverallProgress(eventId, individualId, false);
+            }
             const overall = Number(overallStr);
-
             const coordsX = 16;
             const coordsY = 58;
-
             const hue = Math.floor((overall / 100) * 120);
             const progressColor = `hsl(${hue}, 100%, 50%)`;
-
             ctx.font = '32px RuneScape';
             ctx.textAlign = 'left';
-
             ctx.fillStyle = '#dc8a00';
             ctx.fillText('Overall:', coordsX, coordsY);
-
             const overallWidth = ctx.measureText('Overall:').width + 4;
-
             ctx.fillStyle = '#000000';
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY - 1);
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY - 1);
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY + 1);
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY + 1);
-
             ctx.fillStyle = progressColor;
             ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth, coordsY);
         }
@@ -298,14 +302,15 @@ async function getImagePath(fileName) {
 }
 
 /**
+ * Retrieves tasks for a given board and identifier(s).
  *
- * @param boardId
- * @param playerIds
- * @param isTeam
+ * @param {number} boardId
+ * @param {Array} playerIds - For team mode, an array with one element; for individual mode, [playerId, 0]
+ * @param {boolean} isTeam - Indicates whether to query by team_id or player_id.
+ * @returns {Array} Array of task objects.
  */
 async function getPlayerTasks(boardId, playerIds, isTeam = false) {
     const playerIdsArray = Array.isArray(playerIds) ? playerIds : [playerIds];
-
     const idColumn = isTeam ? 'btp.team_id' : 'btp.player_id';
     const placeholders = playerIdsArray.map(() => '?').join(',');
 
@@ -319,13 +324,11 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
       bt.value,
       COALESCE(SUM(btp.progress_value), 0) AS progress_value,
       bt.base_points AS points_reward,
-
       CASE
         WHEN SUM(CASE WHEN btp.status = 'completed' THEN 1 ELSE 0 END) > 0 THEN 'completed'
         WHEN SUM(CASE WHEN btp.status = 'in-progress' THEN 1 ELSE 0 END) > 0 THEN 'in-progress'
         ELSE 'incomplete'
       END AS status
-
   FROM bingo_board_cells bbc
   JOIN bingo_tasks bt ON bbc.task_id = bt.task_id
   LEFT JOIN bingo_task_progress btp
@@ -344,10 +347,11 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
     logger.info(`[BingoImageGenerator] Running SQL: ${sql}`);
     const eventId = await getEventId(boardId);
     const params = [...playerIdsArray, eventId, boardId];
-    const rows = await db.getAll(sql, params);
     logger.info(`[BingoImageGenerator] Using parameters: ${JSON.stringify(params)}`);
+    const rows = await db.getAll(sql, params);
     logger.info(`[BingoImageGenerator] Collected tasks: ${JSON.stringify(rows, null, 2)}`);
 
+    // Enrich rows with image paths based on task type.
     for (const row of rows) {
         if (['Exp', 'Level'].includes(row.type)) {
             const imageSkillRow = await db.image.getOne(
@@ -403,7 +407,7 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
     }
 
     rows.forEach((row) => {
-        row.progress = calculateProgressPercentage(row.progress_value, row.value, isTeam, teamSize);
+        row.progress = calculateProgressPercentage(row.progress_value, row.value);
     });
 
     return rows.map((r) => ({
@@ -413,7 +417,6 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
         type: r.type || null,
         parameter: r.parameter || null,
         imagePath: r.imagePath || null,
-        urlImagePath: r.urlImagePath || null,
         points_reward: r.points_reward || 0,
         status: r.status,
         progress: r.progress,
@@ -432,29 +435,21 @@ function calculateProgressPercentage(progressValue, target) {
 }
 
 /**
- * ✅ Ensures that the overall progress calculation matches the leaderboard and visual card embed.
  *
- * @param {number} eventId - The event ID.
- * @param {number} id - The player ID (if individual) or team ID (if team).
- * @param {boolean} isTeam - Whether the progress is for a team or an individual.
- * @returns {string} - The overall progress percentage as a formatted string.
+ * @param eventId
+ * @param id
+ * @param isTeam
  */
 async function calculateOverallProgress(eventId, id, isTeam = false) {
     if (isTeam) {
-        // ✅ Use `teamTotalOverallPartial` instead of `teamTotalPartial`
         const { teamTotalOverallPartial, totalBoardPoints } = await computeTeamPartialPoints(eventId, id);
-
-        // ✅ Ensure totalBoardPoints is never 0 to avoid division errors
         const result = totalBoardPoints > 0 ? computeOverallPercentage(teamTotalOverallPartial, totalBoardPoints) : 0;
-
-        return result.toFixed(2); // ✅ Match rounding style used in leaderboard & embed
+        return result.toFixed(2);
     } else {
-        // ✅ Use `overallPartialPointsMap` instead of `partialPoints`
-        const { overallPartialPointsMap, totalBoardPoints } = await computeIndividualPartialPoints(eventId, id);
-
-        const result = totalBoardPoints > 0 ? computeOverallPercentage(overallPartialPointsMap[id] || 0, totalBoardPoints) : 0;
-
-        return result.toFixed(2); // ✅ Match rounding style used in leaderboard & embed
+        const { partialPoints, totalBoardPoints } = await computeIndividualPartialPoints(eventId, id, true);
+        const overallFloat = computeOverallPercentage(partialPoints, totalBoardPoints);
+        const result = parseFloat(overallFloat.toFixed(2));
+        return result;
     }
 }
 

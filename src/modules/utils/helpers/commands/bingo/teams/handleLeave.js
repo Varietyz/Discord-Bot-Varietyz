@@ -70,7 +70,7 @@ async function handleLeave(interaction) {
                 [eventId, playerId],
             );
 
-            await reassignTeamProgress(eventId, playerId, null);
+            await reassignTeamProgress(eventId, playerId, 0);
 
             interaction.editReply({
                 content: `✅ You have left team **${memberRow.team_name}**. New captain has been assigned.`,
@@ -93,16 +93,8 @@ async function handleLeave(interaction) {
                 `,
                 [memberRow.team_id],
             );
-            await db.runQuery(
-                `
-                UPDATE bingo_task_progress
-                SET team_id = NULL
-                WHERE event_id = ? AND player_id = ?
-                `,
-                [eventId, playerId],
-            );
 
-            await reassignTeamProgress(eventId, playerId, null);
+            await reassignTeamProgress(eventId, playerId, 0);
 
             interaction.editReply({
                 content: `✅ You have left team **${memberRow.team_name}**. As you were the only member, the team has been dissolved.`,
@@ -119,16 +111,8 @@ async function handleLeave(interaction) {
             `,
             [memberRow.team_id, playerId],
         );
-        await db.runQuery(
-            `
-            UPDATE bingo_task_progress
-            SET team_id = NULL
-            WHERE event_id = ? AND player_id = ?
-            `,
-            [eventId, playerId],
-        );
 
-        await reassignTeamProgress(eventId, playerId, null);
+        await reassignTeamProgress(eventId, playerId, 0);
 
         interaction.editReply({
             content: `✅ You have left team **${memberRow.team_name}**.`,

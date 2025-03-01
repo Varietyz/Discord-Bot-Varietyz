@@ -153,18 +153,23 @@ module.exports = {
             } else {
                 userRows = await db.getAll(
                     `
-                    SELECT rr.player_id, rr.rsn, bt.team_id, bt.team_name
-                    FROM registered_rsn rr
-                    JOIN clan_members cm ON rr.player_id = cm.player_id
-                    LEFT JOIN bingo_team_members btm ON btm.player_id = rr.player_id
-                    LEFT JOIN (
-                        SELECT * FROM bingo_teams WHERE event_id = ?
-                    ) bt ON bt.team_id = btm.team_id
-                    WHERE rr.discord_id = ?
-                      AND LOWER(rr.rsn) = LOWER(cm.rsn) COLLATE NOCASE
-                    `,
+    SELECT 
+        rr.player_id, 
+        rr.rsn, 
+        COALESCE(bt.team_id, 0) AS team_id, 
+        COALESCE(bt.team_name, '') AS team_name
+    FROM registered_rsn rr
+    JOIN clan_members cm ON rr.player_id = cm.player_id
+    LEFT JOIN bingo_team_members btm ON btm.player_id = rr.player_id
+    LEFT JOIN (
+        SELECT * FROM bingo_teams WHERE event_id = ?
+    ) bt ON bt.team_id = btm.team_id
+    WHERE rr.discord_id = ?
+      AND LOWER(rr.rsn) = LOWER(cm.rsn) COLLATE NOCASE
+    `,
                     [eventId, interaction.user.id],
                 );
+
                 if (userRows.length === 0) {
                     return interaction.editReply({
                         content: '❌ You are either not registered or not an active clan member. Join the clan and register your RSN to participate in Bingo.',
@@ -325,7 +330,22 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
         const emojiCache = []; // Cache for emoji lookups.
         const teamProgress = [];
 
-        const { partialPointsMap, teamTotalPartial, totalBoardPoints, teamTotalOverallPartial, overallPartialPointsMap } = await computeTeamPartialPoints(eventId, teamId);
+        // Fetch actual awarded points from the DB for each team
+        const teamPointsMap = {};
+        const pointsResults = await db.getAll(
+            `SELECT team_id, SUM(points_awarded) AS total_points
+                 FROM bingo_task_progress
+                 WHERE event_id = ?
+                 GROUP BY team_id`,
+            [eventId],
+        );
+        pointsResults.forEach((row) => {
+            teamPointsMap[row.team_id] = row.total_points || 0;
+        });
+
+        const { totalBoardPoints, teamTotalOverallPartial, overallPartialPointsMap } = await computeTeamPartialPoints(eventId, teamId);
+        const actualTeamPoints = teamPointsMap[teamId] || 0;
+
         // The "Team Overall" is partial_points / totalBoardPoints
         const overallFloat = computeOverallPercentage(teamTotalOverallPartial, totalBoardPoints);
         const overall = parseFloat(overallFloat.toFixed(2));
@@ -367,8 +387,20 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
         // Sort members by their overall partial progress (from overallPartialPointsMap).
         teamMembers.sort((a, b) => (overallPartialPointsMap[b.player_id] || 0) - (overallPartialPointsMap[a.player_id] || 0));
         for (const member of teamMembers) {
+            const playerPointsMap = {};
+            const pointsResults = await db.getAll(
+                `SELECT player_id, SUM(points_awarded) AS total_points
+                     FROM bingo_task_progress
+                     WHERE event_id = ?
+                     GROUP BY player_id`,
+                [eventId],
+            );
+            pointsResults.forEach((row) => {
+                playerPointsMap[row.player_id] = row.total_points || 0;
+            });
+
             // Display earned points based solely on completions.
-            const userPoints = partialPointsMap[member.player_id] || 0;
+            const actualPoints = playerPointsMap[member.player_id] || 0;
             // Now compute contribution % based on overall progress.
             const userOverallPoints = overallPartialPointsMap[member.player_id] || 0;
             const userShare = teamTotalOverallPartial > 0 ? ((userOverallPoints / teamTotalOverallPartial) * 100).toFixed(2) : '0.00';
@@ -384,7 +416,7 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
             const playerNameForLink = encodeURIComponent(member.rsn);
             const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
 
-            memberLines.push(`> - ${memberEmoji}[${member.rsn}](${profileLink}) contributed \`${userShare}%\` ${progressEmoji} & earned \`${userPoints} pts\` ${pointsEmoji}`);
+            memberLines.push(`> - ${memberEmoji}**[${member.rsn}](${profileLink})** — \`${userShare}%\` ${progressEmoji} — \`${actualPoints} pts\` ${pointsEmoji}`);
         }
 
         const memberSection = memberLines.join('\n') || '> _No members found._';
@@ -393,7 +425,7 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
         teamProgress.push({
             team_name: teamName,
             overall, // Overall progress % (from any progression)
-            partial_points: teamTotalPartial, // Total awarded points from completions
+            partial_points: actualTeamPoints, // Total awarded points from completions
             completed_tasks: completedTasks,
             taskProgressStr,
             memberSection,
@@ -402,7 +434,7 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
         // 4) Build the embed
         const embed = new EmbedBuilder().setTitle(`${trophyEmoji} Team Card — Bingo Event #${eventId}`).setColor(0xf1c40f).setImage('attachment://bingo_card_team.png').setFooter({ text: 'Bingo Cards: Team' }).setTimestamp();
         leaderboardDescription += `> ### ${teamEmoji} Team: **\`${teamName}\`**\n`;
-        leaderboardDescription += `> Finished: **\`${overall.toFixed(2)}%\` ${progressEmoji}**\n> Team Points: \`${teamTotalPartial} pts\` ${pointsEmoji}\n`;
+        leaderboardDescription += `> Finished: **\`${overall.toFixed(2)}%\` ${progressEmoji}**\n> Team Points: \`${actualTeamPoints} pts\` ${pointsEmoji}\n`;
         leaderboardDescription += `${memberSection}\n`;
         leaderboardDescription += `> ${completedEmoji}Tasks Completed: \`${completedTasks}\`\n`;
         leaderboardDescription += `> ${taskProgressStr}\n\n`;

@@ -2,6 +2,8 @@ const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const db = require('../../../../utils/essentials/dbUtils');
 const logger = require('../../../../utils/essentials/logger');
 const { autoTransitionEvents } = require('../../../../services/bingo/autoTransitionEvents');
+const client = require('../../../../../main');
+const { updateBingoProgress } = require('../../../../services/bingo/bingoService');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -94,6 +96,7 @@ module.exports = {
 
                 logger.info(`[BingoManagement] Completed task ${taskParam} (${percent}%) for RSN=${rsn}`);
                 await interaction.editReply({ content: `✅ Task **${taskParam}** completed **(${percent}% - ${completionValue}/${targetValue})** for **${rsn}**.` });
+                await updateBingoProgress(client);
                 await autoTransitionEvents();
             }
 
@@ -120,6 +123,7 @@ module.exports = {
 
                 logger.info(`[BingoManagement] Adjusted ${pointType} by ${value} for RSN=${rsn}`);
                 await interaction.editReply({ content: `✅ ${pointType} adjusted by ${value} for **${rsn}**.` });
+                await updateBingoProgress(client);
                 await autoTransitionEvents();
             }
 
@@ -170,6 +174,7 @@ module.exports = {
                 logger.info(`[BingoManagement] Set progress for ${taskParam} to ${progressValue} under metric "${parameter}" (${updateColumn}) for RSN=${rsn}`);
                 await interaction.editReply({ content: `✅ Progress for **${taskParam}** set to **${progressValue}** under metric **${parameter}** (${Math.floor((progressValue / targetValue) * 100)}%) for **${rsn}**.` });
 
+                await updateBingoProgress(client);
                 await autoTransitionEvents();
             }
         } catch (error) {
