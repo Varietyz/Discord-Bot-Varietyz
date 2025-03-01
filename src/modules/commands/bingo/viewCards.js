@@ -1,12 +1,13 @@
 const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');
-const { generateBingoCard, getPlayerTasks } = require('../../services/bingo/bingoImageGenerator');
+const { generateBingoCard, getPlayerTasks, getEventId } = require('../../services/bingo/bingoImageGenerator');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 const { savePlayerDataToDb } = require('../../services/playerDataExtractor');
 const { getLastFetchedTime, setLastFetchedTime } = require('../../utils/fetchers/lastFetchedTime');
 const { getDataAttributes, getDataColumn, upsertTaskProgress } = require('../../services/bingo/bingoTaskManager');
 const getEmoji = require('../../utils/fetchers/getEmoji');
+const { computeOverallPercentage, computeTeamPartialPoints } = require('../../services/bingo/bingoCalculations');
 
 /**
  *
@@ -26,8 +27,6 @@ async function updateProgressForPlayer(eventId, playerId) {
     );
 
     for (const task of tasks) {
-        if (task.type === 'Drop') continue;
-
         const { task_id, type, parameter, value } = task;
         const dataColumn = getDataColumn(type);
         const { dataType, dataMetric } = getDataAttributes(type, parameter);
@@ -300,72 +299,62 @@ async function paginateIndividualCards(interaction, boardId, userRows) {
  */
 async function generateTeamCard(interaction, boardId, teamId, teamName) {
     try {
+        // 1) Generate the Bingo card image (unchanged).
         const tasks = await getPlayerTasks(boardId, teamId, true);
         if (!tasks || tasks.length === 0) {
-            return interaction.editReply({
-                content: `❌ No tasks found for Team **${teamName}**.`,
-                flags: 64,
-            });
+            return interaction.editReply({ content: `❌ No tasks found for Team **${teamName}**.`, flags: 64 });
         }
         const buffer = await generateBingoCard(boardId, teamId, true);
         if (!buffer) {
-            return interaction.editReply({
-                content: `❌ Could not generate card for Team **${teamName}**.`,
-                flags: 64,
-            });
+            return interaction.editReply({ content: `❌ Could not generate card for Team **${teamName}**.`, flags: 64 });
         }
         const file = new AttachmentBuilder(buffer, { name: 'bingo_card_team.png' });
 
+        const eventId = await getEventId(boardId);
+
+        const { partialPointsMap, teamTotalPartial, totalBoardPoints } = await computeTeamPartialPoints(eventId, teamId, true); // "true" => round per task
+
+        // The "Team Overall" is partial_points / totalBoardPoints
+        const teamOverallFloat = computeOverallPercentage(teamTotalPartial, totalBoardPoints);
+        const teamOverall = teamOverallFloat.toFixed(2);
+
+        // 3) Build the lines listing each member's partial points & share
+        //    (unchanged from your old code, but we no longer do the partialPoints calculation here!)
         const teamMembers = await db.getAll(
             `
-            SELECT rr.player_id, rr.rsn
-            FROM registered_rsn rr
-            JOIN bingo_team_members btm ON btm.player_id = rr.player_id
-            WHERE btm.team_id = ?
-            `,
+      SELECT rr.player_id, rr.rsn
+      FROM registered_rsn rr
+      JOIN bingo_team_members btm ON btm.player_id = rr.player_id
+      WHERE btm.team_id = ?
+      `,
             [teamId],
         );
 
-        const progressResults = await db.getAll(
-            `
-            SELECT player_id, SUM(progress_value) AS total_progress
-            FROM bingo_task_progress
-            WHERE event_id = ?
-              AND player_id IN (
-                SELECT player_id FROM bingo_team_members WHERE team_id = ?
-              )
-            GROUP BY player_id
-            `,
-            [boardId, teamId],
-        );
+        // Sort by highest partial points
+        teamMembers.sort((a, b) => partialPointsMap[b.player_id] - partialPointsMap[a.player_id]);
 
-        const progressMap = {};
-        let teamTotalProgress = 0;
-        for (const row of progressResults) {
-            progressMap[row.player_id] = row.total_progress;
-            teamTotalProgress += row.total_progress;
-        }
+        const memberLines = teamMembers.map((member) => {
+            const mPoints = partialPointsMap[member.player_id];
+            const ratio = teamTotalPartial > 0 ? ((mPoints / teamTotalPartial) * 100).toFixed(2) : '0.00';
+            return `• **${member.rsn}** — \`${mPoints} pts\`, \`${ratio}%\` contribution`;
+        });
+        const membersList = memberLines.join('\n');
 
-        const membersList =
-            teamMembers.length > 0
-                ? teamMembers
-                    .map((member) => {
-                        const memberProgress = progressMap[member.player_id] || 0;
-                        const percentage = teamTotalProgress > 0 ? ((memberProgress / teamTotalProgress) * 100).toFixed(2) : '0.00';
-                        return `• ${member.rsn} — ${percentage}%`;
-                    })
-                    .join('\n')
-                : 'No members found';
-
+        // 4) Build the embed
         const embed = new EmbedBuilder()
             .setTitle(`Team Card — ${teamName}`)
-            .setDescription(`Progress of all members in **${teamName}**\n\n**Team Members:**\n${membersList}`)
+            .setDescription(`**Finished:** \`${teamOverall}%\`\n` + `**Team's Total Points:** \`${teamTotalPartial}\`\n\n` + `**Team Members:**\n${membersList}`)
             .setColor(0xf1c40f)
             .setImage('attachment://bingo_card_team.png')
             .setFooter({ text: 'Bingo Cards: Team' })
             .setTimestamp();
 
-        return interaction.editReply({ content: '\u200b', embeds: [embed], files: [file], flags: 64 });
+        return interaction.editReply({
+            content: '\u200b',
+            embeds: [embed],
+            files: [file],
+            flags: 64,
+        });
     } catch (err) {
         logger.error(`[BingoCards] Error generating team card: ${err.message}`);
         return interaction.editReply({

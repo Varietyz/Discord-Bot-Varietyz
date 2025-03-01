@@ -4,7 +4,7 @@ const db = require('../../../../essentials/dbUtils');
 const logger = require('../../../../essentials/logger');
 const client = require('../../../../../../main');
 const { reassignTeamProgress, getOngoingEventId, getActivePlayer, appendBingoProgression } = require('./teamCommandHelpers');
-const { calculatePoints } = require('../../../../../services/bingo/pointManager');
+const { computePartialPoints } = require('../../../../../services/bingo/bingoCalculations');
 
 /**
  *
@@ -123,9 +123,12 @@ async function handleJoin(interaction) {
         const teamProgress = teamProgressRow ? teamProgressRow.teamProgress : 0;
 
         const gap = targetValue - teamProgress;
-        const effectiveContribution = Math.min(joinerProgress, gap);
 
-        const pointsAwarded = calculatePoints(playerId, task_id, effectiveContribution, targetValue, basePoints);
+        const rawContribution = Math.min(joinerProgress, gap);
+        const effectiveContribution = Math.max(0, rawContribution);
+
+        // Now call computePartialPoints with (progressValue, targetValue, basePoints)
+        const pointsAwarded = computePartialPoints(effectiveContribution, targetValue, basePoints);
 
         const playerProgress = await db.getOne(
             `

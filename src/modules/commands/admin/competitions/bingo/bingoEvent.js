@@ -1,8 +1,7 @@
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const { updateBingoProgress } = require('../../../../services/bingo/bingoService');
+const { updateBingoProgress, endBingoEvent } = require('../../../../services/bingo/bingoService');
 const logger = require('../../../../utils/essentials/logger');
 const client = require('../../../../../main');
-const { endEvent } = require('../../../../services/bingo/bingoEventUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -18,7 +17,7 @@ module.exports = {
 
             switch (subcommand) {
             case 'new':
-                await endEvent();
+                await endBingoEvent();
                 interaction.editReply({ content: '🏁 Bingo event has been ended via auto-transition.' });
                 break;
             case 'update':

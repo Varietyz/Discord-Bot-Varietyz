@@ -143,17 +143,28 @@ async function updateLeaderboardForEvent(eventId) {
 }
 
 /**
+ * 📊 Update Team Leaderboard for Event
+ * - Recalculates points and completed tasks for each team.
+ * - Only counts completed tasks if progress meets or exceeds target.
  *
- * @param eventId
+ * @param {number} eventId - The ID of the event
  */
 async function updateTeamLeaderboardForEvent(eventId) {
     logger.info(`[BingoLeaderboard] Recalculating team-based leaderboard for event #${eventId}`);
 
-    // 🔄 New Call to getTeamProgress
-    const progressRows = await getTeamProgress(eventId);
+    const progressRows = await db.getAll(
+        `
+        SELECT team_id, SUM(points_awarded) AS totalPoints, SUM(extra_points) AS extraSum, COUNT(task_id) AS completedTasks
+        FROM bingo_task_progress
+        WHERE event_id = ?
+          AND team_id IS NOT NULL
+        GROUP BY team_id
+        `,
+        [eventId],
+    );
 
     for (const row of progressRows) {
-        const { team_id, completed_points, extra_sum } = row;
+        const { team_id, totalPoints, extraSum, completedTasks } = row;
 
         const existingRow = await db.getOne(
             `
@@ -161,27 +172,21 @@ async function updateTeamLeaderboardForEvent(eventId) {
             FROM bingo_leaderboard
             WHERE event_id = ?
               AND team_id = ?
-              AND (player_id IS NULL OR player_id = 0)
-        `,
+            `,
             [eventId, team_id],
         );
 
         const pattern_bonus = existingRow?.pattern_bonus || 0;
-        const basePoints = (completed_points || 0) + (extra_sum || 0) + pattern_bonus;
-        let total_points = basePoints;
-        if (team_id === 0) {
-            total_points = Math.round(basePoints * 1.2);
-        }
+        const finalPoints = (totalPoints || 0) + (extraSum || 0) + pattern_bonus;
 
         if (!existingRow) {
             await db.runQuery(
                 `
-                INSERT INTO bingo_leaderboard (event_id, team_id, player_id, total_points, completed_tasks, pattern_bonus)
-                VALUES (?, ?, 0, ?, ?, ?)
-            `,
-                [eventId, team_id, total_points, completed_points, pattern_bonus],
+                INSERT INTO bingo_leaderboard (event_id, team_id, total_points, completed_tasks, pattern_bonus)
+                VALUES (?, ?, ?, ?, ?)
+                `,
+                [eventId, team_id, finalPoints, completedTasks, pattern_bonus],
             );
-            logger.info(`Inserted: ${eventId}, team_id ${team_id}, total_points ${total_points}, completed_points ${completed_points}, pattern_bonus ${pattern_bonus}`);
         } else {
             await db.runQuery(
                 `
@@ -191,10 +196,9 @@ async function updateTeamLeaderboardForEvent(eventId) {
                     pattern_bonus = ?,
                     last_updated = CURRENT_TIMESTAMP
                 WHERE leaderboard_id = ?
-            `,
-                [total_points, completed_points, pattern_bonus, existingRow.leaderboard_id],
+                `,
+                [finalPoints, completedTasks, pattern_bonus, existingRow.leaderboard_id],
             );
-            logger.info(`Updated: total_points ${total_points}, completed_points ${completed_points}, pattern_bonus ${pattern_bonus}, leaderboard_id ${existingRow.leaderboard_id}`);
         }
     }
 }

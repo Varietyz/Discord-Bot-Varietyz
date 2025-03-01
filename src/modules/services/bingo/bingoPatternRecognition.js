@@ -17,7 +17,6 @@ const {
     getMultipleLinesPattern,
     getBothDiagonalsPattern,
 } = require('./bingoPatterns');
-const { endEvent } = require('./bingoEventUtils');
 
 /**
  * 🎲 Calculate Extra Points for Patterns
@@ -76,6 +75,7 @@ async function checkPatterns() {
         for (const b of boards) {
             await checkPatternsForBoard(b.board_id, b.event_id);
         }
+        // 🔄 After checking all patterns, end the event if full board was completed
     } catch (err) {
         logger.error(`[BingoPatternRecognition] checkPatterns() error: ${err.message}`);
     }
@@ -238,39 +238,13 @@ async function checkSinglePattern(boardId, eventId, playerId, { patternKey, patt
             [boardId, eventId, playerId, patternKey],
         );
 
-        // If the pattern is the full board, signal the event should end.
-        if (patternKey === 'full_board') {
-            // Option A: Call a dedicated function to handle the full board transition.
-            await triggerFullBoardTransition(eventId);
-        }
-
         logger.info(`[BingoPatternRecognition] Awarded pattern bonus: ${patternKey} +${adjustedBonusPoints} → Player #${playerId}`);
     } catch (err) {
         logger.error(`[BingoPatternRecognition] checkSinglePattern() error: ${err.message}`);
     }
 }
 
-// A helper function to trigger the end-of-event process safely.
-/**
- *
- * @param eventId
- */
-async function triggerFullBoardTransition(eventId) {
-    // Ensure the event is still ongoing to avoid multiple transitions.
-    const ongoingEvent = await db.getOne(
-        `
-        SELECT event_id 
-        FROM bingo_state 
-        WHERE event_id = ? AND state = 'ongoing'
-        LIMIT 1
-    `,
-        [eventId],
-    );
-    if (!ongoingEvent) return;
-
-    await endEvent();
-}
-
 module.exports = {
     checkPatterns,
+    calculatePatternBonus,
 };

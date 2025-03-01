@@ -3,8 +3,14 @@ const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const bingoTaskManager = require('./bingoTaskManager');
 const bingoStateManager = require('./bingoStateManager');
+const { updateBingoProgress } = require('./bingoService');
+const client = require('../../../main');
 
-
+/**
+ *
+ * @param eventId
+ * @param startTime
+ */
 async function startBingoEvent(eventId, startTime = null) {
     try {
         logger.info(`[BingoUtils] startBingoEvent(#${eventId})...`);
@@ -33,6 +39,7 @@ async function startBingoEvent(eventId, startTime = null) {
             await bingoStateManager.setEventState(eventId, 'ongoing');
             await bingoTaskManager.recordEventBaseline(eventId);
             await bingoTaskManager.initializeTaskProgress(eventId);
+            await updateBingoProgress(client);
         }
 
         logger.info(`[BingoUtils] Bingo event #${eventId} setup complete.`);
@@ -41,7 +48,9 @@ async function startBingoEvent(eventId, startTime = null) {
     }
 }
 
-
+/**
+ *
+ */
 async function rotateBingoTasks() {
     try {
         const { lastID } = await db.runQuery(
@@ -113,7 +122,10 @@ async function rotateBingoTasks() {
     }
 }
 
-
+/**
+ *
+ * @param task
+ */
 async function updateTaskLastSelected(task) {
     if (task.type === 'Exp' || task.type === 'Kill') {
         await db.runQuery(
@@ -136,7 +148,10 @@ async function updateTaskLastSelected(task) {
     }
 }
 
-
+/**
+ *
+ * @param totalTasks
+ */
 async function selectBalancedBingoTasks(totalTasks) {
     const tasks = await db.getAll(`
         SELECT task_id, type, parameter, value, description, base_points
@@ -185,6 +200,10 @@ async function selectBalancedBingoTasks(totalTasks) {
     return selectedTasks.slice(0, totalTasks);
 }
 
+/**
+ *
+ * @param totalTasks
+ */
 async function generateBalancedBingoBoard(totalTasks) {
     const balancedTasks = await selectBalancedBingoTasks(totalTasks);
     if (!balancedTasks.length) {

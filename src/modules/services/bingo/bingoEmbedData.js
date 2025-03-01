@@ -1,5 +1,6 @@
 const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');
+const { calculatePatternBonus } = require('./bingoPatternRecognition');
 
 /**
  *
@@ -82,61 +83,74 @@ async function getProgressEmbedData(eventId, playerId) {
 }
 
 /**
- *
- * @param eventId
+ * Retrieves Final Results Embed Data for a Bingo Event.
+ * - Fetches Top Players, Top Teams, and Pattern Bonuses.
+ * @param {number} eventId - The ID of the Bingo event.
+ * @returns {Object} - Event results including top players, teams, and pattern bonuses.
  */
 async function getFinalResultsEmbedData(eventId) {
     try {
+        // 🎯 Fetch Top 5 Players (Individual)
         const topPlayersQuery = `
-      SELECT 
-        rr.rsn, 
-        bl.total_points,
-        bl.completed_tasks, 
-        bl.pattern_bonus,
-        bl.extra_points
-      FROM bingo_leaderboard bl
-      JOIN registered_rsn rr ON rr.player_id = bl.player_id
-      WHERE bl.event_id = ?
-        AND (
-                bl.team_id = 0 OR 
-                bl.team_id IS NULL OR 
-                bl.player_id NOT IN (SELECT player_id FROM bingo_team_members)
-            )
-
-      ORDER BY bl.total_points DESC
-      LIMIT 5
-    `;
+            SELECT 
+                rr.rsn, 
+                bl.total_points,
+                bl.completed_tasks, 
+                bl.pattern_bonus
+            FROM bingo_leaderboard bl
+            JOIN registered_rsn rr ON rr.player_id = bl.player_id
+            WHERE bl.event_id = ?
+              AND (
+                    bl.team_id = 0 OR 
+                    bl.team_id IS NULL OR 
+                    bl.player_id NOT IN (
+                        SELECT player_id 
+                        FROM bingo_team_members
+                    )
+                )
+            ORDER BY bl.total_points DESC
+            LIMIT 5
+        `;
         const topPlayers = await db.getAll(topPlayersQuery, [eventId]);
 
+        // 🎯 Fetch Top 3 Teams
         const topTeamsQuery = `
-      SELECT 
-        t.team_name, 
-        bl.total_points,
-        bl.completed_tasks, 
-        bl.pattern_bonus,
-        ROUND(SUM(btp.points_awarded) / bl.total_points * 100, 2) AS contributionPercent
-      FROM bingo_leaderboard bl
-      JOIN bingo_teams t ON t.team_id = bl.team_id
-      LEFT JOIN bingo_task_progress btp ON btp.team_id = t.team_id
-      WHERE bl.event_id = ?
-        AND bl.team_id > 0
-      GROUP BY t.team_name
-      ORDER BY bl.total_points DESC
-      LIMIT 3
-    `;
+            SELECT 
+                t.team_name, 
+                bl.total_points,
+                bl.completed_tasks, 
+                bl.pattern_bonus,
+                ROUND(SUM(btp.points_awarded) / bl.total_points * 100, 2) AS contributionPercent
+            FROM bingo_leaderboard bl
+            JOIN bingo_teams t ON t.team_id = bl.team_id
+            LEFT JOIN bingo_task_progress btp ON btp.team_id = t.team_id
+            WHERE bl.event_id = ?
+              AND bl.team_id > 0
+            GROUP BY t.team_name
+            ORDER BY bl.total_points DESC
+            LIMIT 3
+        `;
         const topTeams = await db.getAll(topTeamsQuery, [eventId]);
 
+        // 🎯 Fetch Pattern Bonuses
         const patternBonusesQuery = `
-      SELECT 
-        bpa.pattern_key, 
-        bpa.bonus_points,
-        rr.rsn
-      FROM bingo_patterns_awarded bpa
-      JOIN registered_rsn rr ON rr.player_id = bpa.player_id
-      WHERE bpa.event_id = ?
-      ORDER BY bpa.bonus_points DESC
-    `;
-        const patternBonuses = await db.getAll(patternBonusesQuery, [eventId]);
+            SELECT 
+                bpa.pattern_key, 
+                rr.rsn
+            FROM bingo_patterns_awarded bpa
+            JOIN registered_rsn rr ON rr.player_id = bpa.player_id
+            WHERE bpa.event_id = ?
+        `;
+        const patternBonusesRaw = await db.getAll(patternBonusesQuery, [eventId]);
+
+        // ✅ Calculate Bonus Points Using calculatePatternBonus()
+        const patternBonuses = patternBonusesRaw.map((bonus) => {
+            return {
+                pattern_key: bonus.pattern_key,
+                rsn: bonus.rsn,
+                bonus_points: calculatePatternBonus(bonus.pattern_key),
+            };
+        });
 
         return { eventId, topPlayers, topTeams, patternBonuses };
     } catch (err) {
@@ -157,6 +171,7 @@ async function getNewCompletions(eventId) {
             btp.player_id,
             rr.rsn, 
             bt.description AS taskName, 
+            bt.parameter,
             btp.last_updated,
             btp.points_awarded,     
             be.embed_id,
@@ -197,22 +212,37 @@ async function getPlayerProgress(eventId) {
 }
 
 /**
+ * 📊 Get Team Progress for Leaderboard
+ * - Sums up completed points, extra points, and completed tasks.
+ * - A task is considered completed if total progress meets or exceeds the target.
  *
- * @param eventId
+ * @param {number} eventId - The ID of the event
+ * @returns {Promise<Array>} - Array of team progress objects
  */
 async function getTeamProgress(eventId) {
     return await db.getAll(
         `
         SELECT 
-            btp.team_id,
-            SUM(CASE WHEN btp.status = 'completed' THEN bt.base_points ELSE 0 END) AS completed_points,
-            SUM(btp.extra_points) AS extra_sum
-        FROM bingo_task_progress btp
-        JOIN bingo_tasks bt ON btp.task_id = bt.task_id
-        WHERE btp.event_id = ?
-          AND btp.team_id IS NOT NULL
-          AND btp.team_id > 0
-        GROUP BY btp.team_id
+            team_id,
+            SUM(completed_points) AS completed_points,
+            SUM(extra_points) AS extra_sum,
+            COUNT(DISTINCT CASE WHEN total_progress >= target THEN task_id END) AS completed_tasks
+        FROM (
+            SELECT 
+                btp.team_id,
+                btp.task_id,
+                SUM(btp.progress_value) AS total_progress,
+                bt.value AS target,
+                bt.base_points AS completed_points,
+                btp.extra_points
+            FROM bingo_task_progress btp
+            JOIN bingo_tasks bt ON btp.task_id = bt.task_id
+            WHERE btp.event_id = ?
+              AND btp.team_id IS NOT NULL
+              AND btp.team_id > 0
+            GROUP BY btp.team_id, btp.task_id
+        ) AS task_sums
+        GROUP BY team_id
     `,
         [eventId],
     );
@@ -275,9 +305,8 @@ async function getTeamLeaderboard(eventId) {
         FROM bingo_leaderboard bl
         JOIN bingo_teams t ON t.team_id = bl.team_id
         WHERE bl.event_id = ?
-          AND bl.team_id > 0
+          AND bl.team_id IS NOT NULL
         ORDER BY bl.total_points DESC
-        LIMIT 5;
         `,
         [eventId],
     );

@@ -3,6 +3,7 @@ const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const path = require('path');
+const { computeOverallPercentage, computeTeamPartialPoints, computeIndividualPartialPoints } = require('./bingoCalculations');
 
 const fontPath = path.join(__dirname, '../../../assets/runescape_bold.ttf');
 registerFont(fontPath, { family: 'RuneScape' });
@@ -29,6 +30,10 @@ const TASK_COORDINATES = {
     15: { x: 1542, y: 854 },
 };
 
+/**
+ *
+ * @param name
+ */
 function splitTaskName(name) {
     if (!name) return { action: '', target: '' };
 
@@ -46,6 +51,10 @@ function splitTaskName(name) {
     return { action, target };
 }
 
+/**
+ *
+ * @param target
+ */
 function formatTarget(target) {
     if (!target) return '';
     return target
@@ -54,7 +63,12 @@ function formatTarget(target) {
         .join(' ');
 }
 
-
+/**
+ *
+ * @param ctx
+ * @param text
+ * @param maxWidth
+ */
 function getWrappedText(ctx, text, maxWidth) {
     const words = text.split(' ');
     const lines = [];
@@ -76,7 +90,12 @@ function getWrappedText(ctx, text, maxWidth) {
     return lines;
 }
 
-
+/**
+ *
+ * @param boardId
+ * @param playerId
+ * @param isTeam
+ */
 async function generateBingoCard(boardId, playerId, isTeam = false) {
     logger.info(`[BingoImageGenerator] Generating card for board=${boardId}, player=${playerId}`);
 
@@ -160,16 +179,16 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
             ctx.font = '36px RuneScape';
             ctx.textAlign = 'center';
 
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset - 1); 
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset - 1); 
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset + 1); 
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset + 1); 
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset - 1);
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset - 1);
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset + 1);
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset + 1);
 
             ctx.fillStyle = '#dc8a00'; // Orange
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset); 
+            ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset);
 
-            const actionToTargetSpacing = 17; 
-            const targetStartY = coords.y + 70 + actionToTargetSpacing + textOffset; 
+            const actionToTargetSpacing = 17;
+            const targetStartY = coords.y + 70 + actionToTargetSpacing + textOffset;
 
             const formattedTarget = formatTarget(target);
             const wrappedTargetLines = getWrappedText(ctx, formattedTarget, CROSS_SIZE - 20);
@@ -183,14 +202,14 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
                 ctx.drawImage(completedCrossImg, coords.x, coords.y, CROSS_SIZE, CROSS_SIZE);
             }
 
-            const pointsText = `${t.points_reward} pts`; 
+            const pointsText = `${t.points_reward} pts`;
             ctx.font = '32px RuneScape';
             ctx.textAlign = 'left';
             ctx.fillStyle = '#000000';
-            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 - 1); 
-            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 - 1); 
-            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 + 1); 
-            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 + 1); 
+            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 - 1);
+            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 - 1);
+            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 + 1);
+            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 + 1);
 
             ctx.fillStyle = '#00ff00';
             ctx.fillText(pointsText, coords.x + 10, coords.y + CROSS_SIZE - 10);
@@ -214,7 +233,6 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
 
         const eventId = await getEventId(boardId);
         if (eventId) {
-
             const overallStr = await calculateOverallProgress(eventId, playerId, isTeam);
             const overall = Number(overallStr);
 
@@ -250,13 +268,23 @@ async function generateBingoCard(boardId, playerId, isTeam = false) {
     }
 }
 
-
+/**
+ *
+ * @param ctx
+ * @param x
+ * @param y
+ * @param size
+ */
 function drawEmptyBox(ctx, x, y, size) {
     ctx.strokeStyle = 'rgba(0, 0, 0, 0)';
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, size, size);
 }
 
+/**
+ *
+ * @param fileName
+ */
 async function getImagePath(fileName) {
     const row = await db.image.getOne(
         `
@@ -269,6 +297,12 @@ async function getImagePath(fileName) {
     return row ? row.file_path : null;
 }
 
+/**
+ *
+ * @param boardId
+ * @param playerIds
+ * @param isTeam
+ */
 async function getPlayerTasks(boardId, playerIds, isTeam = false) {
     const playerIdsArray = Array.isArray(playerIds) ? playerIds : [playerIds];
 
@@ -276,33 +310,35 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
     const placeholders = playerIdsArray.map(() => '?').join(',');
 
     const sql = `
-    SELECT 
-        ((bbc.row) * 5 + (bbc.column + 1)) AS cell_num,
-        bbc.task_id,
-        bt.description AS task_name,
-        bt.type,
-        bt.parameter,
-        bt.value,
-        COALESCE(SUM(btp.progress_value), 0) AS progress_value,
-        bt.base_points AS points_reward,
-        CASE
-            WHEN SUM(btp.progress_value) >= bt.value THEN 'completed'
-            WHEN SUM(btp.progress_value) > 0 THEN 'in-progress'
-            ELSE 'incomplete'
-        END AS status
-    FROM bingo_board_cells bbc
-    JOIN bingo_tasks bt ON bbc.task_id = bt.task_id
-    LEFT JOIN bingo_task_progress btp 
-        ON btp.task_id = bt.task_id 
-        AND ${idColumn} IN (${placeholders})
-        AND btp.event_id = ?
-    JOIN bingo_state bs 
-        ON bs.board_id = bbc.board_id
-    WHERE bbc.board_id = ?
-      AND bs.state = 'ongoing'
-    GROUP BY bbc.row, bbc.column
-    ORDER BY cell_num ASC
-    LIMIT 15
+  SELECT 
+      ((bbc.row) * 5 + (bbc.column + 1)) AS cell_num,
+      bbc.task_id,
+      bt.description AS task_name,
+      bt.type,
+      bt.parameter,
+      bt.value,
+      COALESCE(SUM(btp.progress_value), 0) AS progress_value,
+      bt.base_points AS points_reward,
+
+      CASE
+        WHEN SUM(CASE WHEN btp.status = 'completed' THEN 1 ELSE 0 END) > 0 THEN 'completed'
+        WHEN SUM(CASE WHEN btp.status = 'in-progress' THEN 1 ELSE 0 END) > 0 THEN 'in-progress'
+        ELSE 'incomplete'
+      END AS status
+
+  FROM bingo_board_cells bbc
+  JOIN bingo_tasks bt ON bbc.task_id = bt.task_id
+  LEFT JOIN bingo_task_progress btp
+      ON btp.task_id = bt.task_id
+      AND ${idColumn} IN (${placeholders})
+      AND btp.event_id = ?
+  JOIN bingo_state bs
+      ON bs.board_id = bbc.board_id
+  WHERE bbc.board_id = ?
+    AND bs.state = 'ongoing'
+  GROUP BY bbc.row, bbc.column
+  ORDER BY cell_num ASC
+  LIMIT 15
 `;
 
     logger.info(`[BingoImageGenerator] Running SQL: ${sql}`);
@@ -384,45 +420,39 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
     }));
 }
 
-
+/**
+ *
+ * @param progressValue
+ * @param target
+ */
 function calculateProgressPercentage(progressValue, target) {
     const effectiveTarget = target;
     const percentage = Math.min((progressValue / effectiveTarget) * 100, 100);
     return percentage.toFixed(2);
 }
 
+/**
+ *
+ * @param eventId
+ * @param id
+ * @param isTeam
+ */
 async function calculateOverallProgress(eventId, id, isTeam = false) {
-    const idColumn = isTeam ? 'btp.team_id' : 'btp.player_id';
-
-    const tasks = await db.getAll(
-        `
-        SELECT bt.value AS target_value, 
-               COALESCE(SUM(btp.progress_value), 0) AS progress_value
-        FROM bingo_board_cells bbc
-        JOIN bingo_tasks bt ON bbc.task_id = bt.task_id
-        LEFT JOIN bingo_task_progress btp
-          ON btp.task_id = bt.task_id 
-          AND ${idColumn} = ?
-          AND btp.event_id = ?
-        JOIN bingo_state bs ON bs.board_id = bbc.board_id
-        WHERE bs.event_id = ?
-          AND bt.type != 'Drop'
-        GROUP BY bt.task_id
-        `,
-        [id, eventId, eventId],
-    );
-
-    if (tasks.length === 0) return '0.00';
-
-    const percentages = tasks.map(({ target_value, progress_value }) => {
-        const taskPercentage = Math.min((progress_value / target_value) * 100, 100);
-        return taskPercentage;
-    });
-
-    const overall = percentages.reduce((sum, p) => sum + p, 0) / tasks.length;
-    return overall.toFixed(2);
+    if (isTeam) {
+        const { teamTotalPartial, totalBoardPoints } = await computeTeamPartialPoints(eventId, id, true);
+        const result = computeOverallPercentage(teamTotalPartial, totalBoardPoints);
+        return result.toFixed(2);
+    } else {
+        const { partialPoints, totalBoardPoints } = await computeIndividualPartialPoints(eventId, id, true);
+        const result = computeOverallPercentage(partialPoints, totalBoardPoints);
+        return result.toFixed(2);
+    }
 }
 
+/**
+ *
+ * @param boardId
+ */
 async function getEventId(boardId) {
     const row = await db.getOne(
         `

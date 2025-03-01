@@ -1,4 +1,4 @@
-const { createProgressEmbed, createFinalResultsEmbed, createIndividualLeaderboardEmbed, createTeamLeaderboardEmbed } = require('./bingoEmbeds');
+const { createProgressEmbed, createFinalResultsEmbed, createIndividualLeaderboardEmbed, createTeamLeaderboardEmbed, createConsolidatedProgressEmbed } = require('./bingoEmbeds');
 const { createEmbedRecord, getActiveEmbeds, editEmbed } = require('./bingoEmbedManager');
 const { getProgressEmbedData, getFinalResultsEmbedData, getNewCompletions } = require('./bingoEmbedData');
 const getChannelId = require('../../utils/fetchers/getChannel');
@@ -29,9 +29,13 @@ async function sendNewCompletions(client, eventId) {
         return;
     }
     const channel = await fetchChannel(client, 'bingo_updates_channel');
+
+    // Create a single consolidated embed using our helper.
+    const embed = await createConsolidatedProgressEmbed(newCompletions);
+    const message = await channel.send({ embeds: [embed] });
+
+    // Record the embed for each completion.
     for (const row of newCompletions) {
-        const embed = await createProgressEmbed(row);
-        const message = await channel.send({ embeds: [embed] });
         await createEmbedRecord(row.event_id, row.player_id, null, row.task_id, message.id, channel.id, 'progress');
     }
 }

@@ -2,10 +2,9 @@
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const bingoTaskManager = require('./bingoTaskManager');
-const bingoEmbedHelper = require('./bingoEmbedHelper');
-const bingoStateManager = require('./bingoStateManager');
 const { appendBingoProgression } = require('../../utils/helpers/commands/bingo/teams/teamCommandHelpers');
-const { endEvent } = require('./bingoEventUtils');
+const { sendFinalResultsEmbed } = require('./bingoEmbedHelper');
+const client = require('../../../main');
 
 /**
  *
@@ -25,27 +24,28 @@ async function updateBingoProgress(client) {
 }
 
 /**
- *
- * @param eventId
+ * Ends a Bingo event by archiving data, clearing progress, and notifying users.
+ * @param {number} eventId - The ID of the event to end.
  */
 async function endBingoEvent(eventId) {
     try {
-        logger.info(`[BingoService] endBingoEvent(#${eventId})...`);
+        logger.info(`[BingoService] endBingoEvent(#${eventId}) → Start`);
 
         // Archive event data into bingo_history.
         await db.runQuery(
             `
-            INSERT INTO bingo_history (event_id, board_id, player_id, team_id, task_id, status, points_awarded, completed_at)
-            SELECT btp.event_id,
-                   (SELECT board_id FROM bingo_state WHERE event_id = btp.event_id),
-                   btp.player_id,
-                   COALESCE(btp.team_id, 0),
-                   btp.task_id,
-                   btp.status,
-                   DATETIME('now')
-            FROM bingo_task_progress btp
-            WHERE btp.event_id = ?
-            `,
+    INSERT INTO bingo_history (event_id, board_id, player_id, team_id, task_id, status, points_awarded, completed_at)
+    SELECT btp.event_id,
+           (SELECT board_id FROM bingo_state WHERE event_id = btp.event_id),
+           btp.player_id,
+           COALESCE(btp.team_id, 0),
+           btp.task_id,
+           btp.status,
+           btp.points_awarded,
+           DATETIME('now')
+    FROM bingo_task_progress btp
+    WHERE btp.event_id = ?
+    `,
             [eventId],
         );
 
@@ -59,15 +59,8 @@ async function endBingoEvent(eventId) {
         );
 
         // Send out final results.
-        await bingoEmbedHelper.sendFinalResults(eventId);
+        await sendFinalResultsEmbed(client, eventId);
         logger.info(`[BingoService] Bingo event #${eventId} ended & archived.`);
-
-        // Mark the event as completed.
-        await bingoStateManager.setEventState(eventId, 'completed');
-        logger.info(`[BingoService] Event #${eventId} marked as completed.`);
-
-        await endEvent();
-        // (Removed redundant new event scheduling from here.)
     } catch (err) {
         logger.error(`[BingoService] endBingoEvent() error: ${err.message}`);
     }

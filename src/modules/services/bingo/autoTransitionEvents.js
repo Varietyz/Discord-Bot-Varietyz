@@ -5,50 +5,139 @@ const { endBingoEvent } = require('./bingoService');
 const { generateDynamicTasks, clearDynamicTasks } = require('./dynamicTaskGenerator');
 const { rotateBingoTasks, startBingoEvent } = require('./bingoUtils');
 const { getFullBoardPattern } = require('./bingoPatterns');
+const { setEventState } = require('./bingoStateManager');
 
 /**
- *
+ * 📅 Auto Transition Events
+ * - Transitions events between states (upcoming, ongoing, completed).
+ * - Clears and generates tasks before rotating to a new event.
  */
 async function autoTransitionEvents() {
     const now = new Date();
     const nowIso = now.toISOString();
 
-    // Retrieve any ongoing event
-    const ongoingEvent = await db.getOne(`
-        SELECT event_id
+    try {
+        // 🔍 **Check if any event exists**
+        const existingEvent = await db.getOne('SELECT event_id FROM bingo_state LIMIT 1');
+
+        if (!existingEvent) {
+            logger.info('[autoTransitionEvents] No existing events found. Creating the first event...');
+
+            // 🔄 ✅ Rotate and start a new event properly
+            await rotateAndStartNewEvent(now, null);
+
+            logger.info('[autoTransitionEvents] First event created successfully.');
+            return; // No need to continue further as a new event was just created.
+        }
+
+        // ✅ Transition Upcoming to Ongoing
+        await transitionUpcomingToOngoing(nowIso);
+
+        // ✅ Retrieve all ongoing events
+        const ongoingEvents = await getOngoingEvents();
+
+        for (const event of ongoingEvents) {
+            const eventId = event.event_id;
+            const timeUp = checkEventTimeout(event.start_time, event.end_time);
+            const fullComplete = await hasFullCompletion(eventId);
+
+            // ✅ End Event if Timeout or Full Completion
+            if (timeUp || fullComplete) {
+                logger.info(`[autoTransitionEvents] Ending event #${eventId} due to ${timeUp ? 'timeUp' : 'fullCompletion'}`);
+                await handleEventCompletion(eventId);
+
+                // 🔄 Rotate and Start New Event
+                await rotateAndStartNewEvent(now, eventId);
+            }
+        }
+    } catch (err) {
+        logger.error(`[autoTransitionEvents] Error: ${err.message}`);
+    }
+}
+
+/**
+ * ✅ Transition Upcoming to Ongoing
+ * - Transitions events that have passed their start time to 'ongoing'.
+ * @param nowIso
+ */
+async function transitionUpcomingToOngoing(nowIso) {
+    await db.runQuery(
+        `
+        UPDATE bingo_state
+        SET state='ongoing'
+        WHERE state='upcoming'
+          AND start_time <= ?
+        `,
+        [nowIso],
+    );
+    logger.info('[autoTransitionEvents] Transitioned upcoming events to ongoing.');
+}
+
+/**
+ * ✅ Get Ongoing Events
+ * - Retrieves all events currently marked as 'ongoing'.
+ * @returns {Array} List of ongoing events.
+ */
+async function getOngoingEvents() {
+    return await db.getAll(`
+        SELECT event_id, start_time, end_time
         FROM bingo_state
-        WHERE state = 'ongoing'
-        LIMIT 1
+        WHERE state='ongoing'
     `);
+}
 
-    if (!ongoingEvent) {
-        // No ongoing event: schedule a new event.
-        const lastCompletedEvent = await db.getOne(`
-            SELECT event_id
-            FROM bingo_state
-            WHERE state = 'completed'
-            ORDER BY event_id DESC
-            LIMIT 1
-        `);
+/**
+ * ✅ Check Event Timeout
+ * - Determines if an event has timed out based on start time or end time.
+ * @param {string} startTime - Event start time.
+ * @param {string} endTime - Event end time.
+ * @returns {boolean} True if event timed out.
+ */
+function checkEventTimeout(startTime, endTime) {
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = endTime ? new Date(endTime) : null;
 
+    const fourWeeksLater = new Date(start.getTime() + 28 * 24 * 60 * 60 * 1000);
+    return fourWeeksLater <= now || (end && end <= now);
+}
+
+/**
+ * ✅ Handle Event Completion
+ * - Ends the event, updates state, and clears/generates tasks.
+ * @param {number} eventId - Event ID to complete.
+ */
+async function handleEventCompletion(eventId) {
+    try {
+        await endBingoEvent(eventId); // ✅ Centralized Event Ending
+        await setEventState(eventId, 'completed'); // ✅ Consistent State Update
+
+        // 🔄 Clear and Generate Tasks for New Event
         await clearDynamicTasks();
         await generateDynamicTasks();
+        logger.info(`[autoTransitionEvents] Cleared and generated tasks for event #${eventId}.`);
+    } catch (err) {
+        logger.error(`[handleEventCompletion] Error: ${err.message}`);
+    }
+}
 
+/**
+ * 🔄 Rotate and Start New Event
+ * - Rotates tasks and schedules the next event.
+ * @param {Date} now - Current date and time.
+ * @param oldEventId
+ */
+async function rotateAndStartNewEvent(now, oldEventId) {
+    try {
         const { newEventId, newBoardId } = await rotateBingoTasks();
         if (!newEventId || !newBoardId) {
             logger.error('[autoTransitionEvents] Failed to create new event or board.');
             return;
         }
 
-        if (lastCompletedEvent) {
-            await db.runQuery('UPDATE bingo_teams SET event_id = ? WHERE event_id = ?', [newEventId, lastCompletedEvent.event_id]);
-        }
-
         const eventDuration = 28 * 24 * 60 * 60 * 1000;
         const newStart = new Date(now.getTime());
         const newEnd = new Date(newStart.getTime() + eventDuration);
-
-        logger.info(`[autoTransitionEvents] Generating dynamic tasks for event #${newEventId}, board #${newBoardId}`);
 
         await db.runQuery(
             `
@@ -59,53 +148,19 @@ async function autoTransitionEvents() {
             [newStart.toISOString(), newEnd.toISOString(), newEventId, newBoardId],
         );
 
+        await db.runQuery(
+            `
+            UPDATE bingo_teams
+            SET event_id=?
+            WHERE event_id=?
+            `,
+            [newEventId, oldEventId],
+        );
+
         await startBingoEvent(newEventId, newStart.toISOString());
         logger.info(`[autoTransitionEvents] New event #${newEventId} with board #${newBoardId} scheduled to start.`);
-    } else {
-        logger.info(`[autoTransitionEvents] Ongoing event found (event_id=${ongoingEvent.event_id}).`);
-    }
-
-    // Update upcoming events whose start time has passed to ongoing.
-    await db.runQuery(
-        `
-        UPDATE bingo_state
-        SET state='ongoing'
-        WHERE state='upcoming'
-          AND start_time <= ?
-        `,
-        [nowIso],
-    );
-
-    // Retrieve all ongoing events and check if any should be completed.
-    const ongoing = await db.getAll(`
-        SELECT event_id, start_time, end_time
-        FROM bingo_state
-        WHERE state='ongoing'
-    `);
-
-    for (const evt of ongoing) {
-        const eventId = evt.event_id;
-        const startTime = new Date(evt.start_time);
-        const endTime = evt.end_time ? new Date(evt.end_time) : null;
-
-        const fourWeeksLater = new Date(startTime.getTime() + 28 * 24 * 60 * 60 * 1000);
-        const timeUp = fourWeeksLater <= now || (endTime && endTime <= now);
-
-        // Check if any player has completed the board.
-        const fullComplete = await hasFullCompletion(eventId);
-
-        if (timeUp || fullComplete) {
-            logger.info(`[autoTransitionEvents] Ending event #${eventId} due to ${timeUp ? 'timeUp' : 'fullCompletion'}`);
-            await db.runQuery(
-                `
-                UPDATE bingo_state
-                SET state='completed'
-                WHERE event_id=?
-                `,
-                [eventId],
-            );
-            await endBingoEvent(eventId);
-        }
+    } catch (err) {
+        logger.error(`[rotateAndStartNewEvent] Error: ${err.message}`);
     }
 }
 
