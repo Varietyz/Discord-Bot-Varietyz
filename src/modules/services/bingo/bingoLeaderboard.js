@@ -1,7 +1,7 @@
 // /modules/services/bingo/bingoLeaderboard.js
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
-const { getTeamProgress } = require('./bingoEmbedData');
+const { calculateTeamEffectiveProgress } = require('./bingoCalculations');
 
 /**
  * Retrieves detailed progress for each completed task for a given player and event.
@@ -145,58 +145,95 @@ async function updateLeaderboardForEvent(eventId) {
 /**
  * 📊 Update Team Leaderboard for Event
  * - Recalculates points and completed tasks for each team.
- * - Only counts completed tasks if progress meets or exceeds target.
+ * - Uses `calculateTeamEffectiveProgress` to ensure fair progress allocation.
  *
  * @param {number} eventId - The ID of the event
  */
 async function updateTeamLeaderboardForEvent(eventId) {
     logger.info(`[BingoLeaderboard] Recalculating team-based leaderboard for event #${eventId}`);
 
-    const progressRows = await db.getAll(
-        `
-        SELECT team_id, SUM(points_awarded) AS totalPoints, SUM(extra_points) AS extraSum, COUNT(task_id) AS completedTasks
-        FROM bingo_task_progress
-        WHERE event_id = ?
-          AND team_id IS NOT NULL
-        GROUP BY team_id
-        `,
+    // Fetch all tasks for the event
+    const tasks = await db.getAll(
+        `SELECT task_id, value, base_points 
+         FROM bingo_tasks 
+         WHERE task_id IN (
+            SELECT DISTINCT task_id 
+            FROM bingo_task_progress 
+            WHERE event_id = ?
+         )`,
         [eventId],
     );
 
-    for (const row of progressRows) {
-        const { team_id, totalPoints, extraSum, completedTasks } = row;
+    const teamProgressMap = {};
+
+    for (const task of tasks) {
+        const { task_id, value: target, base_points } = task;
+
+        // Fetch all teams' progress for this task
+        const teamProgressRows = await db.getAll(
+            `SELECT team_id, player_id, SUM(progress_value) AS progress
+             FROM bingo_task_progress
+             WHERE event_id = ? AND task_id = ? AND team_id IS NOT NULL
+             GROUP BY team_id, player_id`,
+            [eventId, task_id],
+        );
+
+        // Group by team_id
+        const teams = {};
+        for (const row of teamProgressRows) {
+            if (!teams[row.team_id]) teams[row.team_id] = [];
+            teams[row.team_id].push({
+                playerId: row.player_id,
+                progress: row.progress,
+            });
+        }
+
+        // Apply `calculateTeamEffectiveProgress` for each team
+        for (const [team_id, members] of Object.entries(teams)) {
+            const effectiveProgressList = calculateTeamEffectiveProgress(members, target);
+
+            // Sum up effective progress for the team
+            const totalEffectiveProgress = effectiveProgressList.reduce((sum, member) => sum + member.effectiveProgress, 0);
+
+            // Determine if the task is completed
+            const taskCompleted = totalEffectiveProgress >= target;
+            if (!teamProgressMap[team_id]) {
+                teamProgressMap[team_id] = { points: 0, completedTasks: 0 };
+            }
+
+            // Add base points if task is completed
+            if (taskCompleted) {
+                teamProgressMap[team_id].points += base_points;
+                teamProgressMap[team_id].completedTasks += 1;
+            }
+        }
+    }
+
+    // Update the leaderboard
+    for (const [team_id, progress] of Object.entries(teamProgressMap)) {
+        const { points, completedTasks } = progress;
 
         const existingRow = await db.getOne(
-            `
-            SELECT leaderboard_id, pattern_bonus
-            FROM bingo_leaderboard
-            WHERE event_id = ?
-              AND team_id = ?
-            `,
+            `SELECT leaderboard_id, pattern_bonus
+             FROM bingo_leaderboard
+             WHERE event_id = ? AND team_id = ?`,
             [eventId, team_id],
         );
 
         const pattern_bonus = existingRow?.pattern_bonus || 0;
-        const finalPoints = (totalPoints || 0) + (extraSum || 0) + pattern_bonus;
+        const finalPoints = points + pattern_bonus;
 
         if (!existingRow) {
             await db.runQuery(
-                `
-                INSERT INTO bingo_leaderboard (event_id, team_id, total_points, completed_tasks, pattern_bonus)
-                VALUES (?, ?, ?, ?, ?)
-                `,
+                `INSERT INTO bingo_leaderboard (event_id, team_id, total_points, completed_tasks, pattern_bonus)
+                 VALUES (?, ?, ?, ?, ?)`,
                 [eventId, team_id, finalPoints, completedTasks, pattern_bonus],
             );
         } else {
             await db.runQuery(
-                `
-                UPDATE bingo_leaderboard
-                SET total_points = ?,
-                    completed_tasks = ?,
-                    pattern_bonus = ?,
-                    last_updated = CURRENT_TIMESTAMP
-                WHERE leaderboard_id = ?
-                `,
+                `UPDATE bingo_leaderboard
+                 SET total_points = ?, completed_tasks = ?, pattern_bonus = ?, last_updated = CURRENT_TIMESTAMP
+                 WHERE leaderboard_id = ?`,
                 [finalPoints, completedTasks, pattern_bonus, existingRow.leaderboard_id],
             );
         }

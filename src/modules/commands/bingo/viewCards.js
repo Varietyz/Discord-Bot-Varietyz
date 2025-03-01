@@ -8,6 +8,9 @@ const { getLastFetchedTime, setLastFetchedTime } = require('../../utils/fetchers
 const { getDataAttributes, getDataColumn, upsertTaskProgress } = require('../../services/bingo/bingoTaskManager');
 const getEmoji = require('../../utils/fetchers/getEmoji');
 const { computeOverallPercentage, computeTeamPartialPoints } = require('../../services/bingo/bingoCalculations');
+const getEmojiWithFallback = require('../../utils/fetchers/getEmojiWithFallback');
+const getPlayerRank = require('../../utils/fetchers/getPlayerRank');
+const { getTeamTaskProgress } = require('../../services/bingo/bingoEmbedData');
 
 /**
  *
@@ -298,6 +301,12 @@ async function paginateIndividualCards(interaction, boardId, userRows) {
  * @param teamName
  */
 async function generateTeamCard(interaction, boardId, teamId, teamName) {
+    const trophyEmoji = await getEmojiWithFallback('emoji_league_points', '🏆');
+    const pointsEmoji = await getEmojiWithFallback('emoji_points', '⭐');
+    const completedEmoji = await getEmojiWithFallback('emoji_completed', '📝');
+    const progressEmoji = await getEmojiWithFallback('emoji_overall', '📊');
+    const teamEmoji = await getEmojiWithFallback('emoji_clan_logo', '👥');
+
     try {
         // 1) Generate the Bingo card image (unchanged).
         const tasks = await getPlayerTasks(boardId, teamId, true);
@@ -312,42 +321,93 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
 
         const eventId = await getEventId(boardId);
 
-        const { partialPointsMap, teamTotalPartial, totalBoardPoints } = await computeTeamPartialPoints(eventId, teamId, true); // "true" => round per task
+        let leaderboardDescription = '';
+        const emojiCache = []; // Cache for emoji lookups.
+        const teamProgress = [];
 
+        const { partialPointsMap, teamTotalPartial, totalBoardPoints, teamTotalOverallPartial, overallPartialPointsMap } = await computeTeamPartialPoints(eventId, teamId);
         // The "Team Overall" is partial_points / totalBoardPoints
-        const teamOverallFloat = computeOverallPercentage(teamTotalPartial, totalBoardPoints);
-        const teamOverall = teamOverallFloat.toFixed(2);
+        const overallFloat = computeOverallPercentage(teamTotalOverallPartial, totalBoardPoints);
+        const overall = parseFloat(overallFloat.toFixed(2));
 
-        // 3) Build the lines listing each member's partial points & share
-        //    (unchanged from your old code, but we no longer do the partialPoints calculation here!)
+        // Build a row of emojis for tasks that the team has fully completed.
+        const taskProgress = await getTeamTaskProgress(eventId, teamId);
+        let taskProgressStr = '';
+        for (const t of taskProgress) {
+            if (t.status === 'completed') {
+                let taskEmoji = emojiCache[t.parameter];
+                if (!taskEmoji) {
+                    taskEmoji = await getEmojiWithFallback(`emoji_${t.parameter}`, '✅');
+                    emojiCache[t.parameter] = taskEmoji;
+                }
+                taskProgressStr += `${taskEmoji} `;
+            }
+        }
+        if (!taskProgressStr) {
+            taskProgressStr = '_No completed tasks yet._';
+        }
+
+        // "Tasks Completed" count based on tasks with status 'completed'.
+        const completedTasks = taskProgress.filter((tp) => tp.status === 'completed').length;
+
+        // Retrieve team members.
         const teamMembers = await db.getAll(
             `
-      SELECT rr.player_id, rr.rsn
-      FROM registered_rsn rr
-      JOIN bingo_team_members btm ON btm.player_id = rr.player_id
-      WHERE btm.team_id = ?
-      `,
+                SELECT rr.rsn, rr.player_id
+                FROM bingo_team_members btm
+                JOIN registered_rsn rr ON btm.player_id = rr.player_id
+                WHERE btm.team_id = ?
+                ORDER BY rr.rsn COLLATE NOCASE ASC
+                `,
             [teamId],
         );
 
-        // Sort by highest partial points
-        teamMembers.sort((a, b) => partialPointsMap[b.player_id] - partialPointsMap[a.player_id]);
+        // For each member, compute their contribution % based on overall progress (partial progress).
+        const memberLines = [];
+        // Sort members by their overall partial progress (from overallPartialPointsMap).
+        teamMembers.sort((a, b) => (overallPartialPointsMap[b.player_id] || 0) - (overallPartialPointsMap[a.player_id] || 0));
+        for (const member of teamMembers) {
+            // Display earned points based solely on completions.
+            const userPoints = partialPointsMap[member.player_id] || 0;
+            // Now compute contribution % based on overall progress.
+            const userOverallPoints = overallPartialPointsMap[member.player_id] || 0;
+            const userShare = teamTotalOverallPartial > 0 ? ((userOverallPoints / teamTotalOverallPartial) * 100).toFixed(2) : '0.00';
 
-        const memberLines = teamMembers.map((member) => {
-            const mPoints = partialPointsMap[member.player_id];
-            const ratio = teamTotalPartial > 0 ? ((mPoints / teamTotalPartial) * 100).toFixed(2) : '0.00';
-            return `• **${member.rsn}** — \`${mPoints} pts\`, \`${ratio}%\` contribution`;
+            // Optionally fetch rank emoji.
+            const playerRank = await getPlayerRank(member.player_id);
+            let memberEmoji = emojiCache[playerRank];
+            if (!memberEmoji) {
+                memberEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
+                emojiCache[playerRank] = memberEmoji;
+            }
+
+            const playerNameForLink = encodeURIComponent(member.rsn);
+            const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
+
+            memberLines.push(`> - ${memberEmoji}[${member.rsn}](${profileLink}) contributed \`${userShare}%\` ${progressEmoji} & earned \`${userPoints} pts\` ${pointsEmoji}`);
+        }
+
+        const memberSection = memberLines.join('\n') || '> _No members found._';
+
+        // Save the team's data for the leaderboard.
+        teamProgress.push({
+            team_name: teamName,
+            overall, // Overall progress % (from any progression)
+            partial_points: teamTotalPartial, // Total awarded points from completions
+            completed_tasks: completedTasks,
+            taskProgressStr,
+            memberSection,
         });
-        const membersList = memberLines.join('\n');
 
         // 4) Build the embed
-        const embed = new EmbedBuilder()
-            .setTitle(`Team Card — ${teamName}`)
-            .setDescription(`**Finished:** \`${teamOverall}%\`\n` + `**Team's Total Points:** \`${teamTotalPartial}\`\n\n` + `**Team Members:**\n${membersList}`)
-            .setColor(0xf1c40f)
-            .setImage('attachment://bingo_card_team.png')
-            .setFooter({ text: 'Bingo Cards: Team' })
-            .setTimestamp();
+        const embed = new EmbedBuilder().setTitle(`${trophyEmoji} Team Card — Bingo Event #${eventId}`).setColor(0xf1c40f).setImage('attachment://bingo_card_team.png').setFooter({ text: 'Bingo Cards: Team' }).setTimestamp();
+        leaderboardDescription += `> ### ${teamEmoji} Team: **\`${teamName}\`**\n`;
+        leaderboardDescription += `> Finished: **\`${overall.toFixed(2)}%\` ${progressEmoji}**\n> Team Points: \`${teamTotalPartial} pts\` ${pointsEmoji}\n`;
+        leaderboardDescription += `${memberSection}\n`;
+        leaderboardDescription += `> ${completedEmoji}Tasks Completed: \`${completedTasks}\`\n`;
+        leaderboardDescription += `> ${taskProgressStr}\n\n`;
+
+        embed.setDescription(leaderboardDescription);
 
         return interaction.editReply({
             content: '\u200b',

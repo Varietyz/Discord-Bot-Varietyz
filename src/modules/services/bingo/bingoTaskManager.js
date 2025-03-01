@@ -1,6 +1,7 @@
 // /modules/services/bingo/bingoTaskManager.js
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
+const { calculateTeamEffectiveProgress } = require('./bingoCalculations');
 
 /**
  *
@@ -274,47 +275,6 @@ async function consolidateTeamTaskProgress(eventId) {
 }
 
 /**
- * Helper function to calculate effective team progress.
- * It sorts team members in ascending order by their raw progress.
- * Then, starting from the lowest, it subtracts their progress from the target.
- * If a member's progress exceeds the remaining target, it's capped at the remaining value.
- *
- * @param {Array<{ playerId: string|number, progress: number }>} teamMembers - Array of team members with their raw progress.
- * @param {number} target - The target progress value.
- * @returns {Array<{ playerId: string|number, originalProgress: number, effectiveProgress: number }>}
- */
-function calculateTeamEffectiveProgress(teamMembers, target) {
-    // Clone and sort team members in ascending order by their recorded progress.
-    const sortedMembers = [...teamMembers].sort((a, b) => a.progress - b.progress);
-    let remainingTarget = target;
-    const effectiveResults = [];
-
-    // Process each member in sorted order.
-    for (const member of sortedMembers) {
-        // The effective contribution is the minimum between the member's progress and the remaining target.
-        const effective = Math.min(member.progress, remainingTarget);
-        effectiveResults.push({
-            playerId: member.playerId,
-            originalProgress: member.progress,
-            effectiveProgress: effective,
-        });
-        remainingTarget -= effective;
-        if (remainingTarget <= 0) break;
-    }
-    // If there are members left after the target is fully allocated, assign them zero effective progress.
-    if (effectiveResults.length < sortedMembers.length) {
-        for (let i = effectiveResults.length; i < sortedMembers.length; i++) {
-            effectiveResults.push({
-                playerId: sortedMembers[i].playerId,
-                originalProgress: sortedMembers[i].progress,
-                effectiveProgress: 0,
-            });
-        }
-    }
-    return effectiveResults;
-}
-
-/**
  * Updates the effective progress for all team members for a given event and task.
  *
  * @param {number} event_id - The event ID.
@@ -344,6 +304,12 @@ async function updateTeamEffectiveProgress(event_id, task_id, team_id, targetVal
         // Find the matching record to obtain its progress_id.
         const record = teamRecords.find((r) => r.player_id === result.playerId);
         if (!record) continue;
+
+        const isCompleted = await db.getOne('SELECT status FROM bingo_task_progress WHERE event_id = ? AND player_id = ? AND task_id = ?', [event_id, result.playerId, task_id]);
+        if (isCompleted?.status === 'completed') {
+            logger.info(`[BingoTaskManager] Task #${task_id} is already completed for Player #${result.playerId}. Skipping upsert.`);
+            return;
+        }
 
         // Determine new status based on the effective progress.
         const newStatus = result.effectiveProgress >= targetValue ? 'completed' : result.effectiveProgress > 0 ? 'in-progress' : 'incomplete';
@@ -430,6 +396,12 @@ async function upsertTaskProgress(event_id, player_id, task_id, progressVal, sta
                 logger.info(`[BingoTaskManager] Updated progress for Player #${player_id}, Task #${task_id} - New Progress: ${cappedProgress} (${status}), Team ID: ${team_id}`);
             }
         } else {
+            const isCompleted = await db.getOne('SELECT status FROM bingo_task_progress WHERE event_id = ? AND player_id = ? AND task_id = ?', [event_id, player_id, task_id]);
+            if (isCompleted?.status === 'completed') {
+                logger.info(`[BingoTaskManager] Task #${task_id} is already completed for Player #${player_id}. Skipping upsert.`);
+                return;
+            }
+
             // For team members, we always update or insert the raw progress value.
             const existing = await db.getOne(
                 `SELECT progress_id, progress_value, status FROM bingo_task_progress 

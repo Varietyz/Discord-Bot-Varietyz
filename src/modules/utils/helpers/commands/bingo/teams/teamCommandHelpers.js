@@ -111,15 +111,10 @@ async function appendBingoProgression(client) {
     for (const { event_id } of ongoingEvents) {
         try {
             await sendOrUpdateLeaderboardEmbeds(client, event_id);
+            await sendNewCompletions(client);
         } catch (err) {
             logger.error(`[BingoService] sendOrUpdateLeaderboardEmbeds(eventId: ${event_id}) error: ${err.message}`);
         }
-    }
-
-    try {
-        await sendNewCompletions(client);
-    } catch (err) {
-        logger.error(`[BingoService] sendNewCompletions() error: ${err.message}`);
     }
 
     try {

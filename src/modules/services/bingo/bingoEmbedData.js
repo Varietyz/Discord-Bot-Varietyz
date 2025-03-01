@@ -305,8 +305,9 @@ async function getTeamLeaderboard(eventId) {
         FROM bingo_leaderboard bl
         JOIN bingo_teams t ON t.team_id = bl.team_id
         WHERE bl.event_id = ?
-          AND bl.team_id IS NOT NULL
+          AND bl.team_id > 0
         ORDER BY bl.total_points DESC
+        LIMIT 5;
         `,
         [eventId],
     );

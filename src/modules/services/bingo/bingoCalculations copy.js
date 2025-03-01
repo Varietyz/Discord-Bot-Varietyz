@@ -166,112 +166,73 @@ async function computeTeamPartialPoints(eventId, teamId) {
  * Computes partial points for an INDIVIDUAL, returning:
  *  - partialPoints
  *  - totalBoardPoints
- *
- * @param {number} eventId - The Bingo Event ID.
- * @param {number} playerId - The Player ID.
- * @param {boolean} roundPerTask - Whether to round points per task.
+ * @param eventId
+ * @param playerId
+ * @param roundPerTask
  */
 async function computeIndividualPartialPoints(eventId, playerId, roundPerTask = true) {
+    // Same approach, but for a single user
     const boardTasks = await getBoardTasksForEvent(eventId);
     const totalBoardPoints = boardTasks.reduce((sum, t) => sum + t.base_points, 0);
+
     let totalPartialPoints = 0;
 
     for (const task of boardTasks) {
         const { task_id, base_points, targetValue } = task;
-
-        // ✅ Fetch player's raw progress
         const row = await db.getOne(
-            `SELECT progress_value FROM bingo_task_progress
-             WHERE event_id = ? AND player_id = ? AND task_id = ?`,
+            `
+      SELECT progress_value
+      FROM bingo_task_progress
+      WHERE event_id = ?
+        AND player_id = ?
+        AND task_id = ?
+      `,
             [eventId, playerId, task_id],
         );
 
         const progressValue = row?.progress_value || 0;
         const cappedProgress = Math.min(progressValue, targetValue);
-        const taskPartialPoints = computePartialPoints(cappedProgress, targetValue, base_points, roundPerTask);
-        totalPartialPoints += taskPartialPoints;
 
-        // ✅ Save points in the database (delegated to new function)
-        await saveTaskPointsAwarded(eventId, playerId, task_id, base_points, progressValue, targetValue, false);
+        const taskPartialPoints = computePartialPoints(cappedProgress, targetValue, base_points, roundPerTask);
+        totalPartialPoints += taskPartialPoints; // Accumulate correctly
+
+        const existingPoints = await db.getOne(
+            `
+    SELECT points_awarded
+    FROM bingo_task_progress
+    WHERE event_id = ?
+      AND player_id = ?
+      AND task_id = ?
+    `,
+            [eventId, playerId, task_id],
+        );
+
+        // Only update points_awarded if it's currently 0
+        const isCompleted = await db.getOne('SELECT status FROM bingo_task_progress WHERE event_id = ? AND player_id = ? AND task_id = ?', [eventId, playerId, task_id]);
+        if (isCompleted?.status === 'completed') {
+            if (!existingPoints || existingPoints.points_awarded === 0) {
+                logger.info(`[bingoCalculations] Task #${task_id} is completed for Player #${playerId}. Saving ${taskPartialPoints} pts.`);
+                // ✅ STORE POINTS IN `points_awarded`
+                await db.runQuery(
+                    `
+        UPDATE bingo_task_progress
+        SET points_awarded = ?
+        WHERE event_id = ?
+          AND player_id = ?
+          AND task_id = ?
+        `,
+                    [taskPartialPoints, eventId, playerId, task_id],
+                );
+            } else {
+                logger.info(`[bingoCalculations] Skipping points update for Player #${playerId} on Task #${task_id} - Points already awarded.`);
+            }
+        }
     }
 
     return {
         partialPoints: totalPartialPoints,
         totalBoardPoints,
     };
-}
-
-/**
- * ✅ Save Task Points for an Individual or Team
- * - Ensures correct `points_awarded` update based on effective progress.
- * - Prevents duplicate updates if points have already been awarded.
- *
- * @param {number} eventId - The Bingo Event ID.
- * @param {number} playerId - The Player ID.
- * @param {number} taskId - The Task ID.
- * @param {number} basePoints - The base points of the task.
- * @param {number} progressValue - The player's raw progress.
- * @param {number} targetValue - The required progress to complete the task.
- * @param {boolean} isTeam - Whether the player is in a team.
- */
-async function saveTaskPointsAwarded(eventId, playerId, taskId, basePoints, progressValue, targetValue, isTeam = false) {
-    try {
-        let effectiveProgress = progressValue;
-
-        if (isTeam) {
-            // ✅ Fetch all team members' progress for this task
-            const teamProgress = await db.getAll(
-                `SELECT player_id, SUM(progress_value) AS progress
-                 FROM bingo_task_progress
-                 WHERE event_id = ? AND task_id = ?
-                 GROUP BY player_id`,
-                [eventId, taskId],
-            );
-
-            // ✅ Calculate effective progress for the team
-            const effectiveProgressList = calculateTeamEffectiveProgress(teamProgress, targetValue);
-
-            // ✅ Get the player's adjusted contribution
-            const playerEffective = effectiveProgressList.find((m) => m.playerId === playerId);
-            effectiveProgress = playerEffective ? playerEffective.effectiveProgress : 0;
-        }
-
-        // ✅ Ensure progress doesn't exceed task target
-        const cappedProgress = Math.min(effectiveProgress, targetValue);
-        const taskPartialPoints = computePartialPoints(cappedProgress, targetValue, basePoints, true);
-
-        // ✅ Check if task is already completed for the player
-        const isCompleted = await db.getOne(
-            `SELECT status FROM bingo_task_progress 
-             WHERE event_id = ? AND player_id = ? AND task_id = ?`,
-            [eventId, playerId, taskId],
-        );
-
-        // ✅ Only update points if the task is marked as "completed"
-        if (isCompleted?.status === 'completed') {
-            // ✅ Fetch existing `points_awarded`
-            const existingPoints = await db.getOne(
-                `SELECT points_awarded FROM bingo_task_progress
-                 WHERE event_id = ? AND player_id = ? AND task_id = ?`,
-                [eventId, playerId, taskId],
-            );
-
-            if (!existingPoints || existingPoints.points_awarded === 0) {
-                logger.info(`[bingoCalculations] Task #${taskId} is completed for Player #${playerId}. Saving ${taskPartialPoints} pts.`);
-
-                await db.runQuery(
-                    `UPDATE bingo_task_progress
-                     SET points_awarded = ?
-                     WHERE event_id = ? AND player_id = ? AND task_id = ?`,
-                    [taskPartialPoints, eventId, playerId, taskId],
-                );
-            } else {
-                logger.info(`[bingoCalculations] Skipping points update for Player #${playerId} on Task #${taskId} - Points already awarded.`);
-            }
-        }
-    } catch (error) {
-        logger.error(`[saveTaskPointsAwarded] Error saving points for Player #${playerId}, Task #${taskId}: ${error.message}`);
-    }
 }
 
 /**

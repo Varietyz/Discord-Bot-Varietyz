@@ -432,20 +432,29 @@ function calculateProgressPercentage(progressValue, target) {
 }
 
 /**
+ * ✅ Ensures that the overall progress calculation matches the leaderboard and visual card embed.
  *
- * @param eventId
- * @param id
- * @param isTeam
+ * @param {number} eventId - The event ID.
+ * @param {number} id - The player ID (if individual) or team ID (if team).
+ * @param {boolean} isTeam - Whether the progress is for a team or an individual.
+ * @returns {string} - The overall progress percentage as a formatted string.
  */
 async function calculateOverallProgress(eventId, id, isTeam = false) {
     if (isTeam) {
-        const { teamTotalPartial, totalBoardPoints } = await computeTeamPartialPoints(eventId, id, true);
-        const result = computeOverallPercentage(teamTotalPartial, totalBoardPoints);
-        return result.toFixed(2);
+        // ✅ Use `teamTotalOverallPartial` instead of `teamTotalPartial`
+        const { teamTotalOverallPartial, totalBoardPoints } = await computeTeamPartialPoints(eventId, id);
+
+        // ✅ Ensure totalBoardPoints is never 0 to avoid division errors
+        const result = totalBoardPoints > 0 ? computeOverallPercentage(teamTotalOverallPartial, totalBoardPoints) : 0;
+
+        return result.toFixed(2); // ✅ Match rounding style used in leaderboard & embed
     } else {
-        const { partialPoints, totalBoardPoints } = await computeIndividualPartialPoints(eventId, id, true);
-        const result = computeOverallPercentage(partialPoints, totalBoardPoints);
-        return result.toFixed(2);
+        // ✅ Use `overallPartialPointsMap` instead of `partialPoints`
+        const { overallPartialPointsMap, totalBoardPoints } = await computeIndividualPartialPoints(eventId, id);
+
+        const result = totalBoardPoints > 0 ? computeOverallPercentage(overallPartialPointsMap[id] || 0, totalBoardPoints) : 0;
+
+        return result.toFixed(2); // ✅ Match rounding style used in leaderboard & embed
     }
 }
 
