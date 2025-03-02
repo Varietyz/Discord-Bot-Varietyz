@@ -2,6 +2,7 @@
 
 const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');
+const { updatePlayerPoints } = require('../../utils/essentials/updatePlayerPoints');
 
 /**
  * Decide whether you want to round partial points at each task
@@ -265,6 +266,7 @@ async function saveTaskPointsAwarded(eventId, playerId, taskId, basePoints, prog
                      WHERE event_id = ? AND player_id = ? AND task_id = ?`,
                     [taskPartialPoints, eventId, playerId, taskId],
                 );
+                await updatePlayerPoints(playerId, 'bingo', taskPartialPoints);
             } else {
                 logger.info(`[bingoCalculations] Skipping points update for Player #${playerId} on Task #${taskId} - Points already awarded.`);
             }

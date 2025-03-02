@@ -45,7 +45,7 @@ module.exports = [
     {
         name: 'fetchAndUpdatePlayerData',
         func: async () => await fetchAndUpdatePlayerData(),
-        interval: 60 * 60,
+        interval: 60 * 30,
         runOnStart: false,
         runAsTask: true,
     },

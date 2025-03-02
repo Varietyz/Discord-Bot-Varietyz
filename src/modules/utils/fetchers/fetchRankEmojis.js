@@ -1,5 +1,8 @@
 const db = require('../essentials/dbUtils');
 const logger = require('../essentials/logger');
+/**
+ *
+ */
 async function fetchRankEmojis() {
     try {
         const emojiRows = await db.guild.getAll('SELECT emoji_key, emoji_format FROM guild_emojis');
@@ -14,6 +17,9 @@ async function fetchRankEmojis() {
         return {};
     }
 }
+/**
+ *
+ */
 async function getRanks() {
     const rankEmojis = await fetchRankEmojis();
     return {
@@ -139,7 +145,7 @@ async function getRanks() {
         green: { emoji: rankEmojis.green || '❌', role: 'Green', color: 0x008000 },
         grey: { emoji: rankEmojis.grey || '❌', role: 'Grey', color: 0x808080 },
         guardian: { emoji: rankEmojis.guardian || '❌', role: 'Guardian', color: 0x2f4f4f },
-        guest: { emoji: rankEmojis.guest || '❌', role: 'Guest', color: 0xd3d3d3 },
+        guest: { emoji: rankEmojis.guest || '❌', role: 'Guest', color: 0x008d6c },
         guthixian: { emoji: rankEmojis.guthixian || '❌', role: 'Guthixian', color: 0x7cfc00 },
         harpoon: { emoji: rankEmojis.harpoon || '❌', role: 'Harpoon', color: 0x4682b4 },
         hellcat: { emoji: rankEmojis.hellcat || '❌', role: 'Hellcat', color: 0x8b0000 },
@@ -201,7 +207,7 @@ async function getRanks() {
         orange: { emoji: rankEmojis.orange || '❌', role: 'Orange', color: 0xffa500 },
         page: { emoji: rankEmojis.page || '❌', role: 'Page', color: 0xf0e68c },
         paladin: { emoji: rankEmojis.paladin || '❌', role: 'Paladin', color: 0x4169e1 },
-        pawn: { emoji: rankEmojis.pawn || '❌', role: 'Pawn', color: 0xa9a9a9 },
+        pawn: { emoji: rankEmojis.guest || '❌', role: 'Guest', color: 0x008d6c }, //{ emoji: rankEmojis.pawn || '❌', role: 'Pawn', color: 0xa9a9a9 }, // TODO: Replace Back to OG call before distributing
         pilgrim: { emoji: rankEmojis.pilgrim || '❌', role: 'Pilgrim', color: 0x8b4513 },
         pine: { emoji: rankEmojis.pine || '❌', role: 'Pine', color: 0x228b22 },
         pink: { emoji: rankEmojis.pink || '❌', role: 'Pink', color: 0xffc0cb },

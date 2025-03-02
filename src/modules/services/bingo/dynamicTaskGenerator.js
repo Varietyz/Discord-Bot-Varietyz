@@ -209,8 +209,8 @@ function roundXP(xp) {
 async function generateSkillTasks() {
     const SLOW_SKILLS = ['slayer', 'runecrafting', 'hunter', 'agility', 'farming'];
     const EXPENSIVE_SKILLS = ['prayer', 'construction', 'herblore'];
-    let MIN_XP = 250000;
-    let MAX_RANDOM_XP = 2500000;
+    let MIN_XP = 750000;
+    let MAX_RANDOM_XP = 3500000;
 
     const skills = await db.getAll(`
         SELECT name 
@@ -221,11 +221,11 @@ async function generateSkillTasks() {
 
     for (const skill of skills) {
         if (SLOW_SKILLS.includes(skill.name.toLowerCase())) {
-            MIN_XP = 100000;
+            MIN_XP = 250000;
             MAX_RANDOM_XP = 1000000;
         }
         if (EXPENSIVE_SKILLS.includes(skill.name.toLowerCase())) {
-            MIN_XP = 100000;
+            MIN_XP = 350000;
             MAX_RANDOM_XP = 1500000;
         }
         const formattedName = capitalizeName(skill.name);

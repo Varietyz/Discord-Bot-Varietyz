@@ -3,7 +3,7 @@ const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const bingoTaskManager = require('./bingoTaskManager');
 const { appendBingoProgression } = require('../../utils/helpers/commands/bingo/teams/teamCommandHelpers');
-const { sendFinalResultsEmbed } = require('./bingoEmbedHelper');
+const { sendFinalResultsEmbed } = require('./embeds/handling/bingoEmbedHelper');
 const client = require('../../../main');
 
 /**

@@ -172,8 +172,10 @@ async function getNewCompletions(eventId) {
             rr.rsn, 
             bt.description AS taskName, 
             bt.parameter,
+            bt.value AS target,
             btp.last_updated,
-            btp.points_awarded,     
+            btp.points_awarded,
+            btp.progress_value AS progress,      
             be.embed_id,
             be.status
         FROM bingo_task_progress btp

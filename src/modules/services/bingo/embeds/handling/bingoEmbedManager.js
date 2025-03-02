@@ -1,7 +1,17 @@
 // /modules/services/bingo/bingoEmbedManager.js
-const db = require('../../utils/essentials/dbUtils');
-const logger = require('../../utils/essentials/logger');
+const db = require('../../../../utils/essentials/dbUtils');
+const logger = require('../../../../utils/essentials/logger');
 
+/**
+ *
+ * @param eventId
+ * @param playerId
+ * @param teamId
+ * @param taskId
+ * @param messageId
+ * @param channelId
+ * @param embedType
+ */
 async function createEmbedRecord(eventId, playerId, teamId, taskId, messageId, channelId, embedType) {
     try {
         await db.runQuery(
@@ -17,6 +27,11 @@ async function createEmbedRecord(eventId, playerId, teamId, taskId, messageId, c
     }
 }
 
+/**
+ *
+ * @param eventId
+ * @param embedType
+ */
 async function getActiveEmbeds(eventId, embedType) {
     try {
         return await db.getAll(
@@ -35,6 +50,15 @@ async function getActiveEmbeds(eventId, embedType) {
     }
 }
 
+/**
+ *
+ * @param client
+ * @param channelId
+ * @param messageId
+ * @param newEmbed
+ * @param eventId
+ * @param embedType
+ */
 async function editEmbed(client, channelId, messageId, newEmbed, eventId, embedType) {
     try {
         const channel = client.channels.cache.get(channelId);
@@ -65,6 +89,11 @@ async function editEmbed(client, channelId, messageId, newEmbed, eventId, embedT
     }
 }
 
+/**
+ *
+ * @param embedId
+ * @param newStatus
+ */
 async function updateEmbedStatus(embedId, newStatus) {
     try {
         await db.runQuery(
@@ -81,7 +110,12 @@ async function updateEmbedStatus(embedId, newStatus) {
     }
 }
 
-
+/**
+ *
+ * @param eventId
+ * @param embedType
+ * @param newStatus
+ */
 async function bulkUpdateEmbedStatus(eventId, embedType, newStatus) {
     try {
         await db.runQuery(
@@ -100,7 +134,13 @@ async function bulkUpdateEmbedStatus(eventId, embedType, newStatus) {
     }
 }
 
-
+/**
+ *
+ * @param client
+ * @param channelId
+ * @param messageId
+ * @param embedId
+ */
 async function deleteEmbed(client, channelId, messageId, embedId) {
     try {
         const channel = client.channels.cache.get(channelId);
@@ -119,6 +159,11 @@ async function deleteEmbed(client, channelId, messageId, embedId) {
     }
 }
 
+/**
+ *
+ * @param channel
+ * @param messageId
+ */
 async function fetchMessage(channel, messageId) {
     try {
         return await channel.messages.fetch(messageId);
@@ -128,6 +173,10 @@ async function fetchMessage(channel, messageId) {
     }
 }
 
+/**
+ *
+ * @param client
+ */
 async function purgeStaleEmbeds(client) {
     try {
         const embeds = await db.getAll(`

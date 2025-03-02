@@ -69,7 +69,7 @@ module.exports.execute = async (interaction) => {
         setTimeout(() => rateLimitMap.delete(discordId), RATE_LIMIT_DURATION);
         const normalizedRsn = normalizeRsn(rsn);
         logger.info(`🔍 User \`${discordId}\` attempting to register RSN: \`${rsn}\``);
-        const playerData = await fetchPlayerData(normalizedRsn);
+        const playerData = await fetchPla§yerData(normalizedRsn);
         if (!playerData) {
             const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(normalizedRsn)}`;
             return await interaction.reply({

@@ -13,14 +13,14 @@ async function ensureBingoCategory(guild) {
 
         const compChannels = [
             {
-                key: 'bingo_updates_channel',
-                name: '📢∙-bingo-updates',
-                topic: '📢 Real-time updates and notifications for Bingo events, task completions, and important announcements.',
+                key: 'bingo_notification_channel',
+                name: '📢∙-task-completions',
+                topic: '📢 Real-time updates and notifications for task completions.',
             },
             {
                 key: 'bingo_card_channel',
-                name: '🃏∙-bingo-cards',
-                topic: '🃏 View your Bingo Cards, track task progression, and see your achievements in real-time.',
+                name: '📖∙-bingo-info',
+                topic: '📖 Learn about the bingo, how it works and how to participate in the event.',
             },
             {
                 key: 'bingo_leaderboard_channel',
@@ -28,9 +28,9 @@ async function ensureBingoCategory(guild) {
                 topic: '🏆 Check out the current Bingo leaderboard and see who is leading the event!',
             },
             {
-                key: 'bingo_progression_channel',
-                name: '📊∙-bingo-progression',
-                topic: '📊 Track team and individual progress throughout the Bingo event with real-time updates.',
+                key: 'bingo_patterns_channel',
+                name: '📊∙-pattern-completion',
+                topic: '📊 Track team and individual pattern progress throughout the Bingo event with real-time updates.',
             },
         ];
         let competitionCategory = guild.channels.cache.find((ch) => ch.type === ChannelType.GuildCategory && ch.name === compCategoryName);

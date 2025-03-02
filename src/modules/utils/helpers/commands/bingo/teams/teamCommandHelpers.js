@@ -1,5 +1,5 @@
-const { sendNewCompletions, sendOrUpdateLeaderboardEmbeds, sendPatternCompletions } = require('../../../../../services/bingo/bingoEmbedHelper');
-const { purgeStaleEmbeds } = require('../../../../../services/bingo/bingoEmbedManager');
+const { sendNewCompletions, sendOrUpdateLeaderboardEmbeds, sendPatternCompletions } = require('../../../../../services/bingo/embeds/handling/bingoEmbedHelper');
+const { purgeStaleEmbeds } = require('../../../../../services/bingo/embeds/handling/bingoEmbedManager');
 const { updateLeaderboard } = require('../../../../../services/bingo/bingoLeaderboard');
 const { checkPatterns } = require('../../../../../services/bingo/bingoPatternRecognition');
 const { consolidateTeamTaskProgress } = require('../../../../../services/bingo/bingoTaskManager');

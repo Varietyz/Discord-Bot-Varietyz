@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('../utils/essentials/logger');
 const { rankHierarchy } = require('../../config/constants');
-const { getRankEmoji, formatExp, formatRank, getRankColor } = require('../utils/helpers/rankUtils');
+const { getRankEmoji, formatExp, formatRank, getRankColor, convertRanks } = require('../utils/helpers/rankUtils');
 const { getRanks } = require('../utils/fetchers/fetchRankEmojis');
 const { purgeChannel } = require('../utils/helpers/purgeChannel');
 const db = require('../utils/essentials/dbUtils');
@@ -116,7 +116,7 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
             const experience = player.exp || 'N/a';
             const lastProgressed = player.lastChangedAt ? new Date(player.lastChangedAt) : null;
             const joinedAt = membership.createdAt ? new Date(membership.createdAt).toISOString() : null;
-            const formattedRank = formatRank(rank);
+            const formattedRank = convertRanks(rank);
             newData.push({ playerId, rsn, rank: formattedRank, joinedAt });
             cachedData.push({
                 player: rsn,
@@ -266,7 +266,7 @@ async function updateClanChannel(client, cachedData) {
     const embeds = [];
     let index = 1;
     for (const { player, rank, experience, lastProgressed } of cachedData) {
-        if (!player || rank.toLowerCase() === 'private') continue;
+        //if (!player || rank.toLowerCase() === 'guest') continue;
         const rankEmoji = await getRankEmoji(rank);
         const color = await getRankColor(rank);
         const playerNameForLink = encodeURIComponent(player.replace(/ /g, '%20'));
@@ -282,7 +282,7 @@ async function updateClanChannel(client, cachedData) {
             .setURL(`https://wiseoldman.net/players/${playerNameForLink}`)
             .setColor(color)
             .addFields(
-                { name: 'Rank:', value: `**\`${rank}\`**`, inline: true },
+                { name: 'Rank:', value: `**\`${formatRank(rank)}\`**`, inline: true },
                 { name: 'Total Exp:', value: `**\`${formatExp(experience)}\`**`, inline: true },
                 {
                     name: 'Last Progressed:',

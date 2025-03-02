@@ -109,7 +109,7 @@ module.exports = {
         try {
             const focusedOption = interaction.options.getFocused(true);
             if (focusedOption.name === 'assign') {
-                const compTypes = ['bingo_updates_channel', 'bingo_card_channel', 'bingo_leaderboard_channel', 'bingo_progression_channel'];
+                const compTypes = ['bingo_notification_channel', 'bingo_card_channel', 'bingo_leaderboard_channel', 'bingo_patterns_channel'];
                 const filtered = compTypes.filter((type) => type.toLowerCase().includes(focusedOption.value.toLowerCase()));
                 return await interaction.respond(filtered.map((type) => ({ name: type, value: type })).slice(0, 25));
             }

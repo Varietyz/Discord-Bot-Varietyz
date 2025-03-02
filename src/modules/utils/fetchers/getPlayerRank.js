@@ -1,6 +1,6 @@
 const db = require('../essentials/dbUtils');
 const logger = require('../essentials/logger');
-const normalizeStr = require('../normalizing/normalizeStr');
+const { convertRanks } = require('../helpers/rankUtils');
 
 /**
  * Get the rank name of a player by player_id in the clan_members table
@@ -18,7 +18,7 @@ async function getPlayerRank(playerId) {
         const result = await db.getOne(query, [playerId]);
 
         if (result) {
-            const rank = normalizeStr(result.rank);
+            const rank = convertRanks(result.rank);
             logger.info(`🏆 Player ID #${playerId} has rank: ${rank}`);
             return rank;
         } else {

@@ -6,6 +6,7 @@ const getPlayerRank = require('../../utils/fetchers/getPlayerRank');
 const logger = require('../../utils/essentials/logger');
 const { computeOverallPercentage, computeIndividualPartialPoints, computeTeamPartialPoints } = require('./bingoCalculations');
 const { calculatePatternBonus } = require('./bingoPatternRecognition');
+const { calculateProgressPercentage } = require('./bingoImageGenerator');
 
 /**
  *
@@ -82,24 +83,9 @@ async function createIndividualLeaderboardEmbed(eventId) {
     const emojiCache = {};
     const playerProgress = [];
 
-    // Fetch actual awarded points from the DB for each player
-    const playerPointsMap = {};
-    const pointsResults = await dbUtils.getAll(
-        `SELECT player_id, SUM(points_awarded) AS total_points
-         FROM bingo_task_progress
-         WHERE event_id = ?
-         GROUP BY player_id`,
-        [eventId],
-    );
-    pointsResults.forEach((row) => {
-        playerPointsMap[row.player_id] = row.total_points || 0;
-    });
-
     // Process each player asynchronously
     await Promise.all(
         topPlayers.map(async (player) => {
-            const actualPoints = playerPointsMap[player.player_id] || 0;
-
             // -- NEW: Instead of calculateOverallProgress:
             const { partialPoints, totalBoardPoints } = await computeIndividualPartialPoints(eventId, player.player_id, true);
             const overallFloat = computeOverallPercentage(partialPoints, totalBoardPoints);
@@ -137,6 +123,20 @@ async function createIndividualLeaderboardEmbed(eventId) {
                     emojiCache[playerRank] = rankEmoji;
                 }
 
+                // Fetch actual awarded points from the DB for each player
+                const playerPointsMap = {};
+                const pointsResults = await dbUtils.getAll(
+                    `SELECT player_id, SUM(points_awarded) AS total_points
+         FROM bingo_task_progress
+         WHERE event_id = ?
+         GROUP BY player_id`,
+                    [eventId],
+                );
+                pointsResults.forEach((row) => {
+                    playerPointsMap[row.player_id] = row.total_points || 0;
+                });
+
+                const actualPoints = playerPointsMap[player.player_id] || 0;
                 playerProgress.push({
                     rsn: player.rsn,
                     profileLink,
@@ -201,22 +201,11 @@ async function createTeamLeaderboardEmbed(eventId) {
 
     // Fetch actual awarded points from the DB for each team
     const teamPointsMap = {};
-    const pointsResults = await dbUtils.getAll(
-        `SELECT team_id, SUM(points_awarded) AS total_points
-         FROM bingo_task_progress
-         WHERE event_id = ?
-         GROUP BY team_id`,
-        [eventId],
-    );
-    pointsResults.forEach((row) => {
-        teamPointsMap[row.team_id] = row.total_points || 0;
-    });
 
     // 2. Process each top team.
     await Promise.all(
         topTeams.map(async (team) => {
             const { partialPointsMap, totalBoardPoints, teamTotalOverallPartial, overallPartialPointsMap } = await computeTeamPartialPoints(eventId, team.team_id);
-            const actualPoints = teamPointsMap[team.team_id] || 0;
 
             // Calculate overall progress percentage (using any progression).
             const overallFloat = computeOverallPercentage(teamTotalOverallPartial, totalBoardPoints);
@@ -283,6 +272,17 @@ async function createTeamLeaderboardEmbed(eventId) {
 
                 memberLines.push(`> - ${memberEmoji}[${member.rsn}](${profileLink}) contributed \`${userShare}%\` ${progressEmoji} & earned \`${userPoints} pts\` ${pointsEmoji}`);
             }
+            const pointsResults = await dbUtils.getAll(
+                `SELECT team_id, SUM(points_awarded) AS total_points
+         FROM bingo_task_progress
+         WHERE event_id = ?
+         GROUP BY team_id`,
+                [eventId],
+            );
+            pointsResults.forEach((row) => {
+                teamPointsMap[row.team_id] = row.total_points || 0;
+            });
+            const actualPoints = teamPointsMap[team.team_id] || 0;
 
             const memberSection = memberLines.join('\n') || '> _No members found._';
 
@@ -322,26 +322,27 @@ async function createTeamLeaderboardEmbed(eventId) {
 }
 
 /**
- * ✅ Creates a grouped embed showing Bingo task completions per player.
+ * ✅ Creates a grouped embed showing Bingo task completions per player or team, including percentage contributions.
  *
- * @param {Array} completions - Array of completion objects with player RSN and task info.
+ * @param {Array} completions - Array of completion objects with player RSN, team name, task info, and progress values.
  */
 async function createConsolidatedProgressEmbed(completions) {
     // Retrieve common emojis
     const completedEmoji = await getEmojiWithFallback('emoji_completed', '✅');
     const pointsEmoji = await getEmojiWithFallback('emoji_points', '⭐');
+    const progressEmoji = await getEmojiWithFallback('emoji_overall', '📊');
 
     const embed = new EmbedBuilder().setTitle(`${completedEmoji} Task Completions`).setColor(0x48de6f).setFooter({ text: '🕓 Last Updated' }).setTimestamp(new Date());
 
     const emojiCache = {};
     const groupedCompletions = {};
 
-    // ✅ Group completions by player
+    // ✅ Group completions by player or team
     for (const row of completions) {
         // Parse timestamp
         let ts = new Date(row.last_updated);
         if (isNaN(ts.getTime())) {
-            logger.warn(`[createConsolidatedProgressEmbed] Invalid timestamp for ${row.rsn}. Using current time.`);
+            logger.warn(`[createConsolidatedProgressEmbed] Invalid timestamp for ${row.rsn || row.team_name}. Using current time.`);
             ts = new Date();
         }
 
@@ -352,26 +353,54 @@ async function createConsolidatedProgressEmbed(completions) {
             emojiCache[row.parameter] = taskEmoji;
         }
 
-        // Prepare player profile link
-        const playerNameForLink = encodeURIComponent(row.rsn);
-        const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
+        const playerRank = await getPlayerRank(row.player_id);
+        let rankEmoji = emojiCache[playerRank];
+        if (!rankEmoji) {
+            rankEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
+            emojiCache[playerRank] = rankEmoji;
+        }
 
-        // Group tasks under the player's name
-        if (!groupedCompletions[row.rsn]) {
-            groupedCompletions[row.rsn] = {
+        // Determine if it's an individual or team task
+        const entityName = row.team_name ? row.team_name : row.rsn;
+        const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(row.rsn)}`;
+
+        // Group tasks under the player's or team's name
+        if (!groupedCompletions[entityName]) {
+            groupedCompletions[entityName] = {
+                rankEmoji,
                 profileLink,
+                isTeam: !!row.team_name,
                 tasks: [],
             };
         }
 
-        // Add task details
-        groupedCompletions[row.rsn].tasks.push(`> - ${taskEmoji} \`${row.taskName}\` \n>   - ${pointsEmoji} Points: \`${row.points_awarded ?? '0'} pts\``);
+        // ✅ Corrected Contribution % Calculation
+        let contributionPercentage = '0.00';
+        if (row.target && Number(row.target) > 0) {
+            const progressValue = Number(row.progress);
+            const totalValue = Number(row.target);
+            contributionPercentage = calculateProgressPercentage(progressValue, totalValue);
+            if (contributionPercentage > Number(100)) {
+                contributionPercentage = '100.00';
+            }
+        }
+
+        // ✅ Improved Points Description with Contribution
+        let pointsDescription;
+        if (row.points_awarded > 0) {
+            pointsDescription = `${pointsEmoji} \`${row.points_awarded} pts\` — ${progressEmoji} \`${contributionPercentage}%\``;
+        } else {
+            pointsDescription = '*`⚠️ Did not contribute to the task their team completed`*';
+        }
+
+        // ✅ Improved Task Formatting for Readability
+        groupedCompletions[entityName].tasks.push(`> - ${taskEmoji} **\`${row.taskName}\`**\n>   - ${pointsDescription}`);
     }
 
     // ✅ Build final embed description
     let description = '';
-    for (const [rsn, data] of Object.entries(groupedCompletions)) {
-        description += `### **[${rsn}](${data.profileLink})**\n`;
+    for (const [name, data] of Object.entries(groupedCompletions)) {
+        description += `> ### ${data.rankEmoji} **[${name}](${data.profileLink})**\n`;
         description += data.tasks.join('\n') + '\n\n';
     }
 
@@ -397,6 +426,10 @@ async function createPatternCompletionEmbed(eventId) {
     const emojiCache = {};
     const groupedCompletions = {};
 
+    if (eventId === -1 || eventId === 0) {
+        logger.warn(`[createPatternCompletionEmbed] Invalid event id ${eventId}.`);
+        return;
+    }
     // ✅ Fetch all pattern completions for this event
     const patternCompletions = await dbUtils.getAll(
         `

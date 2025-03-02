@@ -474,4 +474,5 @@ module.exports = {
     getPlayerTasks,
     getEventId,
     calculateOverallProgress,
+    calculateProgressPercentage,
 };

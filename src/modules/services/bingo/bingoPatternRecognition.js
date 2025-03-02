@@ -17,6 +17,7 @@ const {
     getMultipleLinesPattern,
     getBothDiagonalsPattern,
 } = require('./bingoPatterns');
+const { updatePlayerPoints } = require('../../utils/essentials/updatePlayerPoints');
 
 /**
  * 🎲 Calculate Extra Points for Patterns
@@ -230,6 +231,7 @@ async function checkSinglePattern(boardId, eventId, playerId, { patternKey, patt
             `,
             [adjustedBonusPoints, eventId, playerId],
         );
+        await updatePlayerPoints(playerId, 'bingo', adjustedBonusPoints);
         await db.runQuery(
             `
             INSERT INTO bingo_patterns_awarded (board_id, event_id, player_id, pattern_key)

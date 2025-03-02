@@ -34,6 +34,7 @@ const rankHierarchy = roleRange.reduce((acc, roleName, index) => {
 }, {});
 
 module.exports = {
+    guestRank: 'pawn',
     WOM_GROUP_ID: process.env.WOM_GROUP_ID,
     WOM_VERIFICATION: process.env.WOM_VERIFICATION,
     DEBUG_CHANNEL_ID: '1247116497373892710',
