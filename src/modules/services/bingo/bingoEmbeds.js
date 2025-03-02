@@ -5,6 +5,7 @@ const dbUtils = require('../../utils/essentials/dbUtils');
 const getPlayerRank = require('../../utils/fetchers/getPlayerRank');
 const logger = require('../../utils/essentials/logger');
 const { computeOverallPercentage, computeIndividualPartialPoints, computeTeamPartialPoints } = require('./bingoCalculations');
+const { calculatePatternBonus } = require('./bingoPatternRecognition');
 
 /**
  *
@@ -378,10 +379,102 @@ async function createConsolidatedProgressEmbed(completions) {
     return embed;
 }
 
+/**
+ * ✅ Creates a grouped embed showing **Bingo pattern completions** per player.
+ * - Dynamically calculates **bonus points** with team adjustments.
+ * - Uses **rank emojis**, **profile links**, and **structured formatting**.
+ *
+ * @param {number} eventId - The Bingo Event ID.
+ * @returns {Promise<EmbedBuilder>} - The Discord embed object.
+ */
+async function createPatternCompletionEmbed(eventId) {
+    // Retrieve common emojis
+    const patternEmoji = await getEmojiWithFallback('emoji_pattern_bonus', '🎯');
+    const pointsEmoji = await getEmojiWithFallback('emoji_points', '⭐');
+
+    const embed = new EmbedBuilder().setTitle(`${patternEmoji} **Pattern Completions**`).setColor(0xffc107).setFooter({ text: '🕓 Last Updated' }).setTimestamp(new Date());
+
+    const emojiCache = {};
+    const groupedCompletions = {};
+
+    // ✅ Fetch all pattern completions for this event
+    const patternCompletions = await dbUtils.getAll(
+        `
+        SELECT bpa.player_id, rr.rsn, bpa.pattern_key, bpa.awarded_at, 
+               (SELECT team_id FROM bingo_team_members WHERE player_id = bpa.player_id) AS team_id
+        FROM bingo_patterns_awarded bpa
+        JOIN registered_rsn rr ON rr.player_id = bpa.player_id
+        WHERE bpa.event_id = ?
+        ORDER BY bpa.awarded_at DESC
+        `,
+        [eventId],
+    );
+
+    if (patternCompletions.length === 0) {
+        embed.setDescription('No pattern completions yet.');
+        return embed;
+    }
+
+    // ✅ Group completions by player
+    for (const row of patternCompletions) {
+        // Calculate base bonus points
+        let bonusPoints = calculatePatternBonus(row.pattern_key);
+
+        // Check if the player is in a team and adjust points accordingly
+        if (row.team_id) {
+            const teamSizeRow = await dbUtils.getOne('SELECT COUNT(*) AS teamSize FROM bingo_team_members WHERE team_id = ?', [row.team_id]);
+            const teamSize = teamSizeRow ? teamSizeRow.teamSize : 1;
+            bonusPoints = Math.floor(bonusPoints / teamSize); // Distribute points across team members
+        }
+
+        // Parse timestamp
+        let timestamp = new Date(row.awarded_at);
+        if (isNaN(timestamp.getTime())) {
+            logger.warn(`[createPatternCompletionEmbed] Invalid timestamp for ${row.rsn}. Using current time.`);
+            timestamp = new Date();
+        }
+
+        // Fetch rank emoji
+        const playerRank = await getPlayerRank(row.player_id);
+        let rankEmoji = emojiCache[playerRank];
+        if (!rankEmoji) {
+            rankEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
+            emojiCache[playerRank] = rankEmoji;
+        }
+
+        // Prepare player profile link
+        const playerNameForLink = encodeURIComponent(row.rsn);
+        const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
+
+        // Group patterns under the player's name
+        if (!groupedCompletions[row.rsn]) {
+            groupedCompletions[row.rsn] = {
+                profileLink,
+                rankEmoji,
+                patterns: [],
+            };
+        }
+
+        // Add pattern details
+        groupedCompletions[row.rsn].patterns.push(`> - 🎲 **${row.pattern_key.replace(/_/g, ' ')}** \n>   - ${pointsEmoji} **Bonus:** \`${bonusPoints} pts\``);
+    }
+
+    // ✅ Build final embed description
+    let description = '';
+    for (const [rsn, data] of Object.entries(groupedCompletions)) {
+        description += `### ${data.rankEmoji} **[${rsn}](${data.profileLink})**\n`;
+        description += data.patterns.join('\n') + '\n\n';
+    }
+
+    embed.setDescription(description.trim());
+    return embed;
+}
+
 module.exports = {
     createProgressEmbed,
     createFinalResultsEmbed,
     createTeamLeaderboardEmbed,
     createIndividualLeaderboardEmbed,
     createConsolidatedProgressEmbed,
+    createPatternCompletionEmbed,
 };

@@ -1,4 +1,4 @@
-const { sendNewCompletions, sendOrUpdateLeaderboardEmbeds } = require('../../../../../services/bingo/bingoEmbedHelper');
+const { sendNewCompletions, sendOrUpdateLeaderboardEmbeds, sendPatternCompletions } = require('../../../../../services/bingo/bingoEmbedHelper');
 const { purgeStaleEmbeds } = require('../../../../../services/bingo/bingoEmbedManager');
 const { updateLeaderboard } = require('../../../../../services/bingo/bingoLeaderboard');
 const { checkPatterns } = require('../../../../../services/bingo/bingoPatternRecognition');
@@ -112,6 +112,7 @@ async function appendBingoProgression(client) {
         try {
             await sendOrUpdateLeaderboardEmbeds(client, event_id);
             await sendNewCompletions(client);
+            await sendPatternCompletions(client, event_id);
         } catch (err) {
             logger.error(`[BingoService] sendOrUpdateLeaderboardEmbeds(eventId: ${event_id}) error: ${err.message}`);
         }

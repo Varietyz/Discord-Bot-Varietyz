@@ -1,4 +1,4 @@
-const { createProgressEmbed, createFinalResultsEmbed, createIndividualLeaderboardEmbed, createTeamLeaderboardEmbed, createConsolidatedProgressEmbed } = require('./bingoEmbeds');
+const { createProgressEmbed, createFinalResultsEmbed, createIndividualLeaderboardEmbed, createTeamLeaderboardEmbed, createConsolidatedProgressEmbed, createPatternCompletionEmbed } = require('./bingoEmbeds');
 const { createEmbedRecord, getActiveEmbeds, editEmbed } = require('./bingoEmbedManager');
 const { getProgressEmbedData, getFinalResultsEmbedData, getNewCompletions } = require('./bingoEmbedData');
 const getChannelId = require('../../utils/fetchers/getChannel');
@@ -131,9 +131,37 @@ async function sendOrUpdateLeaderboardEmbeds(client, eventId) {
     }
 }
 
+/**
+ * ✅ Sends a **Pattern Completion Notification** to the Bingo channel.
+ * - Creates an embed record for tracking updates.
+ *
+ * @param {Client} client - The Discord bot client.
+ * @param {number} eventId - The Bingo Event ID.
+ */
+async function sendPatternCompletions(client, eventId) {
+    try {
+        const patternCompletions = await createPatternCompletionEmbed(eventId);
+        if (!patternCompletions) {
+            logger.info('[BingoEmbedHelper] No pattern completions to notify.');
+            return;
+        }
+
+        const channel = await fetchChannel(client, 'bingo_updates_channel');
+        const message = await channel.send({ embeds: [patternCompletions] });
+
+        // ✅ Create an embed record for tracking
+        await createEmbedRecord(eventId, null, null, null, message.id, channel.id, 'pattern_completion');
+
+        logger.info(`[BingoEmbedHelper] Sent and recorded pattern completion embed for event #${eventId}`);
+    } catch (error) {
+        logger.error(`[BingoEmbedHelper] Failed to send pattern completion embed: ${error.message}`);
+    }
+}
+
 module.exports = {
     sendProgressEmbed,
     sendFinalResultsEmbed,
     sendNewCompletions,
     sendOrUpdateLeaderboardEmbeds,
+    sendPatternCompletions,
 };

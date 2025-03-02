@@ -7,10 +7,10 @@ const { savePlayerDataToDb } = require('../../services/playerDataExtractor');
 const { getLastFetchedTime, setLastFetchedTime } = require('../../utils/fetchers/lastFetchedTime');
 const { getDataAttributes, getDataColumn, upsertTaskProgress } = require('../../services/bingo/bingoTaskManager');
 const getEmoji = require('../../utils/fetchers/getEmoji');
-const { computeOverallPercentage, computeTeamPartialPoints } = require('../../services/bingo/bingoCalculations');
+const { computeOverallPercentage, computeTeamPartialPoints, computeIndividualPartialPoints } = require('../../services/bingo/bingoCalculations');
 const getEmojiWithFallback = require('../../utils/fetchers/getEmojiWithFallback');
 const getPlayerRank = require('../../utils/fetchers/getPlayerRank');
-const { getTeamTaskProgress } = require('../../services/bingo/bingoEmbedData');
+const { getTeamTaskProgress, getPlayerTaskProgress } = require('../../services/bingo/bingoEmbedData');
 
 /**
  *
@@ -206,7 +206,15 @@ module.exports = {
                     });
                     await updatePlayerData(row.rsn, row.player_id, eventId);
                 }
-                return await paginateIndividualCards(interaction, boardId, userRows);
+                // Use userRows directly.
+                if (userRows.length === 0) {
+                    return interaction.editReply({
+                        content: '❌ You are not registered or not an active clan member.',
+                        flags: 64,
+                    });
+                }
+
+                await handleBingoCardDisplay(interaction, boardId, userRows);
             }
         } catch (err) {
             logger.error('Error executing /bingo-cards command:', err);
@@ -238,66 +246,326 @@ module.exports = {
 };
 
 /**
- *
- * @param interaction
- * @param boardId
- * @param userRows
+ * Generates a formatted Bingo card embed for an individual player.
+ * @param {number} boardId - The board identifier.
+ * @param {Object} player - Player object containing { player_id, rsn }.
+ * @returns {Promise<{ embed: EmbedBuilder, file: AttachmentBuilder }>} - The formatted embed and attachment.
+ */
+const generateBingoEmbed = async (boardId, player) => {
+    const trophyEmoji = await getEmojiWithFallback('emoji_league_points', '🏆');
+    const pointsEmoji = await getEmojiWithFallback('emoji_points', '⭐');
+    const completedEmoji = await getEmojiWithFallback('emoji_completed', '📝');
+    const progressEmoji = await getEmojiWithFallback('emoji_overall', '📊');
+
+    const emojiCache = {};
+
+    const fetchPlayerLeaderboardData = async (player) => {
+        const { player_id, rsn } = player;
+
+        const { partialPoints, totalBoardPoints } = await computeIndividualPartialPoints(boardId, player_id, true);
+        const overallFloat = computeOverallPercentage(partialPoints, totalBoardPoints);
+        const overall = parseFloat(overallFloat.toFixed(2));
+
+        // Retrieve awarded points for this player
+        const pointsRow = await db.getOne(
+            `SELECT SUM(points_awarded) AS total_points
+             FROM bingo_task_progress
+             WHERE event_id = ? AND player_id = ?`,
+            [boardId, player_id],
+        );
+        const total_points = pointsRow?.total_points || 0;
+
+        // Retrieve count of **only completed** tasks
+        const completedTasksRow = await db.getOne(
+            `SELECT COUNT(*) AS completed_tasks
+             FROM bingo_task_progress
+             WHERE event_id = ? AND player_id = ? AND status = 'completed'`,
+            [boardId, player_id],
+        );
+        const completed_tasks = completedTasksRow?.completed_tasks || 0;
+
+        // Retrieve task progress for emojis
+        const taskProgress = await getPlayerTaskProgress(boardId, player_id);
+        let taskProgressStr = '';
+
+        for (const task of taskProgress) {
+            if (task.status === 'completed') {
+                if (!emojiCache[task.parameter]) {
+                    emojiCache[task.parameter] = await getEmojiWithFallback(`emoji_${task.parameter}`, '✅');
+                }
+                taskProgressStr += `${emojiCache[task.parameter]} `;
+            }
+        }
+        if (!taskProgressStr) {
+            taskProgressStr = '_No completed tasks yet._';
+        }
+
+        const playerRank = await getPlayerRank(player_id);
+        let rankEmoji = emojiCache[playerRank];
+        if (!rankEmoji) {
+            rankEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
+            emojiCache[playerRank] = rankEmoji;
+        }
+
+        return {
+            rsn,
+            rankEmoji,
+            overall,
+            total_points,
+            completed_tasks,
+            taskProgressStr,
+        };
+    };
+    // Fetch player leaderboard data
+    const playerData = await fetchPlayerLeaderboardData(player, boardId);
+
+    // Generate Bingo card image
+    const buffer = await generateBingoCard(boardId, player.player_id);
+    const file = new AttachmentBuilder(buffer, { name: 'bingo_card.png' });
+
+    // Create embed with centralized structure
+    const embed = new EmbedBuilder()
+        .setTitle(`${trophyEmoji} Bingo Card — ${playerData.rsn}`)
+        .setColor(0x3498db)
+        .setImage('attachment://bingo_card.png')
+        .setFooter({ text: 'Bingo Card: Individual' })
+        .setTimestamp()
+        .setDescription(
+            `> ### ${playerData.rankEmoji} **${playerData.rsn}**\n` +
+                `> ${progressEmoji} Finished: \`${playerData.overall}%\`\n` +
+                `> ${pointsEmoji} Earned: \`${playerData.total_points} pts\`\n` +
+                `> ${completedEmoji} Tasks Completed: \`${playerData.completed_tasks}\`\n` +
+                `> ${playerData.taskProgressStr}\n`,
+        );
+
+    return { embed, file };
+};
+
+/**
+ * Handles displaying the Bingo card(s), with pagination if needed.
+ * @param {Object} interaction - The Discord interaction.
+ * @param {number} boardId - The board identifier.
+ * @param {Array} userRows - Array of objects, each containing { player_id, rsn }.
+ */
+const handleBingoCardDisplay = async (interaction, boardId, userRows) => {
+    if (userRows.length === 1) {
+        // ✅ Single RSN: No pagination, display card directly.
+        const { embed, file } = await generateBingoEmbed(boardId, userRows[0]);
+        return await interaction.editReply({ content: '\u200b', embeds: [embed], files: [file] });
+    } else if (userRows.length > 1) {
+        // ✅ Multiple RSNs: Use pagination.
+        return await paginateIndividualCards(interaction, boardId, userRows);
+    }
+};
+
+/**
+ * Paginate individual Bingo cards with leaderboard embed structure.
+ * @param {Object} interaction - The Discord interaction.
+ * @param {number} boardId - The board identifier.
+ * @param {Array} userRows - Array of objects, each containing { player_id, rsn }.
  */
 async function paginateIndividualCards(interaction, boardId, userRows) {
     let currentIndex = 0;
     const total = userRows.length;
 
+    /**
+     * Display a single Bingo card for a player.
+     * @param {number} index - Index of the player in userRows.
+     */
     const showCard = async (index) => {
         if (index < 0 || index >= total) {
             return interaction.editReply({ content: '❌ No more Bingo cards to display.', components: [] });
         }
 
-        const { player_id, rsn } = userRows[index];
-        const buffer = await generateBingoCard(boardId, player_id);
+        const player = userRows[index];
+        const { embed, file } = await generateBingoEmbed(boardId, player);
 
+        const components = [];
+        if (total > 1) {
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('prev')
+                    .setLabel('⬅️ Previous')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(index === 0),
+                new ButtonBuilder()
+                    .setCustomId('next')
+                    .setLabel('➡️ Next')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(index === total - 1),
+            );
+            components.push(row);
+        }
+
+        await interaction.editReply({ content: '\u200b', embeds: [embed], files: [file], components });
+    };
+
+    // Show the first card
+    await showCard(currentIndex);
+
+    // Set up pagination only if there is more than one RSN
+    if (total > 1) {
+        const collector = interaction.channel.createMessageComponentCollector({ time: 60000 });
+
+        collector.on('collect', async (i) => {
+            await i.deferUpdate();
+            if (i.customId === 'prev' && currentIndex > 0) {
+                currentIndex--;
+            } else if (i.customId === 'next' && currentIndex < total - 1) {
+                currentIndex++;
+            }
+            await showCard(currentIndex);
+        });
+
+        collector.on('end', async () => {
+            await interaction.editReply({ content: '\u200b', components: [] });
+        });
+    }
+}
+
+/**
+ * Paginate individual Bingo cards with leaderboard embed structure.
+ * @param {Object} interaction - The Discord interaction.
+ * @param {number} boardId - The board identifier.
+ * @param {Array} userRows - Array of objects, each containing { player_id, rsn }.
+ 
+async function paginateIndividualCards(interaction, boardId, userRows) {
+    const trophyEmoji = await getEmojiWithFallback('emoji_league_points', '🏆');
+    const pointsEmoji = await getEmojiWithFallback('emoji_points', '⭐');
+    const completedEmoji = await getEmojiWithFallback('emoji_completed', '📝');
+    const progressEmoji = await getEmojiWithFallback('emoji_overall', '📊');
+ 
+    let currentIndex = 0;
+    const total = userRows.length;
+    const emojiCache = {};
+ 
+    const fetchPlayerLeaderboardData = async (player) => {
+        const { player_id, rsn } = player;
+ 
+        const { partialPoints, totalBoardPoints } = await computeIndividualPartialPoints(boardId, player_id, true);
+        const overallFloat = computeOverallPercentage(partialPoints, totalBoardPoints);
+        const overall = parseFloat(overallFloat.toFixed(2));
+ 
+        // Retrieve awarded points for this player
+        const pointsRow = await db.getOne(
+            `SELECT SUM(points_awarded) AS total_points
+             FROM bingo_task_progress
+             WHERE event_id = ? AND player_id = ?`,
+            [boardId, player_id],
+        );
+        const total_points = pointsRow?.total_points || 0;
+ 
+        // Retrieve count of **only completed** tasks
+        const completedTasksRow = await db.getOne(
+            `SELECT COUNT(*) AS completed_tasks
+             FROM bingo_task_progress
+             WHERE event_id = ? AND player_id = ? AND status = 'completed'`,
+            [boardId, player_id],
+        );
+        const completed_tasks = completedTasksRow?.completed_tasks || 0;
+ 
+        // Retrieve task progress for emojis
+        const taskProgress = await getPlayerTaskProgress(boardId, player_id);
+        let taskProgressStr = '';
+ 
+        for (const task of taskProgress) {
+            if (task.status === 'completed') {
+                if (!emojiCache[task.parameter]) {
+                    emojiCache[task.parameter] = await getEmojiWithFallback(`emoji_${task.parameter}`, '✅');
+                }
+                taskProgressStr += `${emojiCache[task.parameter]} `;
+            }
+        }
+        if (!taskProgressStr) {
+            taskProgressStr = '_No completed tasks yet._';
+        }
+ 
+        const playerRank = await getPlayerRank(player_id);
+        let rankEmoji = emojiCache[playerRank];
+        if (!rankEmoji) {
+            rankEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
+            emojiCache[playerRank] = rankEmoji;
+        }
+ 
+        return {
+            rsn,
+            rankEmoji,
+            overall,
+            total_points,
+            completed_tasks,
+            taskProgressStr,
+        };
+    };
+ 
+ 
+    const showCard = async (index) => {
+        if (index < 0 || index >= total) {
+            return interaction.editReply({ content: '❌ No more Bingo cards to display.', components: [] });
+        }
+ 
+        const player = userRows[index];
+        const playerData = await fetchPlayerLeaderboardData(player);
+ 
+        const buffer = await generateBingoCard(boardId, player.player_id);
         const file = new AttachmentBuilder(buffer, { name: 'bingo_card.png' });
+ 
         const embed = new EmbedBuilder()
-            .setTitle(`Bingo Card — ${rsn}`)
+            .setTitle(`${trophyEmoji} Bingo Card — ${playerData.rsn}`)
             .setColor(0x3498db)
             .setImage('attachment://bingo_card.png')
             .setFooter({ text: `Bingo Cards: Individual (${index + 1}/${total})` })
-            .setTimestamp();
-
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('prev')
-                .setLabel('⬅️ Previous')
-                .setStyle(ButtonStyle.Primary)
-                .setDisabled(index === 0),
-            new ButtonBuilder()
-                .setCustomId('next')
-                .setLabel('➡️ Next')
-                .setStyle(ButtonStyle.Primary)
-                .setDisabled(index === total - 1),
-        );
-
-        await interaction.editReply({ content: '\u200b', embeds: [embed], files: [file], components: [row] });
-    };
-
-    await showCard(currentIndex);
-
-    const collector = interaction.channel.createMessageComponentCollector({ time: 60000 });
-    collector.on('collect', async (i) => {
-        await i.deferUpdate();
-
-        if (i.customId === 'prev' && currentIndex > 0) {
-            currentIndex--;
-        } else if (i.customId === 'next' && currentIndex < total - 1) {
-            currentIndex++;
+            .setTimestamp()
+            .setDescription(
+                `> ### **${index + 1}.** ${playerData.rankEmoji} **${playerData.rsn}**\n` +
+                    `> ${progressEmoji} Finished: \`${playerData.overall}%\`\n` +
+                    `> ${pointsEmoji} Earned: \`${playerData.total_points} pts\`\n` +
+                    `> ${completedEmoji} Tasks Completed: \`${playerData.completed_tasks}\`\n` +
+                    `> ${playerData.taskProgressStr}\n`,
+            );
+ 
+        const components = [];
+        if (total > 1) {
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('prev')
+                    .setLabel('⬅️ Previous')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(index === 0),
+                new ButtonBuilder()
+                    .setCustomId('next')
+                    .setLabel('➡️ Next')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(index === total - 1),
+            );
+            components.push(row);
         }
-        await showCard(currentIndex);
-    });
-
-    collector.on('end', async () => {
-        await interaction.editReply({ content: '\u200b', components: [] });
-    });
+ 
+        await interaction.editReply({ content: '\u200b', embeds: [embed], files: [file], components });
+    };
+ 
+    // Show the first card
+    await showCard(currentIndex);
+ 
+    // Set up pagination only if there is more than one RSN
+    if (total > 1) {
+        const collector = interaction.channel.createMessageComponentCollector({ time: 60000 });
+ 
+        collector.on('collect', async (i) => {
+            await i.deferUpdate();
+            if (i.customId === 'prev' && currentIndex > 0) {
+                currentIndex--;
+            } else if (i.customId === 'next' && currentIndex < total - 1) {
+                currentIndex++;
+            }
+            await showCard(currentIndex);
+        });
+ 
+        collector.on('end', async () => {
+            await interaction.editReply({ content: '\u200b', components: [] });
+        });
+    }
 }
-
+ */
 /**
  *
  * @param interaction
@@ -311,7 +579,6 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
     const completedEmoji = await getEmojiWithFallback('emoji_completed', '📝');
     const progressEmoji = await getEmojiWithFallback('emoji_overall', '📊');
     const teamEmoji = await getEmojiWithFallback('emoji_clan_logo', '👥');
-
     try {
         // 1) Generate the Bingo card image (unchanged).
         const tasks = await getPlayerTasks(boardId, teamId, true);

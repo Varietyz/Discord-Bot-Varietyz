@@ -12,23 +12,51 @@ require('dotenv').config();
 /**
  *
  * @param member
- * @param roleName
+ * @param roleName - The role name to assign (e.g. from RANKS mapping)
  * @param guild
- * @param player
- * @param rank
+ * @param player - The RSN (for logging)
+ * @param rank - The rank from the API for this particular RSN
  */
 async function handleMemberRoles(member, roleName, guild, player, rank) {
     if (!player || rank.toLowerCase() === 'private') return;
+
     const targetRole = guild.roles.cache.find((r) => r.name.toLowerCase() === roleName.toLowerCase());
     if (!targetRole) {
         logger.warn(`🚫 [handleMemberRoles] Role '${roleName}' not found in the guild. ⚠️`);
         return;
     }
+
+    // Query the database to get all the clan_member ranks registered for this Discord user.
+    // This joins registered_rsn with clan_members so that we know which ranks the user's RSNs have.
+    const registeredRanksData = await db.getAll(
+        `
+        SELECT cm.rank
+        FROM clan_members cm
+        JOIN registered_rsn rr ON rr.player_id = cm.player_id
+        WHERE rr.discord_id = ?
+        `,
+        [member.id],
+    );
+
+    // Build a set of the allowed rank names (in lowercase).
+    const allowedRanks = new Set(registeredRanksData.map((row) => row.rank.toLowerCase()));
+    logger.info(`[handleMemberRoles] Allowed ranks for ${player}: ${[...allowedRanks].join(', ')}`);
+
+    // Determine target role position using rankHierarchy.
     const targetRolePosition = rankHierarchy[roleName.toLowerCase()];
+
+    // Filter member roles for removal:
+    // Remove roles if they are lower than the target role,
+    // unless the role name is among the allowedRanks (i.e. one of the registered RSN ranks).
     const rolesToRemove = member.roles.cache.filter((r) => {
-        const position = rankHierarchy[r.name.toLowerCase()];
+        const roleKey = r.name.toLowerCase();
+        const position = rankHierarchy[roleKey];
+        // If the role is among the registered ranks, do not remove it.
+        if (allowedRanks.has(roleKey)) return false;
+        // Otherwise, if the role's hierarchy position is defined and is lower than the target, mark it for removal.
         return position !== undefined && position < targetRolePosition;
     });
+
     if (rolesToRemove.size > 0) {
         const removedRoles = await Promise.all(rolesToRemove.map(async (r) => `${await getRankEmoji(r.name)} <@&${r.id}>`));
         await member.roles.remove(rolesToRemove);
@@ -43,16 +71,21 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
         const targetEmoji = await getRankEmoji(rank);
         const embed = new EmbedBuilder()
             .setTitle('🔄 Rank Updated!')
-            .setDescription(`🎉 **Good news!**\nYour rank has been updated to ${targetEmoji} ${targetRole}\n\nThe following roles were removed to reflect the change:\n- ${removedRoles}`)
+            .setDescription(`🎉 **Good news!**\nYour rank has been updated to ${targetEmoji} ${targetRole}\n\nThe following roles were removed to reflect the change:\n- ${removedRoles.join('\n- ')}`)
             .setColor(color);
         await roleChannel.send({ content: `<@${member.id}>`, embeds: [embed] });
         logger.info(`✅ [handleMemberRoles] Removed roles for ${player}: ${removedRoles}`);
+    } else {
+        logger.info(`[handleMemberRoles] No roles to remove for ${player}.`);
     }
+
+    // Add the target role if not already assigned.
     if (!member.roles.cache.has(targetRole.id)) {
         await member.roles.add(targetRole);
         logger.info(`✅ [handleMemberRoles] Assigned role '${roleName}' to ${player} 🎉`);
     }
 }
+
 /**
  *
  * @param client
