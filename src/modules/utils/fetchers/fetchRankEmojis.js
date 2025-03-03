@@ -10,7 +10,7 @@ async function fetchRankEmojis() {
             acc[emoji_key.replace('emoji_', '')] = emoji_format;
             return acc;
         }, {});
-        logger.info('✅ Rank emojis loaded successfully from the database.');
+        //logger.info('✅ Rank emojis loaded successfully from the database.');
         return emojiMap;
     } catch (error) {
         logger.error(`❌ Error fetching rank emojis: ${error.message}`);
@@ -24,7 +24,7 @@ async function getRanks() {
     const rankEmojis = await fetchRankEmojis();
     return {
         owner: { emoji: rankEmojis.owner || '❌', role: 'Owner', color: 0xffff00 },
-        'deputy owner': { emoji: rankEmojis.deputy_owner || '❌', role: 'Deputy owner', color: 0xdfefd6 },
+        deputy_owner: { emoji: rankEmojis.deputy_owner || '❌', role: 'Deputy owner', color: 0xdfefd6 },
         administrator: { emoji: rankEmojis.administrator || '❌', role: 'Administrator', color: 0xeea143 },
         moderator: { emoji: rankEmojis.moderator || '❌', role: 'Moderator', color: 0xfffbc3 },
         private: { emoji: rankEmojis.private || '❌', role: 'Private', color: 0x3f3f3f },
@@ -137,8 +137,8 @@ async function getRanks() {
         gamer: { emoji: rankEmojis.gamer || '❌', role: 'Gamer', color: 0x00ff00 },
         gatherer: { emoji: rankEmojis.gatherer || '❌', role: 'Gatherer', color: 0x3cb371 },
         general: { emoji: rankEmojis.general || '❌', role: 'General', color: 0x696969 },
-        'gnome child': { emoji: rankEmojis.gnome_child || '❌', role: 'Gnome Child', color: 0xff69b4 },
-        'gnome elder': { emoji: rankEmojis.gnome_elder || '❌', role: 'Gnome Elder', color: 0xc71585 },
+        gnome_child: { emoji: rankEmojis.gnome_child || '❌', role: 'Gnome Child', color: 0xff69b4 },
+        gnome_elder: { emoji: rankEmojis.gnome_elder || '❌', role: 'Gnome Elder', color: 0xc71585 },
         goblin: { emoji: rankEmojis.goblin || '❌', role: 'Goblin', color: 0x9acd32 },
         gold: { emoji: rankEmojis.gold || '❌', role: 'Gold', color: 0xffd700 },
         goon: { emoji: rankEmojis.goon || '❌', role: 'Goon', color: 0x708090 },
@@ -160,7 +160,7 @@ async function getRanks() {
         infantry: { emoji: rankEmojis.infantry || '❌', role: 'Infantry', color: 0x708090 },
         inquisitor: { emoji: rankEmojis.inquisitor || '❌', role: 'Inquisitor', color: 0xb22222 },
         jade: { emoji: rankEmojis.jade || '❌', role: 'Jade', color: 0x00a86b },
-        'jagex moderator': { emoji: rankEmojis.jagex_moderator || '❌', role: 'Jagex Moderator', color: 0xff69b4 },
+        jagex_moderator: { emoji: rankEmojis.jagex_moderator || '❌', role: 'Jagex Moderator', color: 0xff69b4 },
         justiciar: { emoji: rankEmojis.justiciar || '❌', role: 'Justiciar', color: 0x800000 },
         kandarin: { emoji: rankEmojis.kandarin || '❌', role: 'Kandarin', color: 0x5f9ea0 },
         karamjan: { emoji: rankEmojis.karamjan || '❌', role: 'Karamjan', color: 0xcd853f },
@@ -223,11 +223,11 @@ async function getRanks() {
         racer: { emoji: rankEmojis.racer || '❌', role: 'Racer', color: 0x1e90ff },
         raider: { emoji: rankEmojis.raider || '❌', role: 'Raider', color: 0x8b0000 },
         ranger: { emoji: rankEmojis.ranger || '❌', role: 'Ranger', color: 0x006400 },
-        'record chaser': { emoji: rankEmojis.record_chaser || '❌', role: 'Record Chaser', color: 0xff8c00 },
+        record_chaser: { emoji: rankEmojis.record_chaser || '❌', role: 'Record Chaser', color: 0xff8c00 },
         recruit: { emoji: rankEmojis.recruit || '❌', role: 'Recruit', color: 0x808080 },
         recruiter: { emoji: rankEmojis.recruiter || '❌', role: 'Recruiter', color: 0xdaa520 },
         red: { emoji: rankEmojis.red || '❌', role: 'Red', color: 0xff0000 },
-        'red topaz': { emoji: rankEmojis.red_topaz || '❌', role: 'Red Topaz', color: 0xff4500 },
+        red_topaz: { emoji: rankEmojis.red_topaz || '❌', role: 'Red Topaz', color: 0xff4500 },
         rogue: { emoji: rankEmojis.rogue || '❌', role: 'Rogue', color: 0x800000 },
         ruby: { emoji: rankEmojis.ruby || '❌', role: 'Ruby', color: 0xe0115f },
         runecrafter: { emoji: rankEmojis.runecrafter || '❌', role: 'Runecrafter', color: 0x8a2be2 },
@@ -247,7 +247,7 @@ async function getRanks() {
         sergeant: { emoji: rankEmojis.sergeant || '❌', role: 'Sergeant', color: 0x8b0000 },
         shaman: { emoji: rankEmojis.shaman || '❌', role: 'Shaman', color: 0x20b2aa },
         sheriff: { emoji: rankEmojis.sheriff || '❌', role: 'Sheriff', color: 0x00008b },
-        'short green guy': { emoji: rankEmojis.short_green_guy || '❌', role: 'Short Green Guy', color: 0x7cfc00 },
+        short_green_guy: { emoji: rankEmojis.short_green_guy || '❌', role: 'Short Green Guy', color: 0x7cfc00 },
         skiller: { emoji: rankEmojis.skiller || '❌', role: 'Skiller', color: 0xdaa520 },
         skulled: { emoji: rankEmojis.skulled || '❌', role: 'Skulled', color: 0x696969 },
         slayer: { emoji: rankEmojis.slayer || '❌', role: 'Slayer', color: 0xdc143c },
@@ -255,7 +255,7 @@ async function getRanks() {
         smith: { emoji: rankEmojis.smith || '❌', role: 'Smith', color: 0xd3d3d3 },
         smuggler: { emoji: rankEmojis.smuggler || '❌', role: 'Smuggler', color: 0x8b4513 },
         sniper: { emoji: rankEmojis.sniper || '❌', role: 'Sniper', color: 0x000000 },
-        'speed runner': { emoji: rankEmojis.speed_runner || '❌', role: 'Speed Runner', color: 0xff4500 },
+        speed_runner: { emoji: rankEmojis.speed_runner || '❌', role: 'Speed Runner', color: 0xff4500 },
         spellcaster: { emoji: rankEmojis.spellcaster || '❌', role: 'Spellcaster', color: 0x8a2be2 },
         squire: { emoji: rankEmojis.squire || '❌', role: 'Squire', color: 0xc0c0c0 },
         staff: { emoji: rankEmojis.staff || '❌', role: 'Staff', color: 0x000080 },

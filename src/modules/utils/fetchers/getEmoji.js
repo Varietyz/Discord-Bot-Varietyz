@@ -8,7 +8,7 @@ const emojiCache = {};
  * Retrieves the emoji format for a given emoji key from the database.
  * Uses caching to minimize database queries.
  *
- * @param {string} emojiKey - The key to lookup (e.g., 'emoji_1_loading').
+ * @param {string} emojiKey - The key to lookup (e.g., 'emoji_clan_loading').
  * @returns {Promise<string>} - The emoji format string or an empty string if not found.
  */
 async function getEmoji(emojiKey) {
@@ -38,6 +38,6 @@ module.exports = getEmoji;
 // const getEmoji = require('../../utils/helpers/getEmoji');
 //
 
-// const loadingEmoji = await getEmoji('emoji_1_loading');
+// const loadingEmoji = await getEmoji('emoji_clan_loading');
 
 // Use `loadingEmoji` in your embed or message formatting.

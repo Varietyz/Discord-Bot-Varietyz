@@ -5,6 +5,9 @@ const logger = require('../../utils/essentials/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ComponentType } = require('discord.js');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ *
+ */
 async function getActiveRanks() {
     try {
         const response = await WOMApiClient.request('groups', 'getGroupDetails', WOMApiClient.groupId);
@@ -20,6 +23,11 @@ async function getActiveRanks() {
         return new Set();
     }
 }
+/**
+ *
+ * @param guild
+ * @param activeRanksParam
+ */
 async function syncClanRankEmojis(guild, activeRanksParam) {
     let addedEmojis = 0;
     let deletedEmojis = 0;
@@ -34,13 +42,13 @@ async function syncClanRankEmojis(guild, activeRanksParam) {
     const rankEmojiMap = new Map(rankEmojis.map((e) => [e.file_name.toLowerCase(), e.file_path]));
     for (const [baseName, filePath] of rankEmojiMap) {
         if (!activeRanks.has(baseName)) {
-            logger.info(`Skipping rank emoji "${baseName}" because its role is not active.`);
+            //logger.info(`Skipping rank emoji "${baseName}" because its role is not active.`);
             continue;
         }
         const finalEmojiKey = `emoji_${baseName}`;
         const exists = await db.guild.getOne('SELECT emoji_key FROM guild_emojis WHERE emoji_key = ?', [finalEmojiKey]);
         if (exists) {
-            logger.info(`Skipping creation for rank emoji with key "${finalEmojiKey}" as it already exists in guild_emojis table.`);
+            //logger.info(`Skipping creation for rank emoji with key "${finalEmojiKey}" as it already exists in guild_emojis table.`);
             continue;
         }
         const fileFullPath = path.join(__dirname, '../../../../', filePath);
@@ -61,13 +69,7 @@ async function syncClanRankEmojis(guild, activeRanksParam) {
                  VALUES (?, ?, ?, ?, ?)
                  ON CONFLICT(emoji_id) DO UPDATE 
                  SET emoji_key = excluded.emoji_key, emoji_name = excluded.emoji_name, emoji_format = excluded.emoji_format, animated = excluded.animated`,
-                [
-                    uploadedEmoji.id,
-                    finalEmojiKey,
-                    uploadedEmoji.name,
-                    emojiFormat,
-                    uploadedEmoji.animated ? 1 : 0,
-                ],
+                [uploadedEmoji.id, finalEmojiKey, uploadedEmoji.name, emojiFormat, uploadedEmoji.animated ? 1 : 0],
             );
             addedEmojis++;
             await sleep(3500);
@@ -93,7 +95,7 @@ async function syncClanRankEmojis(guild, activeRanksParam) {
         }
     }
     if (outdatedEmojis.length > 0) {
-        const channelData = await db.guild.getOne('SELECT channel_id FROM guild_channels WHERE channel_key = ?', ['channel_dataalerts']);
+        const channelData = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['critical_alerts']);
         if (channelData) {
             const alertChannel = await guild.channels.fetch(channelData.channel_id).catch(() => null);
             if (alertChannel) {
@@ -137,7 +139,7 @@ async function syncClanRankEmojis(guild, activeRanksParam) {
                 logger.warn('⚠️ Alert channel not found in guild.');
             }
         } else {
-            logger.warn('⚠️ No alert channel data found in guild_channels table for key "channel_dataalerts".');
+            logger.warn('⚠️ No alert channel data found in guild_channels table for key "critical_alerts".');
         }
     } else {
         logger.info('✅ No outdated rank emojis detected for deletion.');

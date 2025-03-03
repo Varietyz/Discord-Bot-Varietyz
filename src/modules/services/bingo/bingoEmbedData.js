@@ -173,6 +173,7 @@ async function getNewCompletions(eventId) {
             bt.description AS taskName, 
             bt.parameter,
             bt.value AS target,
+            bt.type,
             btp.last_updated,
             btp.points_awarded,
             btp.progress_value AS progress,      

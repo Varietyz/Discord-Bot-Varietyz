@@ -12,10 +12,10 @@ const validateRsn = (rsn) => {
             message: '❌ **Invalid Length:** RSN must be between 1 and 12 characters long.',
         };
     }
-    if (!/^[a-zA-Z0-9]+(?: [a-zA-Z0-9]+)*$/.test(trimmedRsn)) {
+    if (!/^[a-zA-Z0-9_]+(?:[ _][a-zA-Z0-9_]+)*$/.test(trimmedRsn)) {
         return {
             valid: false,
-            message: '❌ **Invalid Format:** RSN can only contain letters, numbers, and single spaces between words. (Replace hyphens/underscores with spaces.)',
+            message: '❌ **Invalid Format:** RSN can only contain letters, numbers, underscores, and spaces. Ensure there are no consecutive spaces or underscores.',
         };
     }
     const forbiddenPhrases = ['Java', 'Mod', 'Jagex'];
@@ -27,4 +27,5 @@ const validateRsn = (rsn) => {
     }
     return { valid: true, message: '' };
 };
+
 module.exports = { validateRsn };

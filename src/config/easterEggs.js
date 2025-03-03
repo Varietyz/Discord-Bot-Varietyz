@@ -15,12 +15,12 @@ module.exports = {
             description: '**Bluerose13x**—RuneScape’s OG smith. Unless you’re smelting history, let’s keep it in the past. 🛠️',
             color: 0x1e90ff, // Blue
         },
-        'the old nite': {
+        the_old_nite: {
             title: '🕊️ The Old Nite',
             description: 'Unless you’re inspiring the entire RuneScape world like **The Old Nite**, this RSN’s sacred ground. Move along. 🌙',
             color: 0x696969, // Dark gray
         },
-        's u o m i': {
+        s_u_o_m_i: {
             title: '💎 S U O M I',
             description: '**SUOMI** climbed Everest (or the XP equivalent). You, however, might be stuck at Tutorial Island. 🏋️',
             color: 0x00ffff, // Cyan
@@ -40,7 +40,7 @@ module.exports = {
             description: '**Rendi** mastered glitches and chaos. If your best trick is forgetting to eat, this name’s not for you. 🌪️',
             color: 0x9370db, // Purple
         },
-        'cursed you': {
+        cursed_you: {
             title: '😈 Cursed You',
             description: 'Thinking of stealing **Cursed You**? Unless you’re dominating PvP, this name stays with the king. 💀',
             color: 0xdc143c, // Crimson
@@ -50,12 +50,12 @@ module.exports = {
             description: 'Unless you’re narrating epic PK tales like **Framed**, this name isn’t for you. 🔥',
             color: 0x008080, // Teal
         },
-        'sparc mac': {
+        sparc_mac: {
             title: '💥 Sparc Mac',
             description: 'Unless you’ve got PvP montages ready to upload, **Sparc Mac** is way out of your league. 😉',
             color: 0xff6347, // Tomato
         },
-        'matt k': {
+        matt_k: {
             title: '📜 Matt K',
             description: 'If you can’t commit to hours of skilling grind, **Matt K** isn’t your vibe. Stick to chopping willows, rookie. 🌳',
             color: 0x4682b4, // Steel blue
@@ -70,7 +70,7 @@ module.exports = {
             description: '**NightmareRH** set the standard for fiery rants. Unless you’re going full chaos, this name isn’t yours. 😡',
             color: 0xff6347, // Red-orange
         },
-        '3 hit u': {
+        '3_hit_u': {
             title: '⚔️ 3 Hit U',
             description: '**3 Hit U** owned the Duel Arena. Unless you’re planning to one-shot everyone, step away from the legend. 💪',
             color: 0x8b0000, // Dark red
@@ -95,7 +95,7 @@ module.exports = {
             description: '**Jebrim** lived rooftops and shortcuts. Unless you love rooftops more than loot, stick to running errands. 🏅',
             color: 0x00ff7f, // Spring green
         },
-        'chris archie': {
+        chris_archie: {
             title: '📽️ Chris Archie',
             description: 'Unless you’re creating iconic PK montages, **Chris Archie** isn’t for you. Stick to watching highlights! 🎬',
             color: 0xffd700, // Gold
@@ -140,7 +140,7 @@ module.exports = {
             description: 'Unless you’re ready to dominate PvM and Ironman like **B0aty**, keep fishing for another name. 🎣',
             color: 0xff4500, // Orange-red
         },
-        'a friend': {
+        a_friend: {
             title: '🤝 A Friend',
             description: '**A Friend** taught us everything from PvM to money-making. Unless you’re sharing knowledge, this isn’t your name. 📚',
             color: 0x4682b4, // Steel blue
@@ -170,12 +170,12 @@ module.exports = {
             description: 'Hybrid PKing innovator **Elvemage** doesn’t share his name. Stick to PvP practice, champ. 🛡️',
             color: 0x00ffff, // Cyan
         },
-        'bonesaw pker': {
+        bonesaw_pker: {
             title: '🦴 Bonesaw Pker',
             description: 'PKing royalty **Bonesaw Pker** deserves respect. Unless you’re a wilderness veteran, step aside. 💀',
             color: 0x8b0000, // Dark red
         },
-        'sk8r boi pk': {
+        sk8r_boi_pk: {
             title: '🛹 SK8R BOI PK',
             description: '**SK8R BOI PK** defined early PvP. Unless you’re revolutionizing the Wilderness, this name’s not yours. ⚔️',
             color: 0x1e90ff, // Blue
@@ -195,7 +195,7 @@ module.exports = {
             description: 'Bringing humor to the RuneScape world? Unless you’re matching **Sparky**, leave the jokes aside. 🎭',
             color: 0xffd700, // Gold
         },
-        'ice poseidon': {
+        ice_poseidon: {
             title: '❄️ Ice Poseidon',
             description: '**Ice Poseidon** brought OSRS to the mainstream. Controversy not included. Proceed cautiously. ☃️',
             color: 0x4682b4, // Steel blue
@@ -205,7 +205,7 @@ module.exports = {
             description: '**Fantasy** paved the way for RuneScape Classic creators. Unless you’re teaching PvP strategies, skip this name. 🛡️',
             color: 0x8b0000, // Dark red
         },
-        'lynx titan': {
+        lynx_titan: {
             title: '💪 Lynx Titan',
             description: 'Maxed 200M XP in every skill? Unless you’re planning to rewrite OSRS leaderboards, step away from **Lynx Titan**. 🏆',
             color: 0xffd700, // Gold

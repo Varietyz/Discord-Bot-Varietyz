@@ -140,7 +140,7 @@ async function savePlayerDataToDb(playerName, rawData) {
     for (const row of rows) {
         await runQuery(upsertQuery, [player_id, rsn, row.type, row.metric, row.kills, row.score, row.level, row.exp, row.last_changed, row.last_updated]);
     }
-    logger.info(`✅ Upserted data for ${playerName} (player_id: ${player_id}, rsn: ${rsn})`);
+    //logger.info(`✅ Upserted data for ${playerName} (player_id: ${player_id}, rsn: ${rsn})`);
 }
 /**
  *
@@ -190,7 +190,7 @@ async function fetchAndSaveRegisteredPlayerData() {
                         playerData = await WOMApiClient.request('players', 'updatePlayer', rsn);
                         await setLastFetchedTime(playerId);
                     } else {
-                        logger.info(`📌 No update needed for ${rsn}.`);
+                        //logger.info(`📌 No update needed for ${rsn}.`);
                         playerData = await WOMApiClient.request('players', 'getPlayerDetails', rsn);
                     }
                 } else {

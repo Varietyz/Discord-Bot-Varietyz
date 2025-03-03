@@ -1,20 +1,18 @@
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
 const path = require('path');
 const logger = require('../essentials/logger');
-const db = require('../essentials/dbUtils');
+const getEmojiWithFallback = require('../fetchers/getEmojiWithFallback');
 
 const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, competitionId) => {
     let emojiFormat;
     if (type === 'SOTW') {
-        const overallEmojis = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_overall']);
-        emojiFormat = overallEmojis.length > 0 ? overallEmojis[0].emoji_format : '';
+        emojiFormat = await getEmojiWithFallback('emoji_overall', '📊');
     } else {
-        const slayerEmojis = await db.guild.getAll('SELECT emoji_format FROM guild_emojis WHERE emoji_key = ?', ['emoji_slayer']);
-        emojiFormat = slayerEmojis.length > 0 ? slayerEmojis[0].emoji_format : '';
+        emojiFormat = await getEmojiWithFallback('emoji_slayer', '🐲');
     }
-    const competitionTitle = type === 'SOTW' ? `${emojiFormat} Skill of the Week` : `${emojiFormat} Boss of the Week`;
-    const titleFallback = type === 'SOTW' ? '📊 Skill of the Week' : '🐉 Boss of the Week';
-    const displayedTitle = competitionTitle.includes('<:') ? competitionTitle : titleFallback;
+    const womEmoji = await getEmojiWithFallback('emoji_wise_old_man', '📡');
+
+    const displayedTitle = type === 'SOTW' ? `${emojiFormat} Skill of the Week${womEmoji}` : `${emojiFormat} Boss of the Week${womEmoji}`;
     const resourcesFolder = path.resolve(__dirname, '../../../resources');
     const imagePath = path.join(resourcesFolder, 'skills_bosses', `${metric.toLowerCase()}.png`);
     let imageAttachment;

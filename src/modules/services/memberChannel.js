@@ -8,6 +8,7 @@ const { purgeChannel } = require('../utils/helpers/purgeChannel');
 const db = require('../utils/essentials/dbUtils');
 const { syncClanRankEmojis } = require('../utils/essentials/syncClanRanks');
 const { cleanupOrphanedPlayers } = require('../utils/essentials/orphanCleaner');
+const getPlayerLink = require('../utils/fetchers/getPlayerLink');
 require('dotenv').config();
 /**
  *
@@ -40,7 +41,7 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
 
     // Build a set of the allowed rank names (in lowercase).
     const allowedRanks = new Set(registeredRanksData.map((row) => row.rank.toLowerCase()));
-    logger.info(`[handleMemberRoles] Allowed ranks for ${player}: ${[...allowedRanks].join(', ')}`);
+    //logger.info(`[handleMemberRoles] Allowed ranks for ${player}: ${[...allowedRanks].join(', ')}`);
 
     // Determine target role position using rankHierarchy.
     const targetRolePosition = rankHierarchy[roleName.toLowerCase()];
@@ -75,8 +76,6 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
             .setColor(color);
         await roleChannel.send({ content: `<@${member.id}>`, embeds: [embed] });
         logger.info(`✅ [handleMemberRoles] Removed roles for ${player}: ${removedRoles}`);
-    } else {
-        logger.info(`[handleMemberRoles] No roles to remove for ${player}.`);
     }
 
     // Add the target role if not already assigned.
@@ -126,7 +125,7 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
                 joinedAt: joinedAt,
             });
             const RANKS = await getRanks();
-            const roleName = RANKS[formattedRank.toLowerCase()]?.role;
+            const roleName = RANKS[formattedRank]?.role;
             if (!roleName) {
                 logger.warn(`⚠️ Rank '${formattedRank}' not found in RANKS. Available keys: ${Object.keys(RANKS).join(', ')}`);
                 continue;
@@ -163,8 +162,8 @@ async function updateDatabase(newData) {
         const updates = [];
         for (const { playerId, rsn, rank, joinedAt } of newData) {
             const existingEntry = currentDataMap.get(playerId);
-            logger.info(`🔍 Checking: ${playerId}, ${rsn}, ${rank}, ${joinedAt}`);
-            logger.info(`📌 DB Entry: ${existingEntry ? JSON.stringify(existingEntry) : 'None'}`);
+            //logger.info(`🔍 Checking: ${playerId}, ${rsn}, ${rank}, ${joinedAt}`);
+            //logger.info(`📌 DB Entry: ${existingEntry ? JSON.stringify(existingEntry) : 'None'}`);
             if (!existingEntry) {
                 logger.warn(`🆕 New player detected: ${rsn} (ID: ${playerId})`);
                 hasChanges = true;
@@ -182,8 +181,6 @@ async function updateDatabase(newData) {
                 }
                 hasChanges = true;
                 updates.push({ playerId, rsn, rank, joinedAt });
-            } else {
-                logger.info(`✅ No changes detected for ${rsn}.`);
             }
         }
         if (updates.length > 0) {
@@ -267,9 +264,8 @@ async function updateClanChannel(client, cachedData) {
     let index = 1;
     for (const { player, rank, experience, lastProgressed } of cachedData) {
         //if (!player || rank.toLowerCase() === 'guest') continue;
-        const rankEmoji = await getRankEmoji(rank);
         const color = await getRankColor(rank);
-        const playerNameForLink = encodeURIComponent(player.replace(/ /g, '%20'));
+        const profileLink = await getPlayerLink(player);
         let lastProgressedTimestamp = null;
         if (lastProgressed && lastProgressed !== 'N/a') {
             const parsedDate = new Date(lastProgressed);
@@ -278,8 +274,7 @@ async function updateClanChannel(client, cachedData) {
             }
         }
         const embed = new EmbedBuilder()
-            .setTitle(`${index}. ${rankEmoji} **${player}**`)
-            .setURL(`https://wiseoldman.net/players/${playerNameForLink}`)
+            .setDescription(`### ${index}. ${profileLink}`)
             .setColor(color)
             .addFields(
                 { name: 'Rank:', value: `**\`${formatRank(rank)}\`**`, inline: true },

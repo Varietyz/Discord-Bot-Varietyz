@@ -6,9 +6,10 @@ const { normalizeRsn } = require('../../../utils/normalizing/normalizeRsn');
 const { validateRsn } = require('../../../utils/helpers/validateRsn');
 const { fetchPlayerData } = require('../../../utils/fetchers/fetchPlayerData');
 const { updatePlayerData } = require('../../../utils/essentials/updatePlayerData');
-const getEmoji = require('../../../utils/fetchers/getEmoji');
 const { updateEventBaseline } = require('../../../services/bingo/bingoTaskManager');
 const { fetchAndProcessMember } = require('../../../services/autoRoles');
+const getPlayerLink = require('../../../utils/fetchers/getPlayerLink');
+const getEmojiWithFallback = require('../../../utils/fetchers/getEmojiWithFallback');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -18,11 +19,11 @@ module.exports = {
         .addUserOption((option) => option.setName('target').setDescription('The guild member to assign an RSN to.').setRequired(true))
         .addStringOption((option) => option.setName('rsn').setDescription('The RuneScape Name to assign.').setRequired(true)),
     async execute(interaction) {
-        const loadingEmoji = await getEmoji('emoji_1_loading');
-
         try {
             const targetUser = interaction.options.getUser('target');
             const rsn = interaction.options.getString('rsn');
+            const loadingEmoji = await getEmojiWithFallback('emoji_clan_loading', 'loading....');
+            const profileLink = await getPlayerLink(rsn);
             logger.info(`🔍 Admin ${interaction.user.id} attempting to assign RSN "\`${rsn}\`" to user \`${targetUser.id}\`.`);
             const validation = validateRsn(rsn);
             if (!validation.valid) {
@@ -34,9 +35,8 @@ module.exports = {
             const normalizedRsn = normalizeRsn(rsn);
             const playerData = await fetchPlayerData(normalizedRsn);
             if (!playerData) {
-                const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(normalizedRsn)}`;
                 return await interaction.reply({
-                    content: `❌ **Verification Failed:** The RSN "\`${rsn}\`" could not be verified on Wise Old Man. Please ensure the name exists and try again.\n\n🔗 [View Profile](${profileLink})`,
+                    content: `❌ **Verification Failed:** The RSN "${profileLink}" could not be verified on Wise Old Man. Please ensure the name exists and try again.`,
                     flags: 64,
                 });
             }
@@ -44,7 +44,7 @@ module.exports = {
             const existingUser = await getOne('SELECT discord_id FROM registered_rsn WHERE LOWER(REPLACE(REPLACE(rsn, "-", " "), "_", " ")) = ? LIMIT 1', [normalizedRsn]);
             if (existingUser) {
                 return await interaction.reply({
-                    content: `🚫 **Conflict:** The RSN "\`${rsn}\`" is already registered by <@${existingUser.discord_id}>.`,
+                    content: `🚫 **Conflict:** The RSN "${profileLink}" is already registered by <@${existingUser.discord_id}>.`,
                     flags: 64,
                 });
             }
@@ -53,7 +53,7 @@ module.exports = {
                 new ButtonBuilder().setCustomId('cancel_assign_rsn').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
             );
             await interaction.reply({
-                content: `⚠️ **Confirmation Required**\nAre you sure you want to assign the RSN "\`${rsn}\`" to <@${targetUser.id}>?`,
+                content: `⚠️ **Confirmation Required**\nAre you sure you want to assign the RSN "${profileLink}" to <@${targetUser.id}>?`,
                 components: [confirmationRow],
                 flags: 64,
             });
@@ -67,7 +67,7 @@ module.exports = {
                 if (i.customId === 'confirm_assign_rsn') {
                     await runQuery('INSERT INTO registered_rsn (player_id, discord_id, rsn, registered_at) VALUES (?, ?, ?, ?)', [womPlayerId, targetUser.id, rsn, new Date().toISOString()]);
                     await interaction.reply({
-                        content: `${loadingEmoji} Collecting player data for \`${rsn} (WOM ID: ${womPlayerId})\`...`,
+                        content: `${loadingEmoji} Collecting player data for ${profileLink} \`(WOM ID: ${womPlayerId})\`...`,
                         flags: 64,
                     });
                     await updatePlayerData(rsn, womPlayerId);
@@ -90,7 +90,7 @@ module.exports = {
 
                     if (validRegistration && validRegistration.clan_player_id) {
                         await interaction.editReply({
-                            content: `${loadingEmoji} \`${rsn} (WOM ID: ${womPlayerId})\` is confirmed as a clan member. Registering for bingo...`,
+                            content: `${loadingEmoji} ${profileLink} \`(WOM ID: ${womPlayerId})\` is confirmed as a clan member. Registering for bingo...`,
                             flags: 64,
                         });
                         await updateEventBaseline();
@@ -99,21 +99,21 @@ module.exports = {
                     }
 
                     await interaction.editReply({
-                        content: `✅ **Success!** The RSN "\`${rsn}\`" (WOM ID: \`${womPlayerId}\`) assigned to user \`${targetUser.id}\` by admin ${interaction.user.id}`,
+                        content: `✅ **Success!** The RSN "${profileLink}" \`(WOM ID: ${womPlayerId})\` assigned to user \`${targetUser.id}\` by admin ${interaction.user.id}`,
                         flags: 64,
                     });
-                    logger.info(`✅ RSN "\`${rsn}\`" (WOM ID: \`${womPlayerId}\`) assigned to user \`${targetUser.id}\` by admin ${interaction.user.id}`);
+                    logger.info(`✅ RSN "${profileLink}" \`(WOM ID: ${womPlayerId})\` assigned to user \`${targetUser.id}\` by admin ${interaction.user.id}`);
                     const userEmbed = new EmbedBuilder()
                         .setColor(0x00ff00)
                         .setTitle('✅ RSN Registered')
-                        .setDescription(`Your RuneScape Name "\`${rsn}\`" (WOM ID: \`${womPlayerId}\`) has been successfully registered in our records.\n\n*This action was performed by: <@${interaction.user.id}>*`)
+                        .setDescription(`Your RuneScape Name "${profileLink}" \`(WOM ID: ${womPlayerId})\` has been successfully registered in our records.\n\n*This action was performed by: <@${interaction.user.id}>*`)
                         .setFooter({ text: 'Varietyz Bot' })
                         .setTimestamp();
                     await targetUser.send({ embeds: [userEmbed] }).catch(() => {
                         logger.warn(`⚠️ Failed to send DM to user \`${targetUser.id}\`.`);
                     });
                     await i.update({
-                        content: `✅ **Success:** The RSN "\`${rsn}\`" (WOM ID: \`${womPlayerId}\`) has been successfully assigned to <@${targetUser.id}>.`,
+                        content: `✅ **Success:** The RSN "${profileLink}" \`(WOM ID: ${womPlayerId})\` has been successfully assigned to <@${targetUser.id}>.`,
                         components: [],
                         flags: 64,
                     });

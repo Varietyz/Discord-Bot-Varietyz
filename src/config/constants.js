@@ -1,6 +1,7 @@
 require('dotenv').config();
 const roleRange = [
     'guest',
+    'private',
     'bronze',
     'iron',
     'steel',

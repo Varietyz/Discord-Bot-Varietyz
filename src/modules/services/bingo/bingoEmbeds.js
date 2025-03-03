@@ -2,11 +2,11 @@ const { EmbedBuilder } = require('discord.js');
 const { getTopTeams, getTopPlayers, getPlayerTaskProgress, getTeamTaskProgress } = require('./bingoEmbedData');
 const getEmojiWithFallback = require('../../utils/fetchers/getEmojiWithFallback');
 const dbUtils = require('../../utils/essentials/dbUtils');
-const getPlayerRank = require('../../utils/fetchers/getPlayerRank');
 const logger = require('../../utils/essentials/logger');
 const { computeOverallPercentage, computeIndividualPartialPoints, computeTeamPartialPoints } = require('./bingoCalculations');
 const { calculatePatternBonus } = require('./bingoPatternRecognition');
 const { calculateProgressPercentage } = require('./bingoImageGenerator');
+const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
 
 /**
  *
@@ -95,8 +95,7 @@ async function createIndividualLeaderboardEmbed(eventId) {
             if (overall > 0) {
                 const taskProgress = await getPlayerTaskProgress(eventId, player.player_id);
 
-                const playerNameForLink = encodeURIComponent(player.rsn);
-                const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
+                const profileLink = await getPlayerLink(player.rsn);
 
                 let taskProgressStr = '';
                 for (const task of taskProgress) {
@@ -116,13 +115,6 @@ async function createIndividualLeaderboardEmbed(eventId) {
                     taskProgressStr = '_No completed tasks yet._';
                 }
 
-                const playerRank = await getPlayerRank(player.player_id);
-                let rankEmoji = emojiCache[playerRank];
-                if (!rankEmoji) {
-                    rankEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
-                    emojiCache[playerRank] = rankEmoji;
-                }
-
                 // Fetch actual awarded points from the DB for each player
                 const playerPointsMap = {};
                 const pointsResults = await dbUtils.getAll(
@@ -140,7 +132,6 @@ async function createIndividualLeaderboardEmbed(eventId) {
                 playerProgress.push({
                     rsn: player.rsn,
                     profileLink,
-                    rankEmoji,
                     overall,
                     total_points: actualPoints,
                     completed_tasks: player.completed_tasks,
@@ -161,7 +152,7 @@ async function createIndividualLeaderboardEmbed(eventId) {
 
     // Build the embed description
     playerProgress.forEach((player, index) => {
-        leaderboardDescription += `> ### **${index + 1}.** ${player.rankEmoji} **[${player.rsn}](${player.profileLink})**\n`;
+        leaderboardDescription += `> ### **${index + 1}.** **${player.profileLink}**\n`;
         leaderboardDescription += `> ${progressEmoji}Finished: \`${player.overall}%\` \n> ${pointsEmoji}Earned: \`${player.total_points} pts\`\n`;
         leaderboardDescription += `> ${completedEmoji}Tasks Completed: \`${player.completed_tasks}\`\n`;
         leaderboardDescription += `> ${player.taskProgressStr}\n\n`;
@@ -259,18 +250,9 @@ async function createTeamLeaderboardEmbed(eventId) {
                 const userOverallPoints = overallPartialPointsMap[member.player_id] || 0;
                 const userShare = teamTotalOverallPartial > 0 ? ((userOverallPoints / teamTotalOverallPartial) * 100).toFixed(2) : '0.00';
 
-                // Optionally fetch rank emoji.
-                const playerRank = await getPlayerRank(member.player_id);
-                let memberEmoji = emojiCache[playerRank];
-                if (!memberEmoji) {
-                    memberEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
-                    emojiCache[playerRank] = memberEmoji;
-                }
+                const profileLink = await getPlayerLink(member.rsn);
 
-                const playerNameForLink = encodeURIComponent(member.rsn);
-                const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
-
-                memberLines.push(`> - ${memberEmoji}[${member.rsn}](${profileLink}) contributed \`${userShare}%\` ${progressEmoji} & earned \`${userPoints} pts\` ${pointsEmoji}`);
+                memberLines.push(`> - ${profileLink} contributed \`${userShare}%\` ${progressEmoji} & earned \`${userPoints} pts\` ${pointsEmoji}`);
             }
             const pointsResults = await dbUtils.getAll(
                 `SELECT team_id, SUM(points_awarded) AS total_points
@@ -328,7 +310,7 @@ async function createTeamLeaderboardEmbed(eventId) {
  */
 async function createConsolidatedProgressEmbed(completions) {
     // Retrieve common emojis
-    const completedEmoji = await getEmojiWithFallback('emoji_completed', '✅');
+    const completedEmoji = await getEmojiWithFallback('emoji_logoa_check', '✅');
     const pointsEmoji = await getEmojiWithFallback('emoji_points', '⭐');
     const progressEmoji = await getEmojiWithFallback('emoji_overall', '📊');
 
@@ -353,21 +335,13 @@ async function createConsolidatedProgressEmbed(completions) {
             emojiCache[row.parameter] = taskEmoji;
         }
 
-        const playerRank = await getPlayerRank(row.player_id);
-        let rankEmoji = emojiCache[playerRank];
-        if (!rankEmoji) {
-            rankEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
-            emojiCache[playerRank] = rankEmoji;
-        }
-
         // Determine if it's an individual or team task
         const entityName = row.team_name ? row.team_name : row.rsn;
-        const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(row.rsn)}`;
+        const profileLink = await getPlayerLink(row.rsn);
 
         // Group tasks under the player's or team's name
         if (!groupedCompletions[entityName]) {
             groupedCompletions[entityName] = {
-                rankEmoji,
                 profileLink,
                 isTeam: !!row.team_name,
                 tasks: [],
@@ -393,14 +367,31 @@ async function createConsolidatedProgressEmbed(completions) {
             pointsDescription = '*`⚠️ Did not contribute to the task their team completed`*';
         }
 
+        // Convert row.progress to a number once
+        const progressNum = Number(row.progress);
+        // Format the number with commas (e.g., 1000000 becomes "1,000,000")
+        const progressionValue = progressNum.toLocaleString();
+
+        let formattedProgress = '';
+
+        if (row.type === 'Exp') {
+            formattedProgress = `${progressionValue} XP contributed`;
+        } else if (row.type === 'Kill') {
+            // Use ternary operator for singular/plural phrasing
+            formattedProgress = progressNum === 1 ? `${progressionValue} Kill contributed` : `${progressionValue} Kills contributed`;
+        } else {
+            formattedProgress = progressNum === 1 ? `${progressionValue} Completion contributed` : `${progressionValue} Completions contributed`;
+        }
+
         // ✅ Improved Task Formatting for Readability
-        groupedCompletions[entityName].tasks.push(`> - ${taskEmoji} **\`${row.taskName}\`**\n>   - ${pointsDescription}`);
+        groupedCompletions[entityName].tasks.push(`> - **\`${row.taskName}\`**\n> - ${taskEmoji}**\`${formattedProgress}\`**\n>   - ${pointsDescription}`);
     }
 
-    // ✅ Build final embed description
+    // Build final embed description
     let description = '';
-    for (const [name, data] of Object.entries(groupedCompletions)) {
-        description += `> ### ${data.rankEmoji} **[${name}](${data.profileLink})**\n`;
+    for (const [, data] of Object.entries(groupedCompletions)) {
+        // Use data.profileLink and data.tasks properly
+        description += `### **${data.profileLink}**\n`;
         description += data.tasks.join('\n') + '\n\n';
     }
 
@@ -423,7 +414,6 @@ async function createPatternCompletionEmbed(eventId) {
 
     const embed = new EmbedBuilder().setTitle(`${patternEmoji} **Pattern Completions**`).setColor(0xffc107).setFooter({ text: '🕓 Last Updated' }).setTimestamp(new Date());
 
-    const emojiCache = {};
     const groupedCompletions = {};
 
     if (eventId === -1 || eventId === 0) {
@@ -467,23 +457,13 @@ async function createPatternCompletionEmbed(eventId) {
             timestamp = new Date();
         }
 
-        // Fetch rank emoji
-        const playerRank = await getPlayerRank(row.player_id);
-        let rankEmoji = emojiCache[playerRank];
-        if (!rankEmoji) {
-            rankEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
-            emojiCache[playerRank] = rankEmoji;
-        }
-
         // Prepare player profile link
-        const playerNameForLink = encodeURIComponent(row.rsn);
-        const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
+        const profileLink = await getPlayerLink(row.rsn);
 
         // Group patterns under the player's name
         if (!groupedCompletions[row.rsn]) {
             groupedCompletions[row.rsn] = {
                 profileLink,
-                rankEmoji,
                 patterns: [],
             };
         }
@@ -492,10 +472,9 @@ async function createPatternCompletionEmbed(eventId) {
         groupedCompletions[row.rsn].patterns.push(`> - 🎲 **${row.pattern_key.replace(/_/g, ' ')}** \n>   - ${pointsEmoji} **Bonus:** \`${bonusPoints} pts\``);
     }
 
-    // ✅ Build final embed description
     let description = '';
-    for (const [rsn, data] of Object.entries(groupedCompletions)) {
-        description += `### ${data.rankEmoji} **[${rsn}](${data.profileLink})**\n`;
+    for (const [, data] of Object.entries(groupedCompletions)) {
+        description += `### **${data.profileLink}**\n`;
         description += data.patterns.join('\n') + '\n\n';
     }
 

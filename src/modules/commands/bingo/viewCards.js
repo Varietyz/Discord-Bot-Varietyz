@@ -6,11 +6,10 @@ const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 const { savePlayerDataToDb } = require('../../services/playerDataExtractor');
 const { getLastFetchedTime, setLastFetchedTime } = require('../../utils/fetchers/lastFetchedTime');
 const { getDataAttributes, getDataColumn, upsertTaskProgress } = require('../../services/bingo/bingoTaskManager');
-const getEmoji = require('../../utils/fetchers/getEmoji');
 const { computeOverallPercentage, computeTeamPartialPoints, computeIndividualPartialPoints } = require('../../services/bingo/bingoCalculations');
 const getEmojiWithFallback = require('../../utils/fetchers/getEmojiWithFallback');
-const getPlayerRank = require('../../utils/fetchers/getPlayerRank');
 const { getTeamTaskProgress, getPlayerTaskProgress } = require('../../services/bingo/bingoEmbedData');
+const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
 
 /**
  *
@@ -112,7 +111,8 @@ module.exports = {
         .addStringOption((option) => option.setName('rsn').setDescription('The RSN to view (optional).').setAutocomplete(true).setRequired(false)),
     async execute(interaction) {
         try {
-            const emoji = await getEmoji('emoji_1_loading');
+            const emojiTeam = await getEmojiWithFallback('emoji_clan_loading_team', 'Loading...');
+            const emojiSolo = await getEmojiWithFallback('emoji_clan_loading_solo', 'Loading...');
             await interaction.deferReply({ flags: 64 });
 
             const ongoing = await db.getOne(`
@@ -193,7 +193,7 @@ module.exports = {
                 );
                 for (const member of teamMembers) {
                     await interaction.editReply({
-                        content: `${emoji} Team **${teamMember.team_name}**: Updating ${member.rsn}...`,
+                        content: `${emojiTeam} Team **${teamMember.team_name}**: Updating ${member.rsn}...`,
                     });
                     await updatePlayerData(member.rsn, member.player_id, eventId);
                 }
@@ -202,7 +202,7 @@ module.exports = {
                 logger.info('[BingoCards] Updating individual RSN data...');
                 for (const row of userRows) {
                     await interaction.editReply({
-                        content: `${emoji} Updating data for ${row.rsn}, please wait...`,
+                        content: `${emojiSolo} Updating data for ${row.rsn}, please wait...`,
                     });
                     await updatePlayerData(row.rsn, row.player_id, eventId);
                 }
@@ -300,16 +300,8 @@ const generateBingoEmbed = async (boardId, player) => {
             taskProgressStr = '_No completed tasks yet._';
         }
 
-        const playerRank = await getPlayerRank(player_id);
-        let rankEmoji = emojiCache[playerRank];
-        if (!rankEmoji) {
-            rankEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
-            emojiCache[playerRank] = rankEmoji;
-        }
-
         return {
             rsn,
-            rankEmoji,
             overall,
             total_points,
             completed_tasks,
@@ -323,8 +315,7 @@ const generateBingoEmbed = async (boardId, player) => {
     const buffer = await generateBingoCard(boardId, player.player_id);
     const file = new AttachmentBuilder(buffer, { name: 'bingo_card.png' });
 
-    const playerNameForLink = encodeURIComponent(playerData.rsn);
-    const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
+    const profileLink = await getPlayerLink(playerData.rsn);
 
     // Create embed with centralized structure
     const embed = new EmbedBuilder()
@@ -334,7 +325,7 @@ const generateBingoEmbed = async (boardId, player) => {
         .setFooter({ text: 'Bingo Card: Individual' })
         .setTimestamp()
         .setDescription(
-            `> ### ${playerData.rankEmoji} **[${playerData.rsn}](${profileLink})**\n` +
+            `> ### ${profileLink}\n` +
                 `> ${progressEmoji} Finished: \`${playerData.overall}%\`\n` +
                 `> ${pointsEmoji} Earned: \`${playerData.total_points} pts\`\n` +
                 `> ${completedEmoji} Tasks Completed: \`${playerData.completed_tasks}\`\n` +
@@ -532,18 +523,9 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
             const userOverallPoints = overallPartialPointsMap[member.player_id] || 0;
             const userShare = teamTotalOverallPartial > 0 ? ((userOverallPoints / teamTotalOverallPartial) * 100).toFixed(2) : '0.00';
 
-            // Optionally fetch rank emoji.
-            const playerRank = await getPlayerRank(member.player_id);
-            let memberEmoji = emojiCache[playerRank];
-            if (!memberEmoji) {
-                memberEmoji = await getEmojiWithFallback(`emoji_${playerRank}`, '👤');
-                emojiCache[playerRank] = memberEmoji;
-            }
+            const profileLink = await getPlayerLink(member.rsn);
 
-            const playerNameForLink = encodeURIComponent(member.rsn);
-            const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
-
-            memberLines.push(`> - ${memberEmoji}**[${member.rsn}](${profileLink})** — \`${userShare}%\` ${progressEmoji} — \`${actualPoints} pts\` ${pointsEmoji}`);
+            memberLines.push(`> - ${profileLink} — \`${userShare}%\` ${progressEmoji} — \`${actualPoints} pts\` ${pointsEmoji}`);
         }
 
         const memberSection = memberLines.join('\n') || '> _No members found._';

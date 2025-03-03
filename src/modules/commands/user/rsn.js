@@ -2,13 +2,14 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const logger = require('../../utils/essentials/logger');
 const { runQuery, getOne } = require('../../utils/essentials/dbUtils');
 const { easterEggs } = require('../../../config/easterEggs');
-const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
 const { validateRsn } = require('../../utils/helpers/validateRsn');
 const { fetchPlayerData } = require('../../utils/fetchers/fetchPlayerData');
 const { updateEventBaseline } = require('../../services/bingo/bingoTaskManager');
 const { fetchAndProcessMember } = require('../../services/autoRoles');
 const { updatePlayerData } = require('../../utils/essentials/updatePlayerData');
-const getEmoji = require('../../utils/fetchers/getEmoji');
+const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
+const getEmojiWithFallback = require('../../utils/fetchers/getEmojiWithFallback');
+const normalizeStr = require('../../utils/normalizing/normalizeStr');
 
 const RATE_LIMIT = 5;
 const RATE_LIMIT_DURATION = 60 * 1000;
@@ -19,15 +20,30 @@ module.exports.data = new SlashCommandBuilder()
     .setDescription('Register your Old School RuneScape Name (RSN)')
     .addStringOption((option) => option.setName('name').setDescription('Your Old School RuneScape Name to register').setRequired(true).setMinLength(1).setMaxLength(12));
 module.exports.execute = async (interaction) => {
-    const loadingEmoji = await getEmoji('emoji_1_loading');
+    const loadingEmoji = await getEmojiWithFallback('emoji_clan_loading', 'Loading... ');
 
     let rsn = '';
 
     try {
-        rsn = interaction.options.getString('name');
-        const lowerRsn = rsn.toLowerCase();
-        if (easterEggs[lowerRsn]) {
-            const { title, description, color } = easterEggs[lowerRsn];
+        rsn = interaction.options.getString('name').replace(/[_]/g, ' ').trim();
+
+        const normalizedRsn = normalizeStr(rsn);
+        const playerData = await fetchPlayerData(normalizedRsn);
+        const profileLink = await getPlayerLink(normalizedRsn);
+        const validation = validateRsn(rsn);
+        const currentTime = Date.now();
+
+        const womPlayerId = playerData.id;
+        const guild = interaction.guild;
+        const discordId = interaction.user.id;
+
+        const userData = rateLimitMap.get(discordId) || {
+            count: 0,
+            firstRequest: currentTime,
+        };
+
+        if (easterEggs[normalizedRsn]) {
+            const { title, description, color } = easterEggs[normalizedRsn];
             return await interaction.reply({
                 embeds: [
                     {
@@ -39,19 +55,14 @@ module.exports.execute = async (interaction) => {
                 flags: 64,
             });
         }
-        const validation = validateRsn(rsn);
+
         if (!validation.valid) {
             return await interaction.reply({
                 content: `❌ **Error:** ${validation.message} Please check your input and try again. 🛠️`,
                 flags: 64,
             });
         }
-        const discordId = interaction.user.id;
-        const currentTime = Date.now();
-        const userData = rateLimitMap.get(discordId) || {
-            count: 0,
-            firstRequest: currentTime,
-        };
+
         if (currentTime - userData.firstRequest < RATE_LIMIT_DURATION) {
             if (userData.count >= RATE_LIMIT) {
                 const retryAfter = Math.ceil((RATE_LIMIT_DURATION - (currentTime - userData.firstRequest)) / 1000);
@@ -67,17 +78,16 @@ module.exports.execute = async (interaction) => {
         }
         rateLimitMap.set(discordId, userData);
         setTimeout(() => rateLimitMap.delete(discordId), RATE_LIMIT_DURATION);
-        const normalizedRsn = normalizeRsn(rsn);
+
         logger.info(`🔍 User \`${discordId}\` attempting to register RSN: \`${rsn}\``);
-        const playerData = await fetchPla§yerData(normalizedRsn);
+
         if (!playerData) {
-            const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(normalizedRsn)}`;
             return await interaction.reply({
-                content: `❌ **Verification Failed:** The RSN \`${rsn}\` could not be verified on Wise Old Man. This might be because the name is not linked to an account or the WOM database needs an update. Please ensure the name exists and try again.\n\n🔗 [View Profile](${profileLink})`,
+                content: `❌ **Verification Failed:** The RSN ${profileLink} could not be verified on Wise Old Man. This might be because the name is not linked to an account on wise old man. Please ensure the name exists and try again.`,
                 flags: 64,
             });
         }
-        const womPlayerId = playerData.id;
+
         const existingUser = await getOne(
             `
       SELECT discord_id FROM registered_rsn
@@ -88,7 +98,7 @@ module.exports.execute = async (interaction) => {
         );
         if (existingUser && existingUser.discord_id !== discordId) {
             return await interaction.reply({
-                content: `🚫 **Conflict:** The RSN \`${rsn}\` is already registered by <@${existingUser.discord_id}>. 🛡️`,
+                content: `🚫 **Conflict:** ${profileLink} is already registered by <@${existingUser.discord_id}>. 🛡️`,
                 flags: 64,
             });
         }
@@ -102,7 +112,7 @@ module.exports.execute = async (interaction) => {
         );
         if (isRegistered) {
             return await interaction.reply({
-                content: `⚠️ **Notice:** The RSN \`${rsn}\` is already registered to your account. No action was taken. ✅`,
+                content: `⚠️ **Notice:** ${profileLink} is already registered to your account. No action was taken. ✅`,
                 flags: 64,
             });
         }
@@ -116,11 +126,11 @@ module.exports.execute = async (interaction) => {
             );
 
             await interaction.reply({
-                content: `${loadingEmoji} Collecting player data for \`${rsn} (WOM ID: ${womPlayerId})\`...`,
+                content: `${loadingEmoji} Collecting player data for ${profileLink} \`(WOM ID: ${womPlayerId})\`...`,
                 flags: 64,
             });
             await updatePlayerData(rsn, womPlayerId);
-            const guild = interaction.guild;
+
             await fetchAndProcessMember(guild, discordId);
 
             // Query for clan membership by joining registered_rsn and clan_members
@@ -139,23 +149,22 @@ module.exports.execute = async (interaction) => {
 
             if (validRegistration && validRegistration.clan_player_id) {
                 await interaction.editReply({
-                    content: `${loadingEmoji} \`${rsn} (WOM ID: ${womPlayerId})\` is confirmed as a clan member. Registering for bingo...`,
+                    content: `${loadingEmoji} ${profileLink} \`(WOM ID: ${womPlayerId})\` is confirmed as a clan member. Registering for bingo...`,
                     flags: 64,
                 });
                 await updateEventBaseline();
             } else {
                 logger.info(`Player with WOM ID ${womPlayerId} and RSN ${rsn} is not a clan member. Skipping baseline update.`);
             }
-
             await interaction.editReply({
-                content: `✅ **Success!** The RSN \`${rsn} (WOM ID: ${womPlayerId})\` has been successfully registered to your account. 🏆`,
+                content: `✅ **Success!** The RSN ${profileLink} \`(WOM ID: ${womPlayerId})\` has been successfully registered to your account. 🏆`,
                 flags: 64,
             });
             logger.info(`✅ RSN \`${rsn}\` (WOM ID: \`${womPlayerId}\`) successfully registered for user \`${discordId}\`.`);
         } catch (insertErr) {
             if (insertErr.message.includes('UNIQUE constraint failed')) {
                 return await interaction.reply({
-                    content: `🚫 **Oops!** The RSN \`${rsn}\` was just registered by someone else. Please choose another one. 🔄`,
+                    content: `🚫 **Oops!** The RSN ${profileLink} was just registered by someone else. Please choose another one. 🔄`,
                     flags: 64,
                 });
             } else {

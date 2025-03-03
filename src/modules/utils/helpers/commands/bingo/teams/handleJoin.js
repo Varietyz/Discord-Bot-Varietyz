@@ -1,10 +1,9 @@
 const { EmbedBuilder } = require('discord.js');
-
 const db = require('../../../../essentials/dbUtils');
 const logger = require('../../../../essentials/logger');
 const client = require('../../../../../../main');
 const { reassignTeamProgress, getOngoingEventId, getActivePlayer, appendBingoProgression } = require('./teamCommandHelpers');
-const { computePartialPoints } = require('../../../../../services/bingo/bingoCalculations');
+const { computePartialPoints, calculateTeamEffectiveProgress } = require('../../../../../services/bingo/bingoCalculations');
 
 /**
  *
@@ -28,15 +27,16 @@ async function handleJoin(interaction) {
         `
         SELECT team_id, team_name
         FROM bingo_teams
-        WHERE event_id = ?
-          AND LOWER(team_name) = LOWER(?)
-          AND passkey = ?
+        WHERE event_id = ? AND LOWER(team_name) = LOWER(?) AND passkey = ?
         `,
         [eventId, teamName, passkey],
     );
 
     if (!teamRow) {
-        return interaction.editReply({ content: `❌ Either team **${teamName}** was not found or the passkey is invalid.`, flags: 64 });
+        return interaction.editReply({
+            content: `❌ Either team **${teamName}** was not found or the passkey is invalid.`,
+            flags: 64,
+        });
     }
 
     const existingMembership = await db.getOne(
@@ -44,8 +44,7 @@ async function handleJoin(interaction) {
         SELECT btm.team_member_id
         FROM bingo_team_members btm
         JOIN bingo_teams bt ON bt.team_id = btm.team_id
-        WHERE btm.player_id = ?
-          AND bt.event_id = ?
+        WHERE btm.player_id = ? AND bt.event_id = ?
         `,
         [playerId, eventId],
     );
@@ -71,22 +70,22 @@ async function handleJoin(interaction) {
         logger.info(`[Bingo-Team] Inserted new team membership for Player #${playerId} in Team ${teamRow.team_id}`);
     }
 
+    // Update player's task progress to reflect new team membership.
     await db.runQuery(
         `
         UPDATE bingo_task_progress
         SET team_id = ?
-        WHERE event_id = ?
-          AND player_id = ?
+        WHERE event_id = ? AND player_id = ?
         `,
         [teamRow.team_id, eventId, playerId],
     );
+
+    // Process tasks where the team is already marked as completed.
     const teamCompletedTasks = await db.getAll(
         `
     SELECT task_id
     FROM bingo_task_progress
-    WHERE event_id = ?
-      AND team_id = ?
-      AND status = 'completed'
+    WHERE event_id = ? AND team_id = ? AND status = 'completed'
     `,
         [eventId, teamRow.team_id],
     );
@@ -96,9 +95,7 @@ async function handleJoin(interaction) {
             `
         SELECT progress_value
         FROM bingo_task_progress
-        WHERE event_id = ?
-          AND player_id = ?
-          AND task_id = ?
+        WHERE event_id = ? AND player_id = ? AND task_id = ?
         `,
             [eventId, playerId, task_id],
         );
@@ -109,45 +106,41 @@ async function handleJoin(interaction) {
         const targetValue = task.value;
         const basePoints = task.base_points;
 
+        // Calculate team's progress excluding the joiner.
         const teamProgressRow = await db.getOne(
             `
         SELECT SUM(progress_value) AS teamProgress
         FROM bingo_task_progress
-        WHERE event_id = ?
-          AND team_id = ?
-          AND player_id != ?
+        WHERE event_id = ? AND team_id = ? AND player_id != ?
         GROUP BY task_id
         `,
             [eventId, teamRow.team_id, playerId],
         );
         const teamProgress = teamProgressRow ? teamProgressRow.teamProgress : 0;
-
         const gap = targetValue - teamProgress;
 
+        // Determine how much of the joiner's progress fills the gap.
         const rawContribution = Math.min(joinerProgress, gap);
         const effectiveContribution = Math.max(0, rawContribution);
 
-        // Now call computePartialPoints with (progressValue, targetValue, basePoints)
+        // Here, computePartialPoints is used to translate effectiveContribution into points.
         const pointsAwarded = computePartialPoints(effectiveContribution, targetValue, basePoints);
 
+        // Then, update the joiner's record with the computed points.
         const playerProgress = await db.getOne(
             `
         SELECT progress_id, status
         FROM bingo_task_progress
-        WHERE event_id = ?
-          AND player_id = ?
-          AND task_id = ?
+        WHERE event_id = ? AND player_id = ? AND task_id = ?
         `,
             [eventId, playerId, task_id],
         );
-
         if (playerProgress) {
             if (playerProgress.status !== 'completed') {
                 await db.runQuery(
                     `
                 UPDATE bingo_task_progress
-                SET status = 'completed',
-                    points_awarded = ?,
+                SET status = 'completed', points_awarded = ?,
                     last_updated = CURRENT_TIMESTAMP
                 WHERE progress_id = ?
                 `,
@@ -165,12 +158,56 @@ async function handleJoin(interaction) {
         }
     }
 
+    // --- Effective Team Progress Calculation ---
+    // For every task, recalculate effective progress for the team (including the new joiner)
+    // and update each member's record accordingly.
+    const allTeamTasks = await db.getAll(
+        `
+        SELECT task_id, value AS target
+        FROM bingo_tasks
+        `,
+    );
+
+    for (const { task_id, target } of allTeamTasks) {
+        const teamMembers = await db.getAll(
+            `
+            SELECT player_id, progress_value, last_updated
+            FROM bingo_task_progress
+            WHERE event_id = ? AND team_id = ? AND task_id = ?
+            `,
+            [eventId, teamRow.team_id, task_id],
+        );
+
+        if (!teamMembers || teamMembers.length === 0) continue;
+
+        const effectiveResults = calculateTeamEffectiveProgress(
+            teamMembers.map((m) => ({
+                playerId: m.player_id,
+                progress: m.progress_value,
+                last_updated: m.last_updated,
+            })),
+            target,
+        );
+
+        for (const result of effectiveResults) {
+            await db.runQuery(
+                `
+                UPDATE bingo_task_progress
+                SET progress_value = ?, last_updated = CURRENT_TIMESTAMP
+                WHERE event_id = ? AND team_id = ? AND player_id = ? AND task_id = ?
+                `,
+                [result.effectiveProgress, eventId, teamRow.team_id, result.playerId, task_id],
+            );
+        }
+    }
+    // --- End Effective Team Progress Calculation ---
+
+    // Reassign team progress (this function should handle any additional recalculations).
     await reassignTeamProgress(eventId, playerId, teamRow.team_id);
 
     const embed = new EmbedBuilder().setTitle('✅ Joined Team').setDescription(`You have successfully joined **${teamRow.team_name}** (ID #${teamRow.team_id}).`).setColor(0x3498db).setFooter({ text: 'Bingo Team Join' }).setTimestamp();
 
     await interaction.editReply({ embeds: [embed], flags: 64 });
-
     await appendBingoProgression(client);
 }
 

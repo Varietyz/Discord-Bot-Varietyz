@@ -267,7 +267,9 @@ async function processMemberRoles(guild, member, hiscoresData, guildRolesMap, em
     for (const roleKey of expectedRoleKeys) {
         const roleData = guildRolesMap[roleKey];
         if (!roleData) {
-            logger.warn(`No guild role found for roleKey ${roleKey}`);
+            if (roleKey !== 'role_99_overall') {
+                logger.warn(`No guild role found for roleKey ${roleKey}`);
+            }
             continue;
         }
         if (!member.roles.cache.has(roleData.roleId)) {

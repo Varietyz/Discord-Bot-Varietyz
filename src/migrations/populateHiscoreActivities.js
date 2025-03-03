@@ -19,7 +19,7 @@ const populateHiscoreActivities = async (client) => {
         for (const [key, value] of Object.entries(MetricProps)) {
             const type = determinePropType(value);
             if (!type) {
-                logger.info(`⚠️ Excluded Property (${key}): Not an Activity`);
+                //logger.info(`⚠️ Excluded Property (${key}): Not an Activity`);
                 excludedCount += 1;
                 continue;
             }

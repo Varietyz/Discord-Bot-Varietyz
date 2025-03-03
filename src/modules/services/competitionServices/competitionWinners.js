@@ -3,6 +3,7 @@ const logger = require('../../utils/essentials/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 const { EmbedBuilder } = require('discord.js');
 const { getMetricEmoji } = require('../../utils/fetchers/getCompMetricEmoji');
+const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
 const recordCompetitionWinner = async (competition) => {
     try {
         logger.info(`🔍 Fetching final leaderboard for competition ID \`${competition.competition_id}\` (${competition.type})...`);
@@ -82,13 +83,12 @@ const updateFinalLeaderboard = async (competition, client) => {
         }
         const leaderboardText =
             sortedParticipants.length > 0
-                ? sortedParticipants
-                    .slice(0, 10)
-                    .map((p, i) => {
-                        const playerLink = `https://wiseoldman.net/players/${encodeURIComponent(p.player.displayName)}`;
-                        return `> **${i + 1}.** **[${p.player.displayName}](${playerLink})**\n>  ${metricEmoji}\`${p.progress.gained.toLocaleString()}\``;
-                    })
-                    .join('\n\n')
+                ? await Promise.all(
+                    sortedParticipants.slice(0, 10).map(async (p, i) => {
+                        const playerLink = await getPlayerLink(p.player.displayName);
+                        return `> **${i + 1}.** **${playerLink}**\n>  ${metricEmoji} \`${p.progress.gained.toLocaleString()}\``;
+                    }),
+                ).then((lines) => lines.join('\n\n'))
                 : '_No participants._';
         const competitionName = competition.title;
         const competitionUrl = `https://wiseoldman.net/competitions/${competition.competition_id}`;

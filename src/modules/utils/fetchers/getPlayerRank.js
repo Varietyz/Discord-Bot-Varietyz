@@ -19,7 +19,6 @@ async function getPlayerRank(playerId) {
 
         if (result) {
             const rank = convertRanks(result.rank);
-            logger.info(`🏆 Player ID #${playerId} has rank: ${rank}`);
             return rank;
         } else {
             logger.warn(`❌ Player ID #${playerId} not found in clan_members.`);

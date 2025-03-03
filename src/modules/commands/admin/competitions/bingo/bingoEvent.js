@@ -3,7 +3,7 @@ const { updateBingoProgress, endBingoEvent } = require('../../../../services/bin
 const logger = require('../../../../utils/essentials/logger');
 const client = require('../../../../../main');
 const { autoTransitionEvents } = require('../../../../services/bingo/autoTransitionEvents');
-const getEmoji = require('../../../../utils/fetchers/getEmoji');
+const getEmojiWithFallback = require('../../../../utils/fetchers/getEmojiWithFallback');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,7 +14,7 @@ module.exports = {
         .addSubcommand((subcommand) => subcommand.setName('update').setDescription('Update the current Bingo event.')),
     async execute(interaction) {
         try {
-            const emoji = await getEmoji('emoji_1_loading');
+            const emoji = await getEmojiWithFallback('emoji_clan_loading', 'loading...');
             await interaction.deferReply({ flags: 64 });
             const subcommand = interaction.options.getSubcommand();
 

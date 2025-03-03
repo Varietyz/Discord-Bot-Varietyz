@@ -5,6 +5,7 @@ const { runQuery, getAll, getOne } = require('../../../utils/essentials/dbUtils'
 const { normalizeRsn } = require('../../../utils/normalizing/normalizeRsn');
 const { validateRsn } = require('../../../utils/helpers/validateRsn');
 const { fetchPlayerData } = require('../../../utils/fetchers/fetchPlayerData');
+const getPlayerLink = require('../../../utils/fetchers/getPlayerLink');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('rename_rsn')
@@ -18,6 +19,15 @@ module.exports = {
             const targetInput = interaction.options.getString('target');
             const currentRsn = interaction.options.getString('current_rsn');
             const newRsn = interaction.options.getString('new_rsn');
+
+            const profileLink = await getPlayerLink(newRsn);
+            const profileLinkOld = await getPlayerLink(currentRsn);
+
+            const normalizedCurrentRsn = normalizeRsn(currentRsn);
+            const normalizedNewRsn = normalizeRsn(newRsn);
+
+            const playerData = await fetchPlayerData(normalizedNewRsn);
+            const validation = validateRsn(newRsn);
             const guild = interaction.guild;
             if (!guild) {
                 return await interaction.reply({
@@ -32,29 +42,28 @@ module.exports = {
                     flags: 64,
                 });
             }
-            const targetUserID = targetUser.id;
-            logger.info(`👮 Admin \`${interaction.user.id}\` attempting to rename RSN \`${currentRsn}\` to \`${newRsn}\` for user \`${targetUserID}\`.`);
-            const validation = validateRsn(newRsn);
+
             if (!validation.valid) {
                 return await interaction.reply({
                     content: `❌ **Error:** ${validation.message} Please check your input and try again.`,
                     flags: 64,
                 });
             }
-            const normalizedCurrentRsn = normalizeRsn(currentRsn);
-            const normalizedNewRsn = normalizeRsn(newRsn);
-            const playerData = await fetchPlayerData(normalizedNewRsn);
+
             if (!playerData) {
-                const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(normalizedNewRsn)}`;
                 return await interaction.reply({
-                    content: `❌ **Verification Failed:** The RSN \`${newRsn}\` could not be verified on Wise Old Man. Please ensure the name exists and try again.\n\n🔗 [View Profile](${profileLink})`,
+                    content: `❌ **Verification Failed:** The RSN ${profileLink} could not be verified on Wise Old Man. Please ensure the name exists and try again.`,
                     flags: 64,
                 });
             }
+
+            const targetUserID = targetUser.id;
+            logger.info(`👮 Admin \`${interaction.user.id}\` attempting to rename RSN \`${currentRsn}\` to \`${newRsn}\` for user \`${targetUserID}\`.`);
+
             const existingUser = await getOne('SELECT discord_id FROM registered_rsn WHERE LOWER(REPLACE(REPLACE(rsn, \'-\', \' \'), \'_\', \' \')) = ? LIMIT 1', [normalizedNewRsn]);
             if (existingUser && existingUser.discord_id !== targetUserID) {
                 return await interaction.reply({
-                    content: `🚫 **Conflict:** The RSN \`${newRsn}\` is already registered by another user: <@${existingUser.discord_id}>.`,
+                    content: `🚫 **Conflict:** The RSN ${profileLink} is already registered by another user: <@${existingUser.discord_id}>.`,
                     flags: 64,
                 });
             }
@@ -68,7 +77,7 @@ module.exports = {
             const normalizedUserRSns = userRSns.map((row) => normalizeRsn(row.rsn));
             if (!normalizedUserRSns.includes(normalizedCurrentRsn)) {
                 return await interaction.reply({
-                    content: `⚠️ **Notice:** The RSN \`${currentRsn}\` was not found in <@${targetUserID}>'s registered RSNs.`,
+                    content: `⚠️ **Notice:** The RSN **${profileLinkOld}** was not found in <@${targetUserID}>'s registered RSNs.`,
                     flags: 64,
                 });
             }
@@ -77,7 +86,7 @@ module.exports = {
                 new ButtonBuilder().setCustomId('cancel_rename_rsn').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
             );
             await interaction.reply({
-                content: `⚠️ **Confirmation Required**\nAre you sure you want to rename the RSN \`${currentRsn}\` to \`${newRsn}\` for <@${targetUserID}>?`,
+                content: `⚠️ **Confirmation Required**\nAre you sure you want to rename the RSN **${profileLinkOld}** to ${profileLink} for <@${targetUserID}>?`,
                 components: [confirmationRow],
                 flags: 64,
             });
@@ -98,18 +107,18 @@ module.exports = {
                         [newRsn, new Date().toISOString(), targetUserID, normalizedCurrentRsn],
                     );
 
-                    logger.info(`✅ RSN \`${currentRsn}\` renamed to \`${newRsn}\` for user \`${targetUserID}\` by admin \`${interaction.user.id}\`.`);
+                    logger.info(`✅ RSN \`${currentRsn}\` renamed to ${profileLink} for user \`${targetUserID}\` by admin \`${interaction.user.id}\`.`);
                     const userEmbed = new EmbedBuilder()
                         .setColor(0x00ffff)
                         .setTitle('⚠️ RSN Renamed')
-                        .setDescription(`Your RuneScape Name \`${currentRsn}\` has been renamed to \`${newRsn}\` in our records. \n\nThis action was performed by: <@${interaction.user.id}>`)
+                        .setDescription(`Your RuneScape Name **${profileLinkOld}** has been renamed to ${profileLink} in our records. \n\nThis action was performed by: <@${interaction.user.id}>`)
                         .setFooter({ text: 'Varietyz Bot' })
                         .setTimestamp();
                     await targetUser.send({ embeds: [userEmbed] }).catch(() => {
                         logger.warn(`⚠️ Failed to send DM to user \`${targetUserID}\`.`);
                     });
                     await i.update({
-                        content: `✅ **Success:** The RSN \`${currentRsn}\` has been renamed to \`${newRsn}\` for <@${targetUserID}>.`,
+                        content: `✅ **Success:** The RSN **${profileLinkOld}** has been renamed to ${profileLink} for <@${targetUserID}>.`,
                         components: [],
                         flags: 64,
                     });

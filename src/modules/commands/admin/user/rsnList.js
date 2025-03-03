@@ -5,6 +5,7 @@ const logger = require('../../../utils/essentials/logger');
 const { getAll } = require('../../../utils/essentials/dbUtils');
 const { normalizeRsn } = require('../../../utils/normalizing/normalizeRsn');
 const { rankHierarchy } = require('../../../../config/constants');
+const getPlayerLink = require('../../../utils/fetchers/getPlayerLink');
 const PAGE_SIZE = 10;
 const loadRSNData = async () => {
     const rows = await getAll('SELECT discord_id, rsn FROM registered_rsn');
@@ -23,6 +24,12 @@ const loadClanMembers = async () => {
         rankIndex: rankHierarchy[member.rank.toLowerCase()] ?? -1,
     }));
 };
+/**
+ *
+ * @param userId
+ * @param rsns
+ * @param clanMembers
+ */
 async function prepareUserContent(userId, rsns, clanMembers) {
     const userTag = `\n<@${userId}>`;
     const rsnContentArray = await Promise.all(
@@ -31,8 +38,8 @@ async function prepareUserContent(userId, rsns, clanMembers) {
             const member = clanMembers.find((member) => normalizeRsn(member.rsn) === normalizedRSN);
             const rank = member ? member.rank : '';
             const emoji = member ? await getRankEmoji(rank) : '❔';
-            const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(rsn.replace(/ /g, '%20').toLowerCase())}`;
-            return rank ? `- ${emoji} [${rsn}](${profileLink}) (**${rank}**)` : `- [${rsn}](${profileLink})`;
+            const profileLink = await getPlayerLink(rsn);
+            return rank ? `- ${emoji} ${profileLink} (**${rank}**)` : `- ${profileLink}`;
         }),
     );
     return `${userTag}\n${rsnContentArray.join('\n')}\n`;

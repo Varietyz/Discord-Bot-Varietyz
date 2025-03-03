@@ -4,10 +4,20 @@ const logger = require('../../utils/essentials/logger');
 const { normalizeRsn } = require('../../utils/normalizing/normalizeRsn');
 const womApi = require('../../../api/wise_old_man/apiClient');
 const { getRankEmoji } = require('../../utils/helpers/rankUtils');
+const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
+/**
+ *
+ * @param text
+ * @param maxLength
+ */
 function safeTruncate(text, maxLength) {
     if (!text) return '';
     return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
 }
+/**
+ *
+ * @param playerUsername
+ */
 async function getCompetitionStats(playerUsername) {
     try {
         const stats = await db.getOne(
@@ -22,6 +32,12 @@ async function getCompetitionStats(playerUsername) {
         return { total_wins: '\u200b', total_metric_gain_sotw: '\u200b', total_metric_gain_botw: '\u200b' };
     }
 }
+/**
+ *
+ * @param clanMemberProfile
+ * @param regRsns
+ * @param liveRegisteredAt
+ */
 function getLocalRegDate(clanMemberProfile, regRsns, liveRegisteredAt) {
     let localDate = 'Determining..';
     if (regRsns && regRsns.length > 0) {
@@ -31,6 +47,12 @@ function getLocalRegDate(clanMemberProfile, regRsns, liveRegisteredAt) {
     }
     return liveRegisteredAt ? new Date(liveRegisteredAt).toLocaleString('en-US', { timeZone: 'UTC' }) : localDate;
 }
+/**
+ *
+ * @param name
+ * @param guild
+ * @param fallbackEmoji
+ */
 function getGuildEmoji(name, guild, fallbackEmoji = '⚔️') {
     if (guild) {
         const normalizedName = name.toLowerCase().replace(/\s+/g, '_');
@@ -46,11 +68,23 @@ function getGuildEmoji(name, guild, fallbackEmoji = '⚔️') {
         return fallbackEmoji;
     }
 }
-function buildAccountEmbed(liveData, accountInfo, experienceInfo, leftSkillsStr, rightSkillsStr, leftBossesStr, rightBossesStr, dateInfo, compInfo, clanInfo) {
+/**
+ *
+ * @param liveData
+ * @param accountInfo
+ * @param experienceInfo
+ * @param leftSkillsStr
+ * @param rightSkillsStr
+ * @param leftBossesStr
+ * @param rightBossesStr
+ * @param dateInfo
+ * @param compInfo
+ * @param clanInfo
+ */
+async function buildAccountEmbed(liveData, accountInfo, experienceInfo, leftSkillsStr, rightSkillsStr, leftBossesStr, rightBossesStr, dateInfo, compInfo, clanInfo) {
     const playerName = liveData.displayName;
-    const playerNameForLink = encodeURIComponent(playerName.replace(/ /g, '%20'));
-    const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
-    const embed = new EmbedBuilder().setTitle(`ℹ️ ${playerName}`).setURL(profileLink).setColor(0x3498db).setDescription(' ').setFooter({ text: 'Profile updated live via WOM API' }).setTimestamp();
+    const profileLink = await getPlayerLink(playerName);
+    const embed = new EmbedBuilder().setColor(0x3498db).setDescription(`## ℹ️ ${profileLink}`).setFooter({ text: 'Profile updated live via WOM API' }).setTimestamp();
     if (clanInfo && clanInfo.trim().length > 0) {
         embed.addFields({ name: '\u200b', value: clanInfo, inline: false });
     }
@@ -68,6 +102,10 @@ function buildAccountEmbed(liveData, accountInfo, experienceInfo, leftSkillsStr,
     embed.addFields({ name: '\u200b', value: dateInfo, inline: false });
     return embed;
 }
+/**
+ *
+ * @param regRsns
+ */
 function buildRSNEmbed(regRsns) {
     const rsnListStr = regRsns
         .map((row, index) => {
@@ -78,11 +116,19 @@ function buildRSNEmbed(regRsns) {
     const finalRsnList = rsnListStr.length > 6000 ? safeTruncate(rsnListStr, 6000) : rsnListStr;
     return new EmbedBuilder().setTitle('Registered RSNs').setDescription(finalRsnList).setColor(0x2ecc71).setFooter({ text: 'RSN registrations' }).setTimestamp();
 }
+/**
+ *
+ * @param countryCode
+ */
 function getCountryDisplay(countryCode) {
     if (!countryCode) return '';
     const twoLetter = countryCode.substring(0, 2).toLowerCase();
     return `:flag_${twoLetter}: ${countryCode}`;
 }
+/**
+ *
+ * @param str
+ */
 function capitalizeWords(str) {
     if (!str) return '';
     return str.replace(/\b\w/g, (char) => char.toUpperCase());
@@ -135,9 +181,9 @@ module.exports = {
             const compStats = userProfile ? await getCompetitionStats(userProfile.rsn) : { total_wins: '\u200b', total_metric_gain_sotw: '\u200b', total_metric_gain_botw: '\u200b' };
             const liveData = await womApi.request('players', 'getPlayerDetails', normalizedInput);
             if (!liveData) {
-                const profileLink = `https://wiseoldman.net/players/${encodeURIComponent(normalizedInput)}`;
+                const profileLink = await getPlayerLink(normalizedInput);
                 return await interaction.editReply({
-                    content: `❌ **Error:** Unable to fetch live data for RSN **\`${rsnInput}\`**. Please verify the RSN.\n\n🔗 [View Profile](${profileLink})`,
+                    content: `❌ **Error:** Unable to fetch live data for RSN **\`${rsnInput}\`**. Please verify the RSN.\n\n🔗 ${profileLink}`,
                     flags: 64,
                 });
             }
@@ -260,7 +306,7 @@ module.exports = {
                         1024,
                     );
             }
-            const accountEmbed = buildAccountEmbed(liveData, accountInfo, finalExperienceInfo, leftSkillsStr, rightSkillsStr, leftBossesStr, rightBossesStr, dateInfo, compInfo, clanInfo);
+            const accountEmbed = await buildAccountEmbed(liveData, accountInfo, finalExperienceInfo, leftSkillsStr, rightSkillsStr, leftBossesStr, rightBossesStr, dateInfo, compInfo, clanInfo);
             const embedArray = [accountEmbed];
             if (hasRegistered) {
                 embedArray.push(buildRSNEmbed(regRsns));
