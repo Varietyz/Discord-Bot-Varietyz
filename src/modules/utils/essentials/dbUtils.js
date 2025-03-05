@@ -6,45 +6,61 @@ const messagesDbPath = path.join(__dirname, '../../../data/messages.db');
 const imageDbPath = path.join(__dirname, '../../../data/image_cache.db');
 const guildDbPath = path.join(__dirname, '../../../data/guild.db');
 let mainDb, messagesDb, imageDb, guildDb;
+/**
+ *
+ */
 function openDatabases() {
-    if (!mainDb) {
-        mainDb = new sqlite3.Database(mainDbPath, (err) => {
-            if (err) {
-                handleDbError(err, 'Main Database');
-                return reject(err);
-            } else logger.info(`✅ SQLite Main Database connected: ${mainDbPath}`);
-        });
-    }
-    if (!messagesDb) {
-        messagesDb = new sqlite3.Database(messagesDbPath, (err) => {
-            if (err) {
-                handleDbError(err, 'Message Database');
-                return reject(err);
-            } else logger.info(`✅ SQLite Messages Database connected: ${messagesDbPath}`);
-        });
-    }
-    if (!imageDb) {
-        imageDb = new sqlite3.Database(imageDbPath, (err) => {
-            if (err) {
-                handleDbError(err, 'Image Database');
-                return reject(err);
-            } else logger.info(`✅ SQLite Image Cache Database connected: ${imageDbPath}`);
-        });
-    }
-    if (!guildDb) {
-        guildDb = new sqlite3.Database(guildDbPath, (err) => {
-            if (err) {
-                handleDbError(err, 'Guild Database');
-                return reject(err);
-            } else logger.info(`✅ SQLite Guild Database connected: ${guildDbPath}`);
-        });
-    }
+    return new Promise((resolve, reject) => {
+        if (!mainDb) {
+            mainDb = new sqlite3.Database(mainDbPath, (err) => {
+                if (err) {
+                    handleDbError(err, 'Main Database');
+                    return reject(err);
+                } else logger.info(`✅ SQLite Main Database connected: ${mainDbPath}`);
+            });
+        }
+        if (!messagesDb) {
+            messagesDb = new sqlite3.Database(messagesDbPath, (err) => {
+                if (err) {
+                    handleDbError(err, 'Message Database');
+                    return reject(err);
+                } else logger.info(`✅ SQLite Messages Database connected: ${messagesDbPath}`);
+            });
+        }
+        if (!imageDb) {
+            imageDb = new sqlite3.Database(imageDbPath, (err) => {
+                if (err) {
+                    handleDbError(err, 'Image Database');
+                    return reject(err);
+                } else logger.info(`✅ SQLite Image Cache Database connected: ${imageDbPath}`);
+            });
+        }
+        if (!guildDb) {
+            guildDb = new sqlite3.Database(guildDbPath, (err) => {
+                if (err) {
+                    handleDbError(err, 'Guild Database');
+                    return reject(err);
+                } else logger.info(`✅ SQLite Guild Database connected: ${guildDbPath}`);
+            });
+        }
+        resolve();
+    });
 }
 openDatabases();
 let clientInstance = null;
+/**
+ *
+ * @param client
+ */
 function setClient(client) {
     clientInstance = client;
 }
+/**
+ *
+ * @param error
+ * @param dbName
+ * @param client
+ */
 async function handleDbError(error, dbName, client) {
     logger.error(`🚨 Database Error in ${dbName}: ${error.message}`);
     const emitterClient = client || clientInstance;
@@ -164,13 +180,23 @@ process.on('SIGINT', () => {
         if (err) handleDbError(err, 'Image Cache Database');
         else logger.info('✅ Image cache database connection closed successfully.');
     });
-    process.exit(0);
+    throw new Error('DB - Process terminated');
 });
+/**
+ *
+ * @param key
+ * @param defaultValue
+ */
 async function getConfigValue(key, defaultValue = null) {
     const row = await getOne('SELECT value FROM config WHERE key = ?', [key]);
     if (!row) return defaultValue;
     return row.value;
 }
+/**
+ *
+ * @param key
+ * @param value
+ */
 async function setConfigValue(key, value) {
     const valStr = String(value);
     await runQuery('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)', [key, valStr]);

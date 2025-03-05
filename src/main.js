@@ -11,6 +11,8 @@ const { fetchAndStoreChannelHistory } = require('./modules/collection/msgFetcher
 const { registerModal } = require('./modules/utils/essentials/modalHandler');
 const CompetitionService = require('./modules/services/competitionServices/competitionService');
 const { generateDynamicTasks } = require('./modules/services/bingo/dynamicTaskGenerator');
+const { REST } = require('@discordjs/rest');
+const { Routes } = require('discord-api-types/v10');
 
 const commands = [];
 const functions = [];
@@ -104,8 +106,6 @@ const initializeBot = async () => {
         loadModules('modals', client);
         client.commands = commands;
         client.competitionService = new CompetitionService(client);
-        const { REST } = require('@discordjs/rest');
-        const { Routes } = require('discord-api-types/v10');
         const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
         await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: commands.map((cmd) => cmd.data.toJSON()) });
         logger.info('✅ Slash commands registered successfully.');

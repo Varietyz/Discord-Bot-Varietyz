@@ -281,17 +281,16 @@ async function createTeamLeaderboardEmbed(eventId) {
     );
 
     // Filter out any teams with 0 completion points.
-    const filteredTeams = teamProgress.filter((t) => t.partial_points > 0);
-    if (filteredTeams.length === 0) {
-        embed.setDescription('No team completions yet.');
+    // 🚀 Sort teams by overall completion percentage (highest first)
+    teamProgress.sort((a, b) => b.overall - a.overall);
+
+    if (teamProgress.length === 0) {
+        embed.setDescription('No team progress yet.');
         return embed;
     }
 
-    // 4. Sort teams by overall progress descending.
-    filteredTeams.sort((a, b) => b.overall - a.overall);
-
     // 5. Build the final embed description.
-    filteredTeams.forEach((team) => {
+    teamProgress.forEach((team) => {
         leaderboardDescription += `> ### ${teamEmoji} Team: **\`${team.team_name}\`**\n`;
         leaderboardDescription += `> Finished: **\`${team.overall.toFixed(2)}%\` ${progressEmoji}**\n`;
         leaderboardDescription += `${team.memberSection}\n`;
@@ -375,16 +374,16 @@ async function createConsolidatedProgressEmbed(completions) {
         let formattedProgress = '';
 
         if (row.type === 'Exp') {
-            formattedProgress = `${progressionValue} XP contributed`;
+            formattedProgress = `${progressionValue} XP`;
         } else if (row.type === 'Kill') {
             // Use ternary operator for singular/plural phrasing
-            formattedProgress = progressNum === 1 ? `${progressionValue} Kill contributed` : `${progressionValue} Kills contributed`;
+            formattedProgress = progressNum === 1 ? `${progressionValue} Kill` : `${progressionValue} Kills`;
         } else {
-            formattedProgress = progressNum === 1 ? `${progressionValue} Completion contributed` : `${progressionValue} Completions contributed`;
+            formattedProgress = progressNum === 1 ? `${progressionValue} Completion` : `${progressionValue} Completions`;
         }
 
         // ✅ Improved Task Formatting for Readability
-        groupedCompletions[entityName].tasks.push(`> - **\`${row.taskName}\`**\n> - ${taskEmoji}**\`${formattedProgress}\`**\n>   - ${pointsDescription}`);
+        groupedCompletions[entityName].tasks.push(`> **\`${row.taskName}\`**\n> - ${taskEmoji}**\`${formattedProgress}\`**\n>   - ${pointsDescription}`);
     }
 
     // Build final embed description

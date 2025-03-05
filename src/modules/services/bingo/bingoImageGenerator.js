@@ -4,6 +4,7 @@ const db = require('../../utils/essentials/dbUtils');
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const path = require('path');
 const { computeOverallPercentage, computeTeamPartialPoints, computeIndividualPartialPoints } = require('./bingoCalculations');
+const normalizeUpper = require('../../utils/normalizing/normalizeUpper');
 
 const fontPath = path.join(__dirname, '../../../assets/runescape_bold.ttf');
 registerFont(fontPath, { family: 'RuneScape' });
@@ -49,18 +50,6 @@ function splitTaskName(name) {
     const target = words.slice(2).join(' ');
 
     return { action, target };
-}
-
-/**
- *
- * @param target
- */
-function formatTarget(target) {
-    if (!target) return '';
-    return target
-        .split('_')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
 }
 
 /**
@@ -198,7 +187,7 @@ async function generateBingoCard(boardId, id, isTeam = false) {
 
             const actionToTargetSpacing = 17;
             const targetStartY = coords.y + 70 + actionToTargetSpacing + textOffset;
-            const formattedTarget = formatTarget(target);
+            const formattedTarget = normalizeUpper(target);
             const wrappedTargetLines = getWrappedText(ctx, formattedTarget, CROSS_SIZE - 20);
             const lineHeight = 28;
             wrappedTargetLines.forEach((line, index) => {

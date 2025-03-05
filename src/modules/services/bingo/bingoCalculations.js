@@ -277,6 +277,50 @@ async function saveTaskPointsAwarded(eventId, playerId, taskId, basePoints, prog
 }
 
 /**
+ * OLD, BUT WORKING (INCORRECT SORTING)
+ * Helper function to calculate effective team progress.
+ * It sorts team members in ascending order by their raw progress.
+ * Then, starting from the lowest, it subtracts their progress from the target.
+ * If a member's progress exceeds the remaining target, it's capped at the remaining value.
+ *
+ * @param {Array<{ playerId: string|number, progress: number }>} teamMembers - Array of team members with their raw progress.
+ * @param {number} target - The target progress value.
+ * @returns {Array<{ playerId: string|number, originalProgress: number, effectiveProgress: number }>}
+ 
+function calculateTeamEffectiveProgress(teamMembers, target) {
+    // Clone and sort team members in ascending order by their recorded progress.
+    const sortedMembers = [...teamMembers].sort((a, b) => a.progress - b.progress);
+    let remainingTarget = target;
+    const effectiveResults = [];
+ 
+    // Process each member in sorted order.
+    for (const member of sortedMembers) {
+        // The effective contribution is the minimum between the member's progress and the remaining target.
+        const effective = Math.min(member.progress, remainingTarget);
+        effectiveResults.push({
+            playerId: member.playerId,
+            originalProgress: member.progress,
+            effectiveProgress: effective,
+        });
+        remainingTarget -= effective;
+        if (remainingTarget <= 0) break;
+    }
+    // If there are members left after the target is fully allocated, assign them zero effective progress.
+    if (effectiveResults.length < sortedMembers.length) {
+        for (let i = effectiveResults.length; i < sortedMembers.length; i++) {
+            effectiveResults.push({
+                playerId: sortedMembers[i].playerId,
+                originalProgress: sortedMembers[i].progress,
+                effectiveProgress: 0,
+            });
+        }
+    }
+    return effectiveResults;
+}
+ */
+
+/**
+ * OLD, BUT WORKING (INCORRECT SORTING)
  * Helper function to calculate effective team progress.
  * It sorts team members in ascending order by their raw progress.
  * Then, starting from the lowest, it subtracts their progress from the target.
@@ -316,7 +360,6 @@ function calculateTeamEffectiveProgress(teamMembers, target) {
     }
     return effectiveResults;
 }
-
 module.exports = {
     computePartialPoints,
     computeOverallPercentage,
