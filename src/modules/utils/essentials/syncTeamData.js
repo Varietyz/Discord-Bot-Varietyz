@@ -16,7 +16,7 @@ async function synchronizeTaskCompletion(eventId, teamId, playerId) {
 
         for (const { task_id } of teamTasks) {
             const teamProgressData = await db.getAll(
-                `SELECT player_id, progress_value, status FROM bingo_task_progress 
+                `SELECT player_id, progress_value, status, last_updated FROM bingo_task_progress 
                  WHERE event_id = ? AND team_id = ? AND task_id = ?`,
                 [eventId, teamId, task_id],
             );
@@ -28,6 +28,7 @@ async function synchronizeTaskCompletion(eventId, teamId, playerId) {
                 playerId: member.player_id,
                 progress: member.progress_value,
                 status: member.status,
+                last_updated: member.last_updated,
             }));
 
             // Check if the player already has a completion recorded.

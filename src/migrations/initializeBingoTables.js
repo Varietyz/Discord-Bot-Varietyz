@@ -63,7 +63,7 @@ const initializeBingoTables = async () => {
             bingo_task_progress: `
     progress_id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id INTEGER NOT NULL,
-    team_id INTEGER DEFAULT NULL,
+    team_id INTEGER DEFAULT 0,
     player_id INTEGER NOT NULL,
     task_id INTEGER NOT NULL,
     progress_value INTEGER DEFAULT 0,

@@ -26,14 +26,14 @@ function initializeDatabase() {
  */
 async function dropTables(db) {
     const tables = [
-        'bingo_events',
-        'bingo_tasks',
-        'bingo_boards',
-        'bingo_board_cells',
-        'bingo_event_baseline',
+        //'bingo_events',
+        //'bingo_tasks',
+        //'bingo_boards',
+        //'bingo_board_cells',
+        //'bingo_event_baseline',
         'bingo_task_progress',
-        'bingo_state',
-        'bingo_history',
+        //'bingo_state',
+        //'bingo_history',
         'bingo_leaderboard',
         'bingo_patterns_awarded',
         //'bingo_teams',
@@ -72,10 +72,10 @@ async function dropTables(db) {
             } else {
                 logger.info('✅ DB closed successfully.');
             }
-            process.exit(0);
+            throw new Error('DB closed successfully.');
         });
     } catch (error) {
         logger.error(`❌ Database initialization failed: ${error.message}`);
-        process.exit(1); // Exit with failure code.
+        throw new Error('Database initialization failed'); // Throw an error instead of exiting the process.
     }
 })();

@@ -222,7 +222,7 @@ async function saveTaskPointsAwarded(eventId, playerId, taskId, basePoints, prog
         if (isTeam) {
             // ✅ Fetch all team members' progress for this task
             const teamProgress = await db.getAll(
-                `SELECT player_id, SUM(progress_value) AS progress
+                `SELECT player_id, SUM(progress_value) AS progress, last_updated
                  FROM bingo_task_progress
                  WHERE event_id = ? AND task_id = ?
                  GROUP BY player_id`,
@@ -331,8 +331,9 @@ function calculateTeamEffectiveProgress(teamMembers, target) {
  * @returns {Array<{ playerId: string|number, originalProgress: number, effectiveProgress: number }>}
  */
 function calculateTeamEffectiveProgress(teamMembers, target) {
-    // Clone and sort team members in ascending order by their recorded progress.
-    const sortedMembers = [...teamMembers].sort((a, b) => a.progress - b.progress);
+    // Sort team members by last_updated in ascending order (oldest first).
+    // Make sure each teamMember object includes a 'last_updated' property.
+    const sortedMembers = [...teamMembers].sort((a, b) => new Date(a.last_updated) - new Date(b.last_updated));
     let remainingTarget = target;
     const effectiveResults = [];
 
@@ -348,7 +349,9 @@ function calculateTeamEffectiveProgress(teamMembers, target) {
         remainingTarget -= effective;
         if (remainingTarget <= 0) break;
     }
-    // If there are members left after the target is fully allocated, assign them zero effective progress.
+
+    // For any members that were not processed (i.e. target already met),
+    // assign them zero effective progress.
     if (effectiveResults.length < sortedMembers.length) {
         for (let i = effectiveResults.length; i < sortedMembers.length; i++) {
             effectiveResults.push({
@@ -360,6 +363,7 @@ function calculateTeamEffectiveProgress(teamMembers, target) {
     }
     return effectiveResults;
 }
+
 module.exports = {
     computePartialPoints,
     computeOverallPercentage,

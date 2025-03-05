@@ -574,7 +574,8 @@ async function updateTeamEffectiveProgress(event_id, task_id, team_id, targetVal
                COALESCE(be.data_value, 0) AS baselineValue,
                pt.progress_id,
                pt.progress_value,
-               pt.status
+               pt.status,
+               pt.last_updated
         FROM bingo_team_members tm
         LEFT JOIN player_data pd 
             ON tm.player_id = pd.player_id 
@@ -597,6 +598,7 @@ async function updateTeamEffectiveProgress(event_id, task_id, team_id, targetVal
     const teamProgress = teamData.map((member) => ({
         playerId: member.player_id,
         progress: Math.max(0, member.currentValue - member.baselineValue),
+        last_updated: member.last_updated,
     }));
 
     // Calculate effective progress for the team members.

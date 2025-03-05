@@ -171,7 +171,7 @@ async function updateTeamLeaderboardForEvent(eventId) {
 
         // Fetch all teams' progress for this task
         const teamProgressRows = await db.getAll(
-            `SELECT team_id, player_id, SUM(progress_value) AS progress
+            `SELECT team_id, player_id, SUM(progress_value) AS progress, last_updated
              FROM bingo_task_progress
              WHERE event_id = ? AND task_id = ? AND team_id IS NOT NULL
              GROUP BY team_id, player_id`,
@@ -185,6 +185,7 @@ async function updateTeamLeaderboardForEvent(eventId) {
             teams[row.team_id].push({
                 playerId: row.player_id,
                 progress: row.progress,
+                last_updated: row.last_updated,
             });
         }
 
