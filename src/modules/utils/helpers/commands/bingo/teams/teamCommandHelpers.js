@@ -5,6 +5,7 @@ const { checkPatterns } = require('../../../../../services/bingo/bingoPatternRec
 const { consolidateTeamTaskProgress } = require('../../../../../services/bingo/bingoTaskManager');
 const db = require('../../../../essentials/dbUtils');
 const logger = require('../../../../essentials/logger');
+const synchronizeTaskCompletion = require('../../../../essentials/syncTeamData');
 
 /**
  *
@@ -90,6 +91,35 @@ async function appendBingoProgression(client) {
 
     for (const { event_id } of ongoingEvents) {
         try {
+            // Fetch all teams for the event.
+            const teams = await db.getAll(
+                `
+            SELECT team_id
+            FROM bingo_teams
+            WHERE event_id = ?
+            `,
+                [event_id],
+            );
+
+            // Process each team individually.
+            for (const team of teams) {
+                const teamMembers = await db.getAll(
+                    `
+                SELECT rr.rsn, rr.player_id
+                FROM bingo_team_members btm
+                JOIN registered_rsn rr ON btm.player_id = rr.player_id
+                WHERE btm.team_id = ?
+                ORDER BY rr.rsn COLLATE NOCASE ASC
+                `,
+                    [team.team_id],
+                );
+
+                // Iterate over each member and synchronize their task completion.
+                for (const member of teamMembers) {
+                    await synchronizeTaskCompletion(event_id, team.team_id, member.player_id);
+                }
+            }
+            // After processing all teams for the event, consolidate the team's task progress.
             await consolidateTeamTaskProgress(event_id);
         } catch (err) {
             logger.error(`[BingoService] consolidateTeamTaskProgress(eventId: ${event_id}) error: ${err.message}`);

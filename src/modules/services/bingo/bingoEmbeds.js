@@ -92,7 +92,7 @@ async function createIndividualLeaderboardEmbed(eventId) {
             const overall = parseFloat(overallFloat.toFixed(2));
 
             // Only include players with progress greater than 0
-            if (overall > 0) {
+            if (overall >= 0) {
                 const taskProgress = await getPlayerTaskProgress(eventId, player.player_id);
 
                 const profileLink = await getPlayerLink(player.rsn);
@@ -142,17 +142,28 @@ async function createIndividualLeaderboardEmbed(eventId) {
     );
 
     // If no players had progress > 0, set a default description
-    if (playerProgress.length === 0) {
-        embed.setDescription('No individual completions yet.');
-        return embed;
-    }
+    //if (playerProgress.length === 0) {
+    //    embed.setDescription('No individual completions yet.');
+    //    return embed;
+    //}
 
-    // Sort players by "overall" descending
-    playerProgress.sort((a, b) => b.overall - a.overall);
+    // Sort players to match the SQL query's ordering
+    playerProgress.sort((a, b) => {
+        // Compare by total_points (highest points first)
+        if (b.total_points !== a.total_points) {
+            return b.total_points - a.total_points;
+        }
+        // If tied, compare by completed_tasks (most tasks completed first)
+        if (b.completed_tasks !== a.completed_tasks) {
+            return b.completed_tasks - a.completed_tasks;
+        }
+        // If still tied, compare by total_progress (most progress first)
+        return b.total_progress - a.total_progress;
+    });
 
     // Build the embed description
     playerProgress.forEach((player, index) => {
-        leaderboardDescription += `> ### **${index + 1}.** **${player.profileLink}**\n`;
+        leaderboardDescription += `### **${index + 1}.** **${player.profileLink}**\n`;
         leaderboardDescription += `> ${progressEmoji}Finished: \`${player.overall}%\` \n> ${pointsEmoji}Earned: \`${player.total_points} pts\`\n`;
         leaderboardDescription += `> ${completedEmoji}Tasks Completed: \`${player.completed_tasks}\`\n`;
         leaderboardDescription += `> ${player.taskProgressStr}\n\n`;
@@ -203,9 +214,9 @@ async function createTeamLeaderboardEmbed(eventId) {
             const overall = parseFloat(overallFloat.toFixed(2));
 
             // Skip teams with no overall progress.
-            if (overall <= 0) {
-                return;
-            }
+            //if (overall <= 0) {
+            //    return;
+            //}
 
             // Build a row of emojis for tasks that the team has fully completed.
             const taskProgress = await getTeamTaskProgress(eventId, team.team_id);
@@ -282,7 +293,20 @@ async function createTeamLeaderboardEmbed(eventId) {
 
     // Filter out any teams with 0 completion points.
     // 🚀 Sort teams by overall completion percentage (highest first)
-    teamProgress.sort((a, b) => b.overall - a.overall);
+    //teamProgress.sort((a, b) => b.overall - a.overall);
+
+    teamProgress.sort((a, b) => {
+        // Compare by total_points (highest points first)
+        if (b.partial_points !== a.partial_points) {
+            return b.partial_points - a.partial_points;
+        }
+        // If tied, compare by completed_tasks (most tasks completed first)
+        if (b.completed_tasks !== a.completed_tasks) {
+            return b.completed_tasks - a.completed_tasks;
+        }
+        // If still tied, compare by total_progress (most progress first)
+        return b.overall - a.overall;
+    });
 
     if (teamProgress.length === 0) {
         embed.setDescription('No team progress yet.');
@@ -291,7 +315,7 @@ async function createTeamLeaderboardEmbed(eventId) {
 
     // 5. Build the final embed description.
     teamProgress.forEach((team) => {
-        leaderboardDescription += `> ### ${teamEmoji} Team: **\`${team.team_name}\`**\n`;
+        leaderboardDescription += `### ${teamEmoji} Team: **\`${team.team_name}\`**\n`;
         leaderboardDescription += `> Finished: **\`${team.overall.toFixed(2)}%\` ${progressEmoji}**\n`;
         leaderboardDescription += `${team.memberSection}\n`;
         leaderboardDescription += `> ${completedEmoji}Tasks Completed: \`${team.completed_tasks}\`\n`;

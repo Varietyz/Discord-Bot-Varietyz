@@ -95,25 +95,9 @@ async function sendOrUpdateLeaderboardEmbeds(client, eventId) {
     if (!channelId) return;
     const channel = await client.channels.fetch(channelId);
 
-    const individualEmbed = await createIndividualLeaderboardEmbed(eventId);
     const teamEmbed = await createTeamLeaderboardEmbed(eventId);
 
     const GLOBAL_LEADERBOARD_ID = -1;
-
-    const existingIndividual = await getActiveEmbeds(eventId, 'individual_leaderboard');
-    if (existingIndividual.length > 0) {
-        try {
-            const embedToUpdate = existingIndividual[0];
-            await editEmbed(client, embedToUpdate.channel_id, embedToUpdate.message_id, individualEmbed);
-            logger.info(`[BingoEmbedHelper] Updated individual_leaderboard embed: ${embedToUpdate.message_id}`);
-        } catch (error) {
-            logger.error(`[BingoEmbedHelper] Failed to update individual_leaderboard embed: ${error.message}`);
-        }
-    } else {
-        const individualMessage = await channel.send({ embeds: [individualEmbed] });
-        await createEmbedRecord(GLOBAL_LEADERBOARD_ID, null, null, null, individualMessage.id, channel.id, 'individual_leaderboard');
-        logger.info(`[BingoEmbedHelper] Created new individual_leaderboard embed for event #${eventId}`);
-    }
 
     const existingTeam = await getActiveEmbeds(eventId, 'team_leaderboard');
     if (existingTeam.length > 0) {
@@ -128,6 +112,23 @@ async function sendOrUpdateLeaderboardEmbeds(client, eventId) {
         const teamMessage = await channel.send({ embeds: [teamEmbed] });
         await createEmbedRecord(GLOBAL_LEADERBOARD_ID, null, null, null, teamMessage.id, channel.id, 'team_leaderboard');
         logger.info(`[BingoEmbedHelper] Created new team_leaderboard embed for event #${eventId}`);
+    }
+
+    const individualEmbed = await createIndividualLeaderboardEmbed(eventId);
+
+    const existingIndividual = await getActiveEmbeds(eventId, 'individual_leaderboard');
+    if (existingIndividual.length > 0) {
+        try {
+            const embedToUpdate = existingIndividual[0];
+            await editEmbed(client, embedToUpdate.channel_id, embedToUpdate.message_id, individualEmbed);
+            logger.info(`[BingoEmbedHelper] Updated individual_leaderboard embed: ${embedToUpdate.message_id}`);
+        } catch (error) {
+            logger.error(`[BingoEmbedHelper] Failed to update individual_leaderboard embed: ${error.message}`);
+        }
+    } else {
+        const individualMessage = await channel.send({ embeds: [individualEmbed] });
+        await createEmbedRecord(GLOBAL_LEADERBOARD_ID, null, null, null, individualMessage.id, channel.id, 'individual_leaderboard');
+        logger.info(`[BingoEmbedHelper] Created new individual_leaderboard embed for event #${eventId}`);
     }
 }
 

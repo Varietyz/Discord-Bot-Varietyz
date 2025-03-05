@@ -376,21 +376,44 @@ async function getTeamTaskProgress(eventId, teamId) {
 }
 
 /**
+ * 📊 Get Top Players for the Leaderboard
+ * - Includes players with `total_points > 0` OR `progress_value > 0`
+ * - Sorts by `total_points DESC`, then by `progress_value DESC`
  *
- * @param eventId
+ * @param {number} eventId - The Bingo Event ID.
+ * @returns {Promise<Array>} - Array of top players sorted for leaderboard.
  */
 async function getTopPlayers(eventId) {
-    return await db.getAll(
+    const results = await db.getAll(
         `
-        SELECT rr.rsn, rr.player_id, bl.total_points, bl.completed_tasks
-        FROM bingo_leaderboard bl
-        JOIN registered_rsn rr ON rr.player_id = bl.player_id
-        WHERE bl.event_id = ?
-        ORDER BY bl.total_points DESC
-        LIMIT 9
+        SELECT rr.rsn, 
+               rr.player_id, 
+               COALESCE(bl.total_points, 0) AS total_points, 
+               COALESCE(bl.completed_tasks, 0) AS completed_tasks,
+               COALESCE(SUM(CASE WHEN btp.progress_value IS NOT NULL THEN btp.progress_value ELSE 0 END), 0) AS total_progress
+        FROM registered_rsn rr
+        LEFT JOIN bingo_leaderboard bl ON rr.player_id = bl.player_id AND bl.event_id = ?
+        LEFT JOIN bingo_task_progress btp ON rr.player_id = btp.player_id AND btp.event_id = ?
+        GROUP BY rr.player_id, rr.rsn
+
+        ORDER BY 
+            total_points DESC,
+            completed_tasks DESC,
+            total_progress DESC
         `,
-        [eventId],
+        [eventId, eventId],
     );
+
+    console.log('[DEBUG] Full Leaderboard Rankings:', JSON.stringify(results, null, 2));
+
+    // ✅ Ensure function returns valid data
+    if (!results || results.length === 0) {
+        console.log('[DEBUG] No players found in results. Returning empty list.');
+        return [];
+    }
+
+    console.log('[DEBUG] Returning top players:', JSON.stringify(results.slice(0, 10), null, 2));
+    return results.slice(0, 5); // ✅ Apply limit AFTER debugging
 }
 
 /**
@@ -398,17 +421,30 @@ async function getTopPlayers(eventId) {
  * @param eventId
  */
 async function getTopTeams(eventId) {
-    return await db.getAll(
+    const results = await db.getAll(
         `
-        SELECT t.team_name, t.team_id, bl.total_points, bl.completed_tasks
-        FROM bingo_leaderboard bl
-        JOIN bingo_teams t ON t.team_id = bl.team_id
-        WHERE bl.event_id = ?
-        ORDER BY bl.total_points DESC
-        LIMIT 5
+        SELECT t.team_name,
+               t.team_id,
+               COALESCE(bl.total_points, 0) AS total_points,
+               COALESCE(bl.completed_tasks, 0) AS completed_tasks,
+               COALESCE(SUM(CASE WHEN btp.progress_value IS NOT NULL THEN btp.progress_value ELSE 0 END), 0) AS total_progress
+        FROM bingo_teams t
+        LEFT JOIN bingo_leaderboard bl 
+            ON t.team_id = bl.team_id AND bl.event_id = ?
+        LEFT JOIN bingo_task_progress btp 
+            ON t.team_id = btp.team_id AND btp.event_id = ?
+        GROUP BY t.team_id, t.team_name
+        ORDER BY total_points DESC,
+                 completed_tasks DESC,
+                 total_progress DESC
         `,
-        [eventId],
+        [eventId, eventId],
     );
+
+    console.log('[DEBUG] Full Team Leaderboard Rankings:', JSON.stringify(results, null, 2));
+
+    // Return the top teams (adjust the limit as needed)
+    return results.slice(0, 3);
 }
 
 module.exports = {

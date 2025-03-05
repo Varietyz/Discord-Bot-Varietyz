@@ -56,8 +56,8 @@ async function updateLeaderboard() {
   `);
 
     for (const { event_id } of ongoingEvents) {
-        await updateLeaderboardForEvent(event_id);
         await updateTeamLeaderboardForEvent(event_id);
+        await updateLeaderboardForEvent(event_id);
     }
     logger.info('[BingoLeaderboard] updateLeaderboard() → Done');
 }
