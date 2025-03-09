@@ -1,11 +1,12 @@
-const db = require('../../utils/essentials/dbUtils');
-const logger = require('../../utils/essentials/logger');
-const { calculatePatternBonus } = require('./bingoPatternRecognition');
+const db = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
+const { calculatePatternBonus } = require('../bingoPatternRecognition');
 
 /**
  *
  * @param eventId
  * @param playerId
+ * @returns
  */
 async function getProgressEmbedData(eventId, playerId) {
     try {
@@ -162,6 +163,7 @@ async function getFinalResultsEmbedData(eventId) {
 /**
  *
  * @param eventId
+ * @returns
  */
 async function getNewCompletions(eventId) {
     const query = `
@@ -196,6 +198,7 @@ async function getNewCompletions(eventId) {
 /**
  *
  * @param eventId
+ * @returns
  */
 async function getPlayerProgress(eventId) {
     return await db.getAll(
@@ -254,6 +257,7 @@ async function getTeamProgress(eventId) {
 /**
  *
  * @param eventId
+ * @returns
  */
 async function getIndividualLeaderboard(eventId) {
     return await db.getAll(
@@ -291,6 +295,7 @@ async function getIndividualLeaderboard(eventId) {
 /**
  *
  * @param eventId
+ * @returns
  */
 async function getTeamLeaderboard(eventId) {
     return await db.getAll(
@@ -351,6 +356,7 @@ async function getPlayerTaskProgress(eventId, playerId) {
  *
  * @param eventId
  * @param teamId
+ * @returns
  */
 async function getTeamTaskProgress(eventId, teamId) {
     const tasks = await db.getAll(
@@ -404,21 +410,18 @@ async function getTopPlayers(eventId) {
         [eventId, eventId],
     );
 
-    console.log('[DEBUG] Full Leaderboard Rankings:', JSON.stringify(results, null, 2));
-
     // ✅ Ensure function returns valid data
     if (!results || results.length === 0) {
-        console.log('[DEBUG] No players found in results. Returning empty list.');
         return [];
     }
 
-    console.log('[DEBUG] Returning top players:', JSON.stringify(results.slice(0, 10), null, 2));
     return results.slice(0, 5); // ✅ Apply limit AFTER debugging
 }
 
 /**
  *
  * @param eventId
+ * @returns
  */
 async function getTopTeams(eventId) {
     const results = await db.getAll(
@@ -440,8 +443,6 @@ async function getTopTeams(eventId) {
         `,
         [eventId, eventId],
     );
-
-    console.log('[DEBUG] Full Team Leaderboard Rankings:', JSON.stringify(results, null, 2));
 
     // Return the top teams (adjust the limit as needed)
     return results.slice(0, 3);

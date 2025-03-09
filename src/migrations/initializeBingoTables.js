@@ -1,5 +1,6 @@
 const { runQuery } = require('../modules/utils/essentials/dbUtils');
 const logger = require('../modules/utils/essentials/logger');
+
 const initializeBingoTables = async () => {
     try {
         logger.info('🔄 Ensuring all necessary guild tables exist...');
@@ -110,6 +111,8 @@ const initializeBingoTables = async () => {
       event_id INTEGER NOT NULL,
       player_id INTEGER DEFAULT NULL,
       team_id INTEGER DEFAULT NULL,
+      points_awarded INTEGER DEFAULT 0,
+      pattern_name TEXT NOT NULL,
       pattern_key TEXT NOT NULL,
       awarded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (board_id, event_id, player_id, team_id, pattern_key)
@@ -143,6 +146,18 @@ const initializeBingoTables = async () => {
     status TEXT NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `,
+            bingo_pattern_rotation: ` 
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    pattern_key TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `,
+            bingo_task_rotation: ` 
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    parameter TEXT UNIQUE NOT NULL,
+    last_selected TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     `,
         };
         for (const [table, schema] of Object.entries(tables)) {

@@ -4,6 +4,7 @@ const WOMApiClient = require('../../../api/wise_old_man/apiClient');
 const { EmbedBuilder } = require('discord.js');
 const { getMetricEmoji } = require('../../utils/fetchers/getCompMetricEmoji');
 const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
+const { updatePlayerPoints } = require('../../utils/essentials/updatePlayerPoints');
 const recordCompetitionWinner = async (competition) => {
     try {
         logger.info(`🔍 Fetching final leaderboard for competition ID \`${competition.competition_id}\` (${competition.type})...`);
@@ -48,7 +49,17 @@ const recordCompetitionWinner = async (competition) => {
                  WHERE player_id = ?`,
                 [winnerScore, playerId],
             );
-            logger.info(`🏆 **Winner Recorded:** \`${normalizedRSN}\` (playerId: \`${playerId}\`) with score \`${winnerScore}\` for competition ID \`${competition.competition_id}\`.`);
+
+            let winnerPoints = 0;
+
+            if (competition.type === 'SOTW') {
+                winnerPoints = Math.max(1, Math.ceil(topParticipant.progress.gained / 10000));
+            } else if (competition.type === 'BOTW') {
+                winnerPoints = Math.max(1, Math.ceil(topParticipant.progress.gained * 5));
+            }
+
+            await updatePlayerPoints(playerId, competition.type, winnerPoints);
+            logger.info(`🏆 **Winner Recorded:** \`${normalizedRSN}\` (playerId: \`${playerId}\`) with score \`${winnerScore}\` & obtained ${winnerPoints} for competition ID \`${competition.competition_id}\`.`);
         } else {
             logger.info(`🏆 **Already Recorded:** \`${normalizedRSN}\` (playerId: \`${playerId}\`) is already recorded for competition ID \`${competition.competition_id}\`. Skipping insertion.`);
         }
@@ -86,7 +97,7 @@ const updateFinalLeaderboard = async (competition, client) => {
                 ? await Promise.all(
                     sortedParticipants.slice(0, 10).map(async (p, i) => {
                         const playerLink = await getPlayerLink(p.player.displayName);
-                        return `> **${i + 1}.** **${playerLink}**\n>  ${metricEmoji} \`${p.progress.gained.toLocaleString()}\``;
+                        return `**${i + 1}.** **${playerLink}**\n>  ${metricEmoji} \`${p.progress.gained.toLocaleString()}\``;
                     }),
                 ).then((lines) => lines.join('\n\n'))
                 : '_No participants._';

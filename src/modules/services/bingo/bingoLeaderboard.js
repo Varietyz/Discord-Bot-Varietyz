@@ -2,6 +2,7 @@
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const { calculateTeamEffectiveProgress } = require('./bingoCalculations');
+const { consolidateTeamTaskProgress } = require('./bingoTaskManager');
 
 /**
  * Retrieves detailed progress for each completed task for a given player and event.
@@ -56,6 +57,7 @@ async function updateLeaderboard() {
   `);
 
     for (const { event_id } of ongoingEvents) {
+        await consolidateTeamTaskProgress(event_id);
         await updateTeamLeaderboardForEvent(event_id);
         await updateLeaderboardForEvent(event_id);
     }
@@ -189,28 +191,46 @@ async function updateTeamLeaderboardForEvent(eventId) {
             });
         }
 
-        // Apply `calculateTeamEffectiveProgress` for each team
+        // Apply `calculateTeamEffectiveProgress` for each team **BEFORE assigning points**
         for (const [team_id, members] of Object.entries(teams)) {
             const effectiveProgressList = calculateTeamEffectiveProgress(members, target);
 
-            // Sum up effective progress for the team
+            // ✅ Enforce strict capping on total progress
             const totalEffectiveProgress = effectiveProgressList.reduce((sum, member) => sum + member.effectiveProgress, 0);
+            const cappedTotalProgress = Math.min(totalEffectiveProgress, target); // Cap at the task's target
 
-            // Determine if the task is completed
-            const taskCompleted = totalEffectiveProgress >= target;
+            // ✅ Determine if the task is completed (ONLY if capped total meets target)
+            const taskCompleted = cappedTotalProgress >= target;
+
             if (!teamProgressMap[team_id]) {
                 teamProgressMap[team_id] = { points: 0, completedTasks: 0 };
             }
 
-            // Add base points if task is completed
+            // ✅ Only award points if the task is completed
             if (taskCompleted) {
                 teamProgressMap[team_id].points += base_points;
                 teamProgressMap[team_id].completedTasks += 1;
             }
+
+            // ✅ Update each player's effective progress in `bingo_task_progress`
+            for (const member of effectiveProgressList) {
+                if (member.effectiveProgress === 0) continue;
+                const cappedProgress = Math.min(member.effectiveProgress, target);
+
+                // ✅ Update the database with **capped** progress
+                await db.runQuery(
+                    `UPDATE bingo_task_progress
+                     SET progress_value = ?, last_updated = CURRENT_TIMESTAMP
+                     WHERE event_id = ? AND player_id = ? AND task_id = ?`,
+                    [cappedProgress, eventId, member.playerId, task_id],
+                );
+
+                logger.info(`[BingoLeaderboard] Updated progress for Team Player #${member.playerId}, Task #${task_id}: ${cappedProgress}/${target}`);
+            }
         }
     }
 
-    // Update the leaderboard
+    // ✅ Update the leaderboard with the **capped** progress & points
     for (const [team_id, progress] of Object.entries(teamProgressMap)) {
         const { points, completedTasks } = progress;
 

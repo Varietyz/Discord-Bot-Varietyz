@@ -1,12 +1,11 @@
 const { EmbedBuilder } = require('discord.js');
-const { getTopTeams, getTopPlayers, getPlayerTaskProgress, getTeamTaskProgress } = require('./bingoEmbedData');
-const getEmojiWithFallback = require('../../utils/fetchers/getEmojiWithFallback');
-const dbUtils = require('../../utils/essentials/dbUtils');
-const logger = require('../../utils/essentials/logger');
-const { computeOverallPercentage, computeIndividualPartialPoints, computeTeamPartialPoints } = require('./bingoCalculations');
-const { calculatePatternBonus } = require('./bingoPatternRecognition');
-const { calculateProgressPercentage } = require('./bingoImageGenerator');
-const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
+const { getPlayerTaskProgress, getTeamTaskProgress } = require('./bingoEmbedData');
+const getEmojiWithFallback = require('../../../utils/fetchers/getEmojiWithFallback');
+const dbUtils = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
+const { computeOverallPercentage, computeIndividualPartialPoints, computeTeamPartialPoints } = require('../bingoCalculations');
+const { calculateProgressPercentage } = require('../bingoImageGenerator');
+const getPlayerLink = require('../../../utils/fetchers/getPlayerLink');
 
 /**
  *
@@ -15,6 +14,7 @@ const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
  * @param root0.taskName
  * @param root0.points
  * @param root0.lastUpdated
+ * @returns
  */
 async function createProgressEmbed({ rsn, taskName, points, lastUpdated }) {
     const taskEmoji = await getEmojiWithFallback('emoji_completed', '✅');
@@ -39,6 +39,7 @@ async function createProgressEmbed({ rsn, taskName, points, lastUpdated }) {
  * @param root0.eventId
  * @param root0.topPlayers
  * @param root0.topTeams
+ * @returns
  */
 async function createFinalResultsEmbed({ eventId, topPlayers, topTeams }) {
     const embed = new EmbedBuilder().setTitle(`🏁 **Final Results: Bingo #${eventId}**`).setColor(0xffc107).setTimestamp();
@@ -59,8 +60,10 @@ async function createFinalResultsEmbed({ eventId, topPlayers, topTeams }) {
 /**
  *
  * @param eventId
+ * @param topPlayers
+ * @returns
  */
-async function createIndividualLeaderboardEmbed(eventId) {
+async function createIndividualLeaderboardEmbed(eventId, topPlayers) {
     const id = Number(eventId);
     const safeEventId = !isNaN(id) ? id : 'Unknown';
 
@@ -70,8 +73,6 @@ async function createIndividualLeaderboardEmbed(eventId) {
     const progressEmoji = await getEmojiWithFallback('emoji_overall', '📊');
 
     const embed = new EmbedBuilder().setTitle(`${trophyEmoji} **Individual Leaderboard** - Bingo Event #${safeEventId}`).setColor(0x3498db).setFooter({ text: '🕓 Last Updated' }).setTimestamp();
-
-    const topPlayers = await getTopPlayers(eventId);
 
     // If no players were returned, set a default message.
     if (topPlayers.length === 0) {
@@ -174,10 +175,13 @@ async function createIndividualLeaderboardEmbed(eventId) {
 }
 
 /**
+ * Generates the Team Leaderboard Embed for the Bingo event.
  *
- * @param {number} eventId
+ * @param {number} eventId - The event ID.
+ * @param topTeams
+ * @returns {Promise<EmbedBuilder>} - The Discord embed object.
  */
-async function createTeamLeaderboardEmbed(eventId) {
+async function createTeamLeaderboardEmbed(eventId, topTeams) {
     // Retrieve emojis for display.
     const trophyEmoji = await getEmojiWithFallback('emoji_league_points', '🏆');
     const pointsEmoji = await getEmojiWithFallback('emoji_points', '⭐');
@@ -190,35 +194,38 @@ async function createTeamLeaderboardEmbed(eventId) {
 
     const embed = new EmbedBuilder().setTitle(`${trophyEmoji} **Team Leaderboard** - Bingo Event #${safeEventId}`).setColor(0xf39c12).setFooter({ text: '🕓 Last Updated' }).setTimestamp();
 
-    // 1. Fetch the top teams from your DB.
-    const topTeams = await getTopTeams(eventId);
     if (topTeams.length === 0) {
         embed.setDescription('No team completions yet.');
         return embed;
     }
 
     let leaderboardDescription = '';
-    const emojiCache = []; // Cache for emoji lookups.
+    const emojiCache = {}; // Cache for emoji lookups.
     const teamProgress = [];
 
     // Fetch actual awarded points from the DB for each team
     const teamPointsMap = {};
 
-    // 2. Process each top team.
+    // 4️⃣ **Process each team and calculate their contributions**
     await Promise.all(
         topTeams.map(async (team) => {
             const { partialPointsMap, totalBoardPoints, teamTotalOverallPartial, overallPartialPointsMap } = await computeTeamPartialPoints(eventId, team.team_id);
 
-            // Calculate overall progress percentage (using any progression).
+            // Calculate overall progress percentage
             const overallFloat = computeOverallPercentage(teamTotalOverallPartial, totalBoardPoints);
             const overall = parseFloat(overallFloat.toFixed(2));
 
-            // Skip teams with no overall progress.
-            //if (overall <= 0) {
-            //    return;
-            //}
+            // Retrieve team members.
+            const teamMembers = await dbUtils.getAll(
+                `SELECT rr.rsn, rr.player_id
+                 FROM bingo_team_members btm
+                 JOIN registered_rsn rr ON btm.player_id = rr.player_id
+                 WHERE btm.team_id = ?
+                 ORDER BY rr.rsn COLLATE NOCASE ASC`,
+                [team.team_id],
+            );
 
-            // Build a row of emojis for tasks that the team has fully completed.
+            // Retrieve task progress
             const taskProgress = await getTeamTaskProgress(eventId, team.team_id);
             let taskProgressStr = '';
             for (const t of taskProgress) {
@@ -237,53 +244,30 @@ async function createTeamLeaderboardEmbed(eventId) {
 
             // "Tasks Completed" count based on tasks with status 'completed'.
             const completedTasks = taskProgress.filter((tp) => tp.status === 'completed').length;
-
-            // Retrieve team members.
-            const teamMembers = await dbUtils.getAll(
-                `
-                SELECT rr.rsn, rr.player_id
-                FROM bingo_team_members btm
-                JOIN registered_rsn rr ON btm.player_id = rr.player_id
-                WHERE btm.team_id = ?
-                ORDER BY rr.rsn COLLATE NOCASE ASC
-                `,
-                [team.team_id],
-            );
-
-            // For each member, compute their contribution % based on overall progress (partial progress).
-            const memberLines = [];
-            // Sort members by their overall partial progress (from overallPartialPointsMap).
-            teamMembers.sort((a, b) => (overallPartialPointsMap[b.player_id] || 0) - (overallPartialPointsMap[a.player_id] || 0));
-            for (const member of teamMembers) {
-                // Display earned points based solely on completions.
-                const userPoints = partialPointsMap[member.player_id] || 0;
-                // Now compute contribution % based on overall progress.
-                const userOverallPoints = overallPartialPointsMap[member.player_id] || 0;
-                const userShare = teamTotalOverallPartial > 0 ? ((userOverallPoints / teamTotalOverallPartial) * 100).toFixed(2) : '0.00';
-
-                const profileLink = await getPlayerLink(member.rsn);
-
-                memberLines.push(`> - ${profileLink} contributed \`${userShare}%\` ${progressEmoji} & earned \`${userPoints} pts\` ${pointsEmoji}`);
-            }
-            const pointsResults = await dbUtils.getAll(
-                `SELECT team_id, SUM(points_awarded) AS total_points
-         FROM bingo_task_progress
-         WHERE event_id = ?
-         GROUP BY team_id`,
-                [eventId],
-            );
-            pointsResults.forEach((row) => {
-                teamPointsMap[row.team_id] = row.total_points || 0;
-            });
             const actualPoints = teamPointsMap[team.team_id] || 0;
 
+            // Calculate member contributions
+            const memberLines = [];
+            teamMembers.sort((a, b) => (overallPartialPointsMap[b.player_id] || 0) - (overallPartialPointsMap[a.player_id] || 0));
+            for (const member of teamMembers) {
+                const userPoints = partialPointsMap[member.player_id] || 0;
+                const userOverallPoints = overallPartialPointsMap[member.player_id] || 0;
+                const iniuserShare = teamTotalOverallPartial > 0 ? Math.min((userOverallPoints / teamTotalOverallPartial) * 100, 100) : 0;
+                const userShare = parseFloat(iniuserShare.toFixed(2));
+
+                // ✅ Log actual values to debug
+                logger.info(`[TeamContribution] ${member.rsn} contributed ${userShare.toFixed(2)}% (${userOverallPoints}/${teamTotalOverallPartial})`);
+
+                const profileLink = await getPlayerLink(member.rsn);
+                memberLines.push(`> - ${profileLink} contributed \`${userShare}%\` ${progressEmoji} & earned \`${userPoints} pts\` ${pointsEmoji}`);
+            }
             const memberSection = memberLines.join('\n') || '> _No members found._';
 
             // Save the team's data for the leaderboard.
             teamProgress.push({
                 team_name: team.team_name,
-                overall, // Overall progress % (from any progression)
-                partial_points: actualPoints, // Total awarded points from completions
+                overall,
+                partial_points: actualPoints,
                 completed_tasks: completedTasks,
                 taskProgressStr,
                 memberSection,
@@ -291,20 +275,10 @@ async function createTeamLeaderboardEmbed(eventId) {
         }),
     );
 
-    // Filter out any teams with 0 completion points.
-    // 🚀 Sort teams by overall completion percentage (highest first)
-    //teamProgress.sort((a, b) => b.overall - a.overall);
-
+    // 🚀 Sort teams by total points (highest first), then by completed tasks, then by overall progress
     teamProgress.sort((a, b) => {
-        // Compare by total_points (highest points first)
-        if (b.partial_points !== a.partial_points) {
-            return b.partial_points - a.partial_points;
-        }
-        // If tied, compare by completed_tasks (most tasks completed first)
-        if (b.completed_tasks !== a.completed_tasks) {
-            return b.completed_tasks - a.completed_tasks;
-        }
-        // If still tied, compare by total_progress (most progress first)
+        if (b.partial_points !== a.partial_points) return b.partial_points - a.partial_points;
+        if (b.completed_tasks !== a.completed_tasks) return b.completed_tasks - a.completed_tasks;
         return b.overall - a.overall;
     });
 
@@ -313,7 +287,7 @@ async function createTeamLeaderboardEmbed(eventId) {
         return embed;
     }
 
-    // 5. Build the final embed description.
+    // 5️⃣ Build the final embed description
     teamProgress.forEach((team) => {
         leaderboardDescription += `### ${teamEmoji} Team: **\`${team.team_name}\`**\n`;
         leaderboardDescription += `> Finished: **\`${team.overall.toFixed(2)}%\` ${progressEmoji}**\n`;
@@ -327,9 +301,11 @@ async function createTeamLeaderboardEmbed(eventId) {
 }
 
 /**
- * ✅ Creates a grouped embed showing Bingo task completions per player or team, including percentage contributions.
+ * ✅ Creates grouped embeds showing Bingo task completions, listing all players under each task.
+ * ✅ Automatically splits embeds if the total character limit is exceeded.
  *
- * @param {Array} completions - Array of completion objects with player RSN, team name, task info, and progress values.
+ * @param {Array} completions - Array of completion objects with RSN, task info, and progress values.
+ * @returns {Promise<EmbedBuilder[]>} - Array of formatted embeds.
  */
 async function createConsolidatedProgressEmbed(completions) {
     // Retrieve common emojis
@@ -337,172 +313,106 @@ async function createConsolidatedProgressEmbed(completions) {
     const pointsEmoji = await getEmojiWithFallback('emoji_points', '⭐');
     const progressEmoji = await getEmojiWithFallback('emoji_overall', '📊');
 
-    const embed = new EmbedBuilder().setTitle(`${completedEmoji} Task Completions`).setColor(0x48de6f).setFooter({ text: '🕓 Last Updated' }).setTimestamp(new Date());
-
     const emojiCache = {};
-    const groupedCompletions = {};
+    const groupedTasks = {};
 
-    // ✅ Group completions by player or team
+    // ✅ Group completions by Task Type first
     for (const row of completions) {
-        // Parse timestamp
-        let ts = new Date(row.last_updated);
-        if (isNaN(ts.getTime())) {
-            logger.warn(`[createConsolidatedProgressEmbed] Invalid timestamp for ${row.rsn || row.team_name}. Using current time.`);
-            ts = new Date();
-        }
-
-        // Fetch the emoji for the task using row.parameter (or default to ✅)
         let taskEmoji = emojiCache[row.parameter];
         if (!taskEmoji) {
             taskEmoji = await getEmojiWithFallback(`emoji_${row.parameter}`, '✅');
             emojiCache[row.parameter] = taskEmoji;
         }
 
-        // Determine if it's an individual or team task
-        const entityName = row.team_name ? row.team_name : row.rsn;
-        const profileLink = await getPlayerLink(row.rsn);
+        let statEmoji;
+        if (row.type === 'Exp') {
+            statEmoji = await getEmojiWithFallback('emoji_overall', '📊');
+        } else if (row.type === 'Kill') {
+            statEmoji = await getEmojiWithFallback('emoji_slayer', '⚔️');
+        } else {
+            statEmoji = await getEmojiWithFallback('emoji_league_points', '🏆');
+        }
+        // Construct Task Identifier
+        const taskIdentifier = `${statEmoji} **\`${row.taskName}\`**`;
 
-        // Group tasks under the player's or team's name
-        if (!groupedCompletions[entityName]) {
-            groupedCompletions[entityName] = {
-                profileLink,
-                isTeam: !!row.team_name,
-                tasks: [],
-            };
+        // Ensure task entry exists
+        if (!groupedTasks[taskIdentifier]) {
+            groupedTasks[taskIdentifier] = [];
         }
 
-        // ✅ Corrected Contribution % Calculation
-        let contributionPercentage = '0.00';
+        // Get Player Profile Link
+        const profileLink = await getPlayerLink(row.rsn);
+
+        // ✅ Contribution % Calculation
+        let contributionPercentage = '—';
         if (row.target && Number(row.target) > 0) {
             const progressValue = Number(row.progress);
             const totalValue = Number(row.target);
             contributionPercentage = calculateProgressPercentage(progressValue, totalValue);
             if (contributionPercentage > Number(100)) {
                 contributionPercentage = '100.00';
+            } else {
+                contributionPercentage += '%';
             }
         }
 
-        // ✅ Improved Points Description with Contribution
+        // Convert progress to a formatted number (e.g., 1000000 → "1,000,000")
+        const progressNum = Number(row.progress);
+        const formattedProgress = progressNum > 0 ? progressNum.toLocaleString() : '—';
+
+        let progressDisplay = '';
+        if (row.type === 'Exp') {
+            progressDisplay = progressNum > 0 ? `${formattedProgress} XP` : '—';
+        } else if (row.type === 'Kill') {
+            progressDisplay = progressNum > 0 ? (progressNum === 1 ? `${formattedProgress} Kill` : `${formattedProgress} Kills`) : '—';
+        } else {
+            progressDisplay = progressNum > 0 ? (progressNum === 1 ? `${formattedProgress} Completion` : `${formattedProgress} Completions`) : '—';
+        }
+
+        // ✅ Format Player Progress Line (Inline)
         let pointsDescription;
         if (row.points_awarded > 0) {
-            pointsDescription = `${pointsEmoji} \`${row.points_awarded} pts\` — ${progressEmoji} \`${contributionPercentage}%\``;
+            pointsDescription = `- ${profileLink} — ${taskEmoji} **\`${progressDisplay}\`** — ${pointsEmoji} \`${row.points_awarded} pts\` — ${progressEmoji} \`${contributionPercentage}\``;
         } else {
-            pointsDescription = '*`⚠️ Did not contribute to the task their team completed`*';
+            pointsDescription = `- ${profileLink} — ${taskEmoji} **\`${progressDisplay}\`** — ${pointsEmoji} \`— pts\` — ${progressEmoji} \`${contributionPercentage}\``;
         }
 
-        // Convert row.progress to a number once
-        const progressNum = Number(row.progress);
-        // Format the number with commas (e.g., 1000000 becomes "1,000,000")
-        const progressionValue = progressNum.toLocaleString();
+        groupedTasks[taskIdentifier].push(pointsDescription);
+    }
 
-        let formattedProgress = '';
+    // ✅ Generate multiple embeds if necessary
+    const embeds = [];
+    let currentEmbedContent = '';
+    let currentEmbed = new EmbedBuilder().setTitle(`${completedEmoji} Task Completions`).setColor(0x48de6f);
 
-        if (row.type === 'Exp') {
-            formattedProgress = `${progressionValue} XP`;
-        } else if (row.type === 'Kill') {
-            // Use ternary operator for singular/plural phrasing
-            formattedProgress = progressNum === 1 ? `${progressionValue} Kill` : `${progressionValue} Kills`;
-        } else {
-            formattedProgress = progressNum === 1 ? `${progressionValue} Completion` : `${progressionValue} Completions`;
+    for (const [taskName, playerData] of Object.entries(groupedTasks)) {
+        const taskContent = `${taskName}\n${playerData.join('\n')}\n\n`;
+
+        // If adding this task exceeds Discord’s 4096 character limit, create a new embed
+        if (currentEmbedContent.length + taskContent.length > 4096) {
+            currentEmbed.setDescription(currentEmbedContent.trim());
+            embeds.push(currentEmbed);
+
+            // Start a new embed
+            currentEmbed = new EmbedBuilder().setTitle(`${completedEmoji} Task Completions (Continued)`).setColor(0x48de6f);
+            currentEmbedContent = '';
         }
 
-        // ✅ Improved Task Formatting for Readability
-        groupedCompletions[entityName].tasks.push(`> **\`${row.taskName}\`**\n> - ${taskEmoji}**\`${formattedProgress}\`**\n>   - ${pointsDescription}`);
+        currentEmbedContent += taskContent;
     }
 
-    // Build final embed description
-    let description = '';
-    for (const [, data] of Object.entries(groupedCompletions)) {
-        // Use data.profileLink and data.tasks properly
-        description += `### **${data.profileLink}**\n`;
-        description += data.tasks.join('\n') + '\n\n';
+    // Add the final embed (if there's remaining content)
+    if (currentEmbedContent.length > 0) {
+        currentEmbed.setDescription(currentEmbedContent.trim());
+        embeds.push(currentEmbed);
     }
 
-    embed.setDescription(description.trim());
-    return embed;
-}
-
-/**
- * ✅ Creates a grouped embed showing **Bingo pattern completions** per player.
- * - Dynamically calculates **bonus points** with team adjustments.
- * - Uses **rank emojis**, **profile links**, and **structured formatting**.
- *
- * @param {number} eventId - The Bingo Event ID.
- * @returns {Promise<EmbedBuilder>} - The Discord embed object.
- */
-async function createPatternCompletionEmbed(eventId) {
-    // Retrieve common emojis
-    const patternEmoji = await getEmojiWithFallback('emoji_pattern_bonus', '🎯');
-    const pointsEmoji = await getEmojiWithFallback('emoji_points', '⭐');
-
-    const embed = new EmbedBuilder().setTitle(`${patternEmoji} **Pattern Completions**`).setColor(0xffc107).setFooter({ text: '🕓 Last Updated' }).setTimestamp(new Date());
-
-    const groupedCompletions = {};
-
-    if (eventId === -1 || eventId === 0) {
-        logger.warn(`[createPatternCompletionEmbed] Invalid event id ${eventId}.`);
-        return;
-    }
-    // ✅ Fetch all pattern completions for this event
-    const patternCompletions = await dbUtils.getAll(
-        `
-        SELECT bpa.player_id, rr.rsn, bpa.pattern_key, bpa.awarded_at, 
-               (SELECT team_id FROM bingo_team_members WHERE player_id = bpa.player_id) AS team_id
-        FROM bingo_patterns_awarded bpa
-        JOIN registered_rsn rr ON rr.player_id = bpa.player_id
-        WHERE bpa.event_id = ?
-        ORDER BY bpa.awarded_at DESC
-        `,
-        [eventId],
-    );
-
-    if (patternCompletions.length === 0) {
-        embed.setDescription('No pattern completions yet.');
-        return embed;
+    // ✅ Add timestamp to the last embed
+    if (embeds.length > 0) {
+        embeds[embeds.length - 1].setFooter({ text: '🕓 Last Updated' }).setTimestamp(new Date());
     }
 
-    // ✅ Group completions by player
-    for (const row of patternCompletions) {
-        // Calculate base bonus points
-        let bonusPoints = calculatePatternBonus(row.pattern_key);
-
-        // Check if the player is in a team and adjust points accordingly
-        if (row.team_id) {
-            const teamSizeRow = await dbUtils.getOne('SELECT COUNT(*) AS teamSize FROM bingo_team_members WHERE team_id = ?', [row.team_id]);
-            const teamSize = teamSizeRow ? teamSizeRow.teamSize : 1;
-            bonusPoints = Math.floor(bonusPoints / teamSize); // Distribute points across team members
-        }
-
-        // Parse timestamp
-        let timestamp = new Date(row.awarded_at);
-        if (isNaN(timestamp.getTime())) {
-            logger.warn(`[createPatternCompletionEmbed] Invalid timestamp for ${row.rsn}. Using current time.`);
-            timestamp = new Date();
-        }
-
-        // Prepare player profile link
-        const profileLink = await getPlayerLink(row.rsn);
-
-        // Group patterns under the player's name
-        if (!groupedCompletions[row.rsn]) {
-            groupedCompletions[row.rsn] = {
-                profileLink,
-                patterns: [],
-            };
-        }
-
-        // Add pattern details
-        groupedCompletions[row.rsn].patterns.push(`> - 🎲 **${row.pattern_key.replace(/_/g, ' ')}** \n>   - ${pointsEmoji} **Bonus:** \`${bonusPoints} pts\``);
-    }
-
-    let description = '';
-    for (const [, data] of Object.entries(groupedCompletions)) {
-        description += `### **${data.profileLink}**\n`;
-        description += data.patterns.join('\n') + '\n\n';
-    }
-
-    embed.setDescription(description.trim());
-    return embed;
+    return embeds;
 }
 
 module.exports = {
@@ -511,5 +421,4 @@ module.exports = {
     createTeamLeaderboardEmbed,
     createIndividualLeaderboardEmbed,
     createConsolidatedProgressEmbed,
-    createPatternCompletionEmbed,
 };

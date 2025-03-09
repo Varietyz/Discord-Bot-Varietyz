@@ -1,11 +1,12 @@
-const { sendNewCompletions, sendOrUpdateLeaderboardEmbeds, sendPatternCompletions } = require('../../../../../services/bingo/embeds/handling/bingoEmbedHelper');
+const { sendNewCompletions, sendOrUpdateLeaderboardEmbeds } = require('../../../../../services/bingo/embeds/handling/bingoEmbedHelper');
 const { purgeStaleEmbeds } = require('../../../../../services/bingo/embeds/handling/bingoEmbedManager');
-const { updateLeaderboard } = require('../../../../../services/bingo/bingoLeaderboard');
 const { checkPatterns } = require('../../../../../services/bingo/bingoPatternRecognition');
 const { consolidateTeamTaskProgress } = require('../../../../../services/bingo/bingoTaskManager');
 const db = require('../../../../essentials/dbUtils');
 const logger = require('../../../../essentials/logger');
-const synchronizeTaskCompletion = require('../../../../essentials/syncTeamData');
+const { synchronizeTaskCompletion } = require('../../../../essentials/syncTeamData');
+const { updateLeaderboard } = require('../../../../../services/bingo/bingoLeaderboard');
+const { notifyPatternAwards } = require('../../../../../services/bingo/embeds/bingoPatternNotifications');
 
 /**
  *
@@ -40,7 +41,7 @@ async function reassignTeamProgress(eventId, playerId, newTeamId = 0) {
 }
 
 /**
- *
+ *@returns
  */
 async function getOngoingEventId() {
     const ongoing = await db.getOne(`
@@ -55,6 +56,7 @@ async function getOngoingEventId() {
 /**
  *
  * @param discordId
+ * @returns
  */
 async function getActivePlayer(discordId) {
     const playerRow = await db.getOne(
@@ -121,37 +123,33 @@ async function appendBingoProgression(client) {
             }
             // After processing all teams for the event, consolidate the team's task progress.
             await consolidateTeamTaskProgress(event_id);
+            await updateLeaderboard();
+            try {
+                await checkPatterns();
+            } catch (err) {
+                logger.error(`[BingoService] updateLeaderboard() error: ${err.message}`);
+            }
+
+            try {
+                await sendOrUpdateLeaderboardEmbeds(client, event_id);
+                try {
+                    await sendNewCompletions(client);
+                    await notifyPatternAwards(client, event_id);
+                } catch (err) {
+                    logger.error(`[BingoService] newCompletion Notifications() error: ${err.message}`);
+                }
+            } catch (err) {
+                logger.error(`[BingoService] sendOrUpdateLeaderboardEmbeds(eventId: ${event_id}) error: ${err.message}`);
+            }
+
+            try {
+                await purgeStaleEmbeds(client);
+            } catch (err) {
+                logger.error(`[BingoService] purgeStaleEmbeds() error: ${err.message}`);
+            }
         } catch (err) {
             logger.error(`[BingoService] consolidateTeamTaskProgress(eventId: ${event_id}) error: ${err.message}`);
         }
-    }
-
-    try {
-        await checkPatterns();
-    } catch (err) {
-        logger.error(`[BingoService] checkPatterns() error: ${err.message}`);
-    }
-
-    try {
-        await updateLeaderboard(client);
-    } catch (err) {
-        logger.error(`[BingoService] updateLeaderboard() error: ${err.message}`);
-    }
-
-    for (const { event_id } of ongoingEvents) {
-        try {
-            await sendOrUpdateLeaderboardEmbeds(client, event_id);
-            await sendNewCompletions(client);
-            await sendPatternCompletions(client, event_id);
-        } catch (err) {
-            logger.error(`[BingoService] sendOrUpdateLeaderboardEmbeds(eventId: ${event_id}) error: ${err.message}`);
-        }
-    }
-
-    try {
-        await purgeStaleEmbeds(client);
-    } catch (err) {
-        logger.error(`[BingoService] purgeStaleEmbeds() error: ${err.message}`);
     }
 
     logger.info('[BingoService] appendBingoProgress() → Complete.');

@@ -21,14 +21,6 @@ module.exports = [
         runAsTask: true,
     },
     {
-        // Clean & minimal: calls the external 'autoTransitionEvents' logic
-        name: 'autoTransitionEvents',
-        func: async () => await autoTransitionEvents(),
-        interval: 60 * 5,
-        runOnStart: true,
-        runAsTask: true,
-    },
-    {
         name: 'updateData',
         func: async (client) => await updateData(client),
         interval: 60 * 30,
@@ -74,9 +66,16 @@ module.exports = [
         runAsTask: true,
     },
     {
+        name: 'autoTransitionEvents',
+        func: async () => await autoTransitionEvents(),
+        interval: 60 * 5,
+        runOnStart: true,
+        runAsTask: true,
+    },
+    {
         name: 'updateBingoProgress',
         func: async (client) => await updateBingoProgress(client),
-        interval: 60 * 30,
+        interval: 60 * 5,
         runOnStart: true,
         runAsTask: true,
     },

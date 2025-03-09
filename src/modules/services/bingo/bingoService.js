@@ -14,11 +14,10 @@ async function updateBingoProgress(client) {
     logger.info('[BingoService] updateBingoProgress() → Starting...');
     try {
         await bingoTaskManager.updateAllTasks();
+        await appendBingoProgression(client);
     } catch (err) {
         logger.error(`[BingoService] updateAllTasks() error: ${err.message}`);
     }
-
-    await appendBingoProgression(client);
 
     logger.info('[BingoService] updateBingoProgress() → Complete.');
 }

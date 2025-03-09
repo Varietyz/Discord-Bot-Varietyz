@@ -52,7 +52,9 @@ async function updateActiveCompetitionEmbed(competitionType, db, client, constan
             if (comp.message_id) {
                 try {
                     oldMsg = await channel.messages.fetch(comp.message_id);
-                } catch (err) {}
+                } catch (err) {
+                    logger.warn(`🚫 **Warning:** Failed to fetch message with ID \`${comp.message_id}\`: ${err.message}`);
+                }
             }
             await updateLeaderboard(comp.type, db, client, constants);
             const { embeds, files } = await createCompetitionEmbed(client, comp.type, comp.metric, comp.starts_at, comp.ends_at, comp.competition_id);

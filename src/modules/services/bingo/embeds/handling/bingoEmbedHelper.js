@@ -1,6 +1,6 @@
-const { createProgressEmbed, createFinalResultsEmbed, createIndividualLeaderboardEmbed, createTeamLeaderboardEmbed, createConsolidatedProgressEmbed, createPatternCompletionEmbed } = require('../../bingoEmbeds');
+const { createProgressEmbed, createFinalResultsEmbed, createIndividualLeaderboardEmbed, createTeamLeaderboardEmbed, createConsolidatedProgressEmbed } = require('../bingoEmbeds');
 const { createEmbedRecord, getActiveEmbeds, editEmbed } = require('./bingoEmbedManager');
-const { getProgressEmbedData, getFinalResultsEmbedData, getNewCompletions } = require('../../bingoEmbedData');
+const { getProgressEmbedData, getFinalResultsEmbedData, getNewCompletions, getTopTeams, getTopPlayers } = require('../bingoEmbedData');
 const getChannelId = require('../../../../utils/fetchers/getChannel');
 const logger = require('../../../../utils/essentials/logger');
 
@@ -8,6 +8,7 @@ const logger = require('../../../../utils/essentials/logger');
  *
  * @param client
  * @param channelKey
+ * @returns
  */
 async function fetchChannel(client, channelKey) {
     const channelId = await getChannelId(channelKey);
@@ -18,9 +19,10 @@ async function fetchChannel(client, channelKey) {
 }
 
 /**
+ * ✅ Sends new Bingo task completion notifications, ensuring embed size limits are respected.
  *
- * @param client
- * @param eventId
+ * @param {Client} client - The Discord client instance.
+ * @param {number} eventId - The Bingo event ID.
  */
 async function sendNewCompletions(client, eventId) {
     const newCompletions = await getNewCompletions(eventId);
@@ -28,16 +30,33 @@ async function sendNewCompletions(client, eventId) {
         logger.info('[BingoEmbedHelper] No new completions to notify.');
         return;
     }
+
     const channel = await fetchChannel(client, 'bingo_notification_channel');
-
-    // Create a single consolidated embed using our helper.
-    const embed = await createConsolidatedProgressEmbed(newCompletions);
-    const message = await channel.send({ embeds: [embed] });
-
-    // Record the embed for each completion.
-    for (const row of newCompletions) {
-        await createEmbedRecord(row.event_id, row.player_id, null, row.task_id, message.id, channel.id, 'progress');
+    if (!channel) {
+        logger.error('[BingoEmbedHelper] Failed to fetch notification channel.');
+        return;
     }
+
+    // Generate embeds based on the new completions
+    const embeds = await createConsolidatedProgressEmbed(newCompletions);
+    const messages = [];
+
+    for (const embed of embeds) {
+        const message = await channel.send({ embeds: [embed] });
+        messages.push(message.id); // ✅ Store message IDs
+    }
+
+    // ✅ Store embed records properly (1 per task completion)
+    for (let i = 0; i < newCompletions.length; i++) {
+        const row = newCompletions[i];
+
+        // ✅ Ensure we assign the correct message to each task
+        const messageId = messages[i] || messages[messages.length - 1]; // Assign the correct message or fallback to last one
+
+        await createEmbedRecord(row.event_id, row.player_id, null, row.task_id, messageId, channel.id, 'progress');
+    }
+
+    logger.info(`[BingoEmbedHelper] Sent ${embeds.length} embed(s) for event ${eventId}.`);
 }
 
 /**
@@ -45,6 +64,7 @@ async function sendNewCompletions(client, eventId) {
  * @param client
  * @param eventId
  * @param playerId
+ * @returns
  */
 async function sendProgressEmbed(client, eventId, playerId) {
     try {
@@ -86,8 +106,11 @@ async function sendFinalResultsEmbed(client, eventId) {
  * @param eventId
  */
 async function sendOrUpdateLeaderboardEmbeds(client, eventId) {
+    const topTeams = await getTopTeams(eventId);
+    const topPlayers = await getTopPlayers(eventId);
+
     if (!eventId || isNaN(eventId)) {
-        console.error('❌ Invalid eventId:', eventId);
+        logger.error('❌ Invalid eventId:', eventId);
         return;
     }
 
@@ -95,28 +118,15 @@ async function sendOrUpdateLeaderboardEmbeds(client, eventId) {
     if (!channelId) return;
     const channel = await client.channels.fetch(channelId);
 
-    const teamEmbed = await createTeamLeaderboardEmbed(eventId);
+    const individualEmbed = await createIndividualLeaderboardEmbed(eventId, topPlayers);
+    const teamEmbed = await createTeamLeaderboardEmbed(eventId, topTeams);
 
     const GLOBAL_LEADERBOARD_ID = -1;
 
     const existingTeam = await getActiveEmbeds(eventId, 'team_leaderboard');
-    if (existingTeam.length > 0) {
-        try {
-            const embedToUpdate = existingTeam[0];
-            await editEmbed(client, embedToUpdate.channel_id, embedToUpdate.message_id, teamEmbed);
-            logger.info(`[BingoEmbedHelper] Updated team_leaderboard embed: ${embedToUpdate.message_id}`);
-        } catch (error) {
-            logger.error(`[BingoEmbedHelper] Failed to update team_leaderboard embed: ${error.message}`);
-        }
-    } else {
-        const teamMessage = await channel.send({ embeds: [teamEmbed] });
-        await createEmbedRecord(GLOBAL_LEADERBOARD_ID, null, null, null, teamMessage.id, channel.id, 'team_leaderboard');
-        logger.info(`[BingoEmbedHelper] Created new team_leaderboard embed for event #${eventId}`);
-    }
-
-    const individualEmbed = await createIndividualLeaderboardEmbed(eventId);
 
     const existingIndividual = await getActiveEmbeds(eventId, 'individual_leaderboard');
+
     if (existingIndividual.length > 0) {
         try {
             const embedToUpdate = existingIndividual[0];
@@ -130,47 +140,19 @@ async function sendOrUpdateLeaderboardEmbeds(client, eventId) {
         await createEmbedRecord(GLOBAL_LEADERBOARD_ID, null, null, null, individualMessage.id, channel.id, 'individual_leaderboard');
         logger.info(`[BingoEmbedHelper] Created new individual_leaderboard embed for event #${eventId}`);
     }
-}
 
-/**
- * ✅ Sends or updates a **Pattern Completion Notification** in the Bingo channel.
- * - Edits the existing embed if found, otherwise creates a new one.
- *
- * @param {Client} client - The Discord bot client.
- * @param {number} eventId - The Bingo Event ID.
- */
-async function sendPatternCompletions(client, eventId) {
-    try {
-        const patternCompletions = await createPatternCompletionEmbed(eventId);
-        if (!patternCompletions) {
-            logger.info('[BingoEmbedHelper] No pattern completions to notify.');
-            return;
+    if (existingTeam.length > 0) {
+        try {
+            const embedToUpdate = existingTeam[0];
+            await editEmbed(client, embedToUpdate.channel_id, embedToUpdate.message_id, teamEmbed);
+            logger.info(`[BingoEmbedHelper] Updated team_leaderboard embed: ${embedToUpdate.message_id}`);
+        } catch (error) {
+            logger.error(`[BingoEmbedHelper] Failed to update team_leaderboard embed: ${error.message}`);
         }
-
-        const channel = await fetchChannel(client, 'bingo_patterns_channel');
-
-        // ✅ Check if an active pattern completion embed exists
-        const existingEmbeds = await getActiveEmbeds(eventId, 'pattern_completion');
-
-        if (existingEmbeds.length > 0) {
-            try {
-                const embedToUpdate = existingEmbeds[0]; // Get the first active embed
-                await editEmbed(client, embedToUpdate.channel_id, embedToUpdate.message_id, patternCompletions);
-                logger.info(`[BingoEmbedHelper] Updated existing pattern completion embed: ${embedToUpdate.message_id}`);
-            } catch (error) {
-                logger.error(`[BingoEmbedHelper] Failed to update pattern completion embed: ${error.message}`);
-            }
-        } else {
-            // ✅ No existing embed, send a new one
-            const message = await channel.send({ embeds: [patternCompletions] });
-
-            // ✅ Create an embed record for tracking
-            await createEmbedRecord(eventId, null, null, null, message.id, channel.id, 'pattern_completion');
-
-            logger.info(`[BingoEmbedHelper] Created new pattern completion embed for event #${eventId}`);
-        }
-    } catch (error) {
-        logger.error(`[BingoEmbedHelper] Failed to send or update pattern completion embed: ${error.message}`);
+    } else {
+        const teamMessage = await channel.send({ embeds: [teamEmbed] });
+        await createEmbedRecord(GLOBAL_LEADERBOARD_ID, null, null, null, teamMessage.id, channel.id, 'team_leaderboard');
+        logger.info(`[BingoEmbedHelper] Created new team_leaderboard embed for event #${eventId}`);
     }
 }
 
@@ -179,5 +161,5 @@ module.exports = {
     sendFinalResultsEmbed,
     sendNewCompletions,
     sendOrUpdateLeaderboardEmbeds,
-    sendPatternCompletions,
+    fetchChannel,
 };

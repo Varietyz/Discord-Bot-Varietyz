@@ -64,7 +64,7 @@ const updateAllTimeLeaderboard = async (client) => {
             const formattedPlayers = await Promise.all(
                 data.map(async (player, i) => {
                     const profileLink = await getPlayerLink(player.rsn);
-                    return `> **${i + 1}.** ${profileLink} — \`${player.total_wins} Wins🏅\`\n> - ${metricEmoji}\`${player.total_gain.toLocaleString()} ${metricLabel}\``;
+                    return `**${i + 1}.** ${profileLink} — \`${player.total_wins} Wins🏅\`\n> - ${metricEmoji}\`${player.total_gain.toLocaleString()} ${metricLabel}\``;
                 }),
             );
             return formattedPlayers.join('\n\n');

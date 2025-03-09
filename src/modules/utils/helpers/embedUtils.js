@@ -15,6 +15,7 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
     const displayedTitle = type === 'SOTW' ? `${emojiFormat} Skill of the Week${womEmoji}` : `${emojiFormat} Boss of the Week${womEmoji}`;
     const resourcesFolder = path.resolve(__dirname, '../../../resources');
     const imagePath = path.join(resourcesFolder, 'skills_bosses', `${metric.toLowerCase()}.png`);
+    const bannerImagePath = type === 'SOTW' ? path.join(resourcesFolder, 'botw_sotw', 'sotw_banner.png') : path.join(resourcesFolder, 'botw_sotw', 'botw_banner.png');
     let imageAttachment;
     try {
         imageAttachment = new AttachmentBuilder(imagePath, { name: `${metric}.png` });
@@ -22,6 +23,15 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
         logger.warn(`⚠️ No image found for metric "${metric}". Using default image.`);
         imageAttachment = new AttachmentBuilder(path.join(resourcesFolder, 'default.png'), { name: 'default.png' });
     }
+
+    let bannerImageAttachment;
+    try {
+        bannerImageAttachment = type === 'SOTW' ? new AttachmentBuilder(bannerImagePath, { name: 'sotw_banner.png' }) : new AttachmentBuilder(bannerImagePath, { name: 'botw_banner.png' });
+    } catch (err) {
+        logger.warn(`⚠️ No image found for metric "${metric}". Using default image.`);
+        bannerImageAttachment = new AttachmentBuilder(path.join(resourcesFolder, 'default_banner.png'), { name: 'default_banner.png' });
+    }
+
     let guild;
     try {
         guild = await client.guilds.fetch(process.env.GUILD_ID);
@@ -68,12 +78,13 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
         )
         .setColor(type === 'SOTW' ? 0x3498db : 0xe74c3c)
         .setThumbnail(`attachment://${metric}.png`)
-        .setImage(type === 'SOTW' ? 'https://i.ibb.co/DP2F5L9/sotw-banner.png' : 'https://i.ibb.co/MGLHPrk/botw-banner.png');
-    return { embeds: [embed], files: [imageAttachment] };
+        .setImage(type === 'SOTW' ? 'attachment://sotw_banner.png' : 'attachment://botw_banner.png');
+    return { embeds: [embed], files: [imageAttachment, bannerImageAttachment] };
 };
 /**
  *
  * @param dateString
+ * @returns
  */
 function formatTimestamp(dateString) {
     const date = new Date(dateString);

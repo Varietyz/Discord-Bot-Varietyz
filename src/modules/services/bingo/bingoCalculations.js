@@ -12,6 +12,7 @@ const { updatePlayerPoints } = require('../../utils/essentials/updatePlayerPoint
  * @param targetValue
  * @param basePoints
  * @param roundPerTask
+ *@returns
  */
 function computePartialPoints(progressValue, targetValue, basePoints, roundPerTask = true) {
     const effectiveProgress = Math.min(progressValue, targetValue);
@@ -23,6 +24,7 @@ function computePartialPoints(progressValue, targetValue, basePoints, roundPerTa
  * Overall completion = ( partialPoints / totalBoardPoints ) * 100
  * @param totalPartial
  * @param totalBoardPoints
+ * @returns
  */
 function computeOverallPercentage(totalPartial, totalBoardPoints) {
     if (totalBoardPoints <= 0) return 0;
@@ -34,6 +36,7 @@ function computeOverallPercentage(totalPartial, totalBoardPoints) {
  * We assume there's a 1:1 relationship between event -> board, or you
  * can adapt the query to find the correct board via event_id.
  * @param eventId
+ * @returns
  */
 async function getBoardTasksForEvent(eventId) {
     // This query can vary if your schema differs
@@ -59,18 +62,18 @@ async function getBoardTasksForEvent(eventId) {
  * Computes partial points for a team.
  *
  * - Points (partialPointsMap & teamTotalPartial) are calculated only from tasks marked as completed,
- *   by summing the `points_awarded` values.
+ * by summing the `points_awarded` values.
  * - Overall progression (overallPartialPointsMap & teamTotalOverallPartial) is calculated using
- *   each member's current progress for every task, regardless of completion status.
+ * each member's current progress for every task, regardless of completion status.
  *
  * @param {number} eventId - The event ID.
  * @param {number} teamId - The team ID.
  * @returns {Promise<{
- *   partialPointsMap: Object,
- *   teamTotalPartial: number,
- *   totalBoardPoints: number,
- *   overallPartialPointsMap: Object,
- *   teamTotalOverallPartial: number
+ * partialPointsMap: Object,
+ * teamTotalPartial: number,
+ * totalBoardPoints: number,
+ * overallPartialPointsMap: Object,
+ * teamTotalOverallPartial: number
  * }>}
  */
 async function computeTeamPartialPoints(eventId, teamId) {
@@ -79,14 +82,8 @@ async function computeTeamPartialPoints(eventId, teamId) {
     const totalBoardPoints = boardTasks.reduce((sum, t) => sum + t.base_points, 0);
 
     // 2. Retrieve team members.
-    const members = await db.getAll(
-        `
-        SELECT player_id
-        FROM bingo_team_members
-        WHERE team_id = ?
-        `,
-        [teamId],
-    );
+    const members = await db.getAll('SELECT player_id FROM bingo_team_members WHERE team_id = ?', [teamId]);
+
     if (!members.length) {
         return {
             partialPointsMap: {},
@@ -101,17 +98,14 @@ async function computeTeamPartialPoints(eventId, teamId) {
     const memberIds = members.map((m) => m.player_id);
 
     // 4. Calculate points from completed tasks only.
-    //    (These points come from the DB column points_awarded.)
     const rows = await db.getAll(
-        `
-        SELECT player_id, SUM(points_awarded) AS total_points
-        FROM bingo_task_progress
-        WHERE event_id = ?
-          AND player_id IN (${memberIds.map(() => '?').join(',')})
-        GROUP BY player_id
-        `,
+        `SELECT player_id, SUM(points_awarded) AS total_points
+         FROM bingo_task_progress
+         WHERE event_id = ? AND player_id IN (${memberIds.map(() => '?').join(',')})
+         GROUP BY player_id`,
         [eventId, ...memberIds],
     );
+
     const partialPointsMap = {};
     let teamTotalPartial = 0;
     for (const row of rows) {
@@ -121,37 +115,59 @@ async function computeTeamPartialPoints(eventId, teamId) {
     }
 
     // 5. Compute overall progression for any progress (including partial completions).
-    //    We'll fetch all progress records for team members for this event (ignoring status).
     const allProgress = await db.getAll(
-        `
-        SELECT player_id, task_id, progress_value
-        FROM bingo_task_progress
-        WHERE event_id = ?
-          AND player_id IN (${memberIds.map(() => '?').join(',')})
-        `,
+        `SELECT player_id, task_id, progress_value
+         FROM bingo_task_progress
+         WHERE event_id = ? AND player_id IN (${memberIds.map(() => '?').join(',')})`,
         [eventId, ...memberIds],
     );
-    // Create a lookup: { [player_id + '_' + task_id]: progress_value }
+
+    // Create a lookup table { "playerId_taskId": progressValue }
     const progressLookup = {};
     for (const record of allProgress) {
-        progressLookup[`${record.player_id}_${record.task_id}`] = record.progress_value;
+        progressLookup[`${record.player_id}_${record.task_id}`] = record.progress_value || 0;
     }
 
-    // Now, for every task and every team member, calculate their current partial progress.
+    // Initialize storage for tracking overall partial points (per team)
     const overallPartialPointsMap = {};
     let teamTotalOverallPartial = 0;
-    // For overall progression, we want to capture partial progress precisely,
-    // so we pass false as the roundPerTask flag.
+
+    // Process each task on the board (team-wide)
     for (const task of boardTasks) {
         const { task_id, base_points, targetValue } = task;
+        let totalRawProgress = 0;
+
+        // Compute total team progress for this task (capped at `targetValue`)
         for (const member of members) {
             const key = `${member.player_id}_${task_id}`;
-            const progressValue = progressLookup[key] || 0;
-            // Calculate partial progress (even if not completed).
-            const partialOverall = computePartialPoints(progressValue, targetValue, base_points, false);
-            overallPartialPointsMap[member.player_id] = (overallPartialPointsMap[member.player_id] || 0) + partialOverall;
-            teamTotalOverallPartial += partialOverall;
+            totalRawProgress += progressLookup[key] || 0;
         }
+        const finalTeamProgress = Math.min(totalRawProgress, targetValue); // ✅ Cap total progress
+
+        // ✅ Distribute progress fairly across team members
+        let remainingTarget = targetValue;
+        const sortedMembers = members
+            .map((m) => ({
+                player_id: m.player_id,
+                contribution: progressLookup[`${m.player_id}_${task_id}`] || 0,
+            }))
+            .sort((a, b) => b.contribution - a.contribution); // Sort by highest contribution first
+
+        for (const member of sortedMembers) {
+            if (remainingTarget <= 0) break; // Stop if we've allocated all progress
+            const key = `${member.player_id}_${task_id}`;
+            const cappedContribution = Math.min(progressLookup[key] || 0, remainingTarget);
+
+            // ✅ Ensure fair distribution
+            remainingTarget -= cappedContribution;
+
+            // ✅ Compute member contribution points
+            const memberPoints = computePartialPoints(cappedContribution, targetValue, base_points, false);
+            overallPartialPointsMap[member.player_id] = (overallPartialPointsMap[member.player_id] || 0) + memberPoints;
+        }
+
+        // ✅ Accumulate overall points contribution (final team-wide points)
+        teamTotalOverallPartial += computePartialPoints(finalTeamProgress, targetValue, base_points, false);
     }
 
     return {
@@ -165,12 +181,13 @@ async function computeTeamPartialPoints(eventId, teamId) {
 
 /**
  * Computes partial points for an INDIVIDUAL, returning:
- *  - partialPoints
- *  - totalBoardPoints
+ * - partialPoints
+ * - totalBoardPoints
  *
  * @param {number} eventId - The Bingo Event ID.
  * @param {number} playerId - The Player ID.
  * @param {boolean} roundPerTask - Whether to round points per task.
+ * @returns
  */
 async function computeIndividualPartialPoints(eventId, playerId, roundPerTask = true) {
     const boardTasks = await getBoardTasksForEvent(eventId);
@@ -239,7 +256,7 @@ async function saveTaskPointsAwarded(eventId, playerId, taskId, basePoints, prog
 
         // ✅ Ensure progress doesn't exceed task target
         const cappedProgress = Math.min(effectiveProgress, targetValue);
-        const taskPartialPoints = computePartialPoints(cappedProgress, targetValue, basePoints, true);
+        let taskPartialPoints = computePartialPoints(cappedProgress, targetValue, basePoints, true);
 
         // ✅ Check if task is already completed for the player
         const isCompleted = await db.getOne(
@@ -247,6 +264,25 @@ async function saveTaskPointsAwarded(eventId, playerId, taskId, basePoints, prog
              WHERE event_id = ? AND player_id = ? AND task_id = ?`,
             [eventId, playerId, taskId],
         );
+
+        const activeParameter = await db.getOne(
+            `
+            SELECT parameter
+            FROM bingo_tasks
+            WHERE task_id = ?
+            `,
+            [taskId],
+        );
+
+        const comps = await db.getAll(`
+              SELECT metric
+              FROM competitions
+              WHERE type IN ('SOTW','BOTW')
+            `);
+
+        if (taskPartialPoints > 0 && comps.some((comp) => comp.metric === activeParameter?.parameter)) {
+            taskPartialPoints += 50;
+        }
 
         // ✅ Only update points if the task is marked as "completed"
         if (isCompleted?.status === 'completed') {
@@ -277,7 +313,6 @@ async function saveTaskPointsAwarded(eventId, playerId, taskId, basePoints, prog
 }
 
 /**
- * OLD, BUT WORKING (INCORRECT SORTING)
  * Helper function to calculate effective team progress.
  * It sorts team members in ascending order by their raw progress.
  * Then, starting from the lowest, it subtracts their progress from the target.
@@ -286,84 +321,87 @@ async function saveTaskPointsAwarded(eventId, playerId, taskId, basePoints, prog
  * @param {Array<{ playerId: string|number, progress: number }>} teamMembers - Array of team members with their raw progress.
  * @param {number} target - The target progress value.
  * @returns {Array<{ playerId: string|number, originalProgress: number, effectiveProgress: number }>}
- 
+ */
 function calculateTeamEffectiveProgress(teamMembers, target) {
-    // Clone and sort team members in ascending order by their recorded progress.
-    const sortedMembers = [...teamMembers].sort((a, b) => a.progress - b.progress);
-    let remainingTarget = target;
+    // Sort by `last_updated`, tie-breaker by `player_id` for deterministic order
+    const sortedMembers = [...teamMembers].sort((a, b) => {
+        const timeDiff = new Date(a.last_updated) - new Date(b.last_updated);
+        return timeDiff !== 0 ? timeDiff : a.playerId - b.playerId;
+    });
+
+    let remainingTarget = target; // Total task goal
     const effectiveResults = [];
- 
-    // Process each member in sorted order.
+
     for (const member of sortedMembers) {
-        // The effective contribution is the minimum between the member's progress and the remaining target.
-        const effective = Math.min(member.progress, remainingTarget);
+        if (remainingTarget <= 0) {
+            // If we've already allocated all possible progress, zero out the remaining members
+            effectiveResults.push({
+                playerId: member.playerId,
+                originalProgress: member.progress,
+                effectiveProgress: 0, // No excess progress allowed
+            });
+            continue;
+        }
+
+        // If there's progress already allocated, deduct it from the highest contributor
+        let effective = Math.min(member.progress, remainingTarget);
+
+        // ✅ If another player has over-progressed, deduct it from their total
+        const existingContribution = effectiveResults.reduce((sum, m) => sum + m.effectiveProgress, 0);
+        const excess = existingContribution + effective - target;
+
+        if (excess > 0) {
+            effective -= excess; // ✅ Deduct excess from the highest contributor
+        }
+
+        // ✅ Save the new effective progress
         effectiveResults.push({
             playerId: member.playerId,
             originalProgress: member.progress,
             effectiveProgress: effective,
         });
+
+        // Reduce the remaining progress allocation
         remainingTarget -= effective;
-        if (remainingTarget <= 0) break;
     }
-    // If there are members left after the target is fully allocated, assign them zero effective progress.
-    if (effectiveResults.length < sortedMembers.length) {
-        for (let i = effectiveResults.length; i < sortedMembers.length; i++) {
-            effectiveResults.push({
-                playerId: sortedMembers[i].playerId,
-                originalProgress: sortedMembers[i].progress,
-                effectiveProgress: 0,
-            });
-        }
-    }
+
     return effectiveResults;
 }
- */
 
 /**
- * OLD, BUT WORKING (INCORRECT SORTING)
- * Helper function to calculate effective team progress.
- * It sorts team members in ascending order by their raw progress.
- * Then, starting from the lowest, it subtracts their progress from the target.
- * If a member's progress exceeds the remaining target, it's capped at the remaining value.
- *
- * @param {Array<{ playerId: string|number, progress: number }>} teamMembers - Array of team members with their raw progress.
- * @param {number} target - The target progress value.
- * @returns {Array<{ playerId: string|number, originalProgress: number, effectiveProgress: number }>}
- */
 function calculateTeamEffectiveProgress(teamMembers, target) {
-    // Sort team members by last_updated in ascending order (oldest first).
-    // Make sure each teamMember object includes a 'last_updated' property.
+    // Sort by last_updated to prioritize older contributions first
     const sortedMembers = [...teamMembers].sort((a, b) => new Date(a.last_updated) - new Date(b.last_updated));
+ 
     let remainingTarget = target;
     const effectiveResults = [];
-
-    // Process each member in sorted order.
+ 
     for (const member of sortedMembers) {
-        // The effective contribution is the minimum between the member's progress and the remaining target.
+        if (remainingTarget <= 0) {
+            // Cap any further contributions at 0
+            effectiveResults.push({
+                playerId: member.playerId,
+                originalProgress: member.progress,
+                effectiveProgress: 0, // No excess progress allowed
+            });
+            continue;
+        }
+ 
+        // Assign contribution, ensuring it does not exceed the remaining target
         const effective = Math.min(member.progress, remainingTarget);
         effectiveResults.push({
             playerId: member.playerId,
             originalProgress: member.progress,
             effectiveProgress: effective,
         });
+ 
+        // Reduce the remaining target accordingly
         remainingTarget -= effective;
-        if (remainingTarget <= 0) break;
     }
-
-    // For any members that were not processed (i.e. target already met),
-    // assign them zero effective progress.
-    if (effectiveResults.length < sortedMembers.length) {
-        for (let i = effectiveResults.length; i < sortedMembers.length; i++) {
-            effectiveResults.push({
-                playerId: sortedMembers[i].playerId,
-                originalProgress: sortedMembers[i].progress,
-                effectiveProgress: 0,
-            });
-        }
-    }
+ 
     return effectiveResults;
 }
-
+ */
 module.exports = {
     computePartialPoints,
     computeOverallPercentage,

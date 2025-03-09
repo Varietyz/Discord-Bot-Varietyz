@@ -4,7 +4,7 @@ const logger = require('../../../../essentials/logger');
 const client = require('../../../../../../main');
 const { reassignTeamProgress, getOngoingEventId, getActivePlayer, appendBingoProgression } = require('./teamCommandHelpers');
 const handleLeave = require('./handleLeave');
-const synchronizeTaskCompletion = require('../../../../essentials/syncTeamData');
+const {synchronizeTaskCompletion} = require('../../../../essentials/syncTeamData');
 
 /**
  * Handles a player joining a Bingo team with advanced task progression checks.
@@ -34,21 +34,40 @@ async function handleJoin(interaction) {
             return interaction.editReply({ content: `❌ Team **${teamName}** not found or invalid passkey.`, flags: 64 });
         }
 
-        // Get completed task counts for the team and the player
-        const teamCompletedCount = await db.getOne(
-            `SELECT COUNT(*) AS completed FROM bingo_task_progress 
-             WHERE event_id = ? AND team_id = ? AND status = 'completed'`,
-            [eventId, teamRow.team_id],
-        );
+        // Get the end time of the current ongoing event
+        const eventEndTimeRow = await db.getOne('SELECT end_time FROM bingo_state WHERE event_id = ? AND state = \'ongoing\'', [eventId]);
+
+        const eventEndTime = eventEndTimeRow?.end_time ? Math.floor(new Date(eventEndTimeRow.end_time).getTime() / 1000) : null;
 
         const playerCompletedCount = await db.getOne(
             `SELECT COUNT(*) AS completed FROM bingo_task_progress 
-             WHERE event_id = ? AND player_id = ? AND status = 'completed'`,
+     WHERE event_id = ? AND player_id = ? AND status = 'completed'`,
             [eventId, playerId],
         );
 
-        if (playerCompletedCount.completed > teamCompletedCount.completed) {
-            return interaction.editReply({ content: `⚠️ You have completed more tasks than **${teamName}**. You **cannot join** this team.`, flags: 64 });
+        if ((playerCompletedCount?.completed || 0) > 0) {
+            return interaction.editReply({
+                content: `⚠️ **Restricted:**  
+        > You have already completed tasks in this event.  
+        > You may join a team again **after** <t:${eventEndTime}:F> or if a new Bingo card is completed earlier.`,
+                flags: 64,
+            });
+        }
+
+        // Get completed task counts for the team and the player
+        const teamCompletedCount = await db.getOne(
+            `SELECT COUNT(*) AS completed FROM bingo_task_progress 
+     WHERE event_id = ? AND team_id = ? AND status = 'completed'`,
+            [eventId, teamRow.team_id],
+        );
+
+        if ((teamCompletedCount?.completed || 0) > 0) {
+            return interaction.editReply({
+                content: `⚠️ **Restricted:**  
+        > The team **\`${teamName}\`** already has a completed task.  
+        > You may join a team again **after** <t:${eventEndTime}:F> or if a new Bingo card is completed earlier.`,
+                flags: 64,
+            });
         }
 
         const existingMembership = await db.getOne('SELECT team_id FROM bingo_team_members WHERE player_id = ? AND team_id IN (SELECT team_id FROM bingo_teams WHERE event_id = ?)', [playerId, eventId]);

@@ -26,19 +26,20 @@ function initializeDatabase() {
  */
 async function dropTables(db) {
     const tables = [
-        //'bingo_events',
-        //'bingo_tasks',
-        //'bingo_boards',
-        //'bingo_board_cells',
-        //'bingo_event_baseline',
+        'bingo_events',
+        'bingo_tasks',
+        'bingo_boards',
+        'bingo_board_cells',
+        'bingo_event_baseline',
         'bingo_task_progress',
-        //'bingo_state',
-        //'bingo_history',
+        'bingo_state',
+        'bingo_history',
         'bingo_leaderboard',
         'bingo_patterns_awarded',
         //'bingo_teams',
         //'bingo_team_members',
         'bingo_embeds',
+        'bingo_pattern_rotation',
     ];
     try {
         for (const table of tables) {

@@ -8,7 +8,7 @@ const { getLastFetchedTime, setLastFetchedTime } = require('../../utils/fetchers
 const { getDataAttributes, getDataColumn, upsertTaskProgress } = require('../../services/bingo/bingoTaskManager');
 const { computeOverallPercentage, computeTeamPartialPoints, computeIndividualPartialPoints } = require('../../services/bingo/bingoCalculations');
 const getEmojiWithFallback = require('../../utils/fetchers/getEmojiWithFallback');
-const { getTeamTaskProgress, getPlayerTaskProgress } = require('../../services/bingo/bingoEmbedData');
+const { getTeamTaskProgress, getPlayerTaskProgress } = require('../../services/bingo/embeds/bingoEmbedData');
 const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
 
 /**

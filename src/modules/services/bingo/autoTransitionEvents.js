@@ -22,7 +22,7 @@ async function autoTransitionEvents() {
 
         if (!existingEvent) {
             logger.info('[autoTransitionEvents] No existing events found. Creating the first event...');
-
+            await generateDynamicTasks();
             // 🔄 ✅ Rotate and start a new event properly
             await rotateAndStartNewEvent(now, null);
 
@@ -41,8 +41,8 @@ async function autoTransitionEvents() {
             const timeUp = checkEventTimeout(event.start_time, event.end_time);
             const fullComplete = await hasFullCompletion(eventId);
 
-            // ✅ End Event if Timeout or Full Completion
             if (timeUp || fullComplete) {
+                // ✅ End Event if Timeout or Full Completion
                 logger.info(`[autoTransitionEvents] Ending event #${eventId} due to ${timeUp ? 'timeUp' : 'fullCompletion'}`);
                 await handleEventCompletion(eventId);
 
@@ -232,4 +232,6 @@ async function hasFullCompletion(eventId) {
 
 module.exports = {
     autoTransitionEvents,
+    handleEventCompletion,
+    rotateAndStartNewEvent,
 };

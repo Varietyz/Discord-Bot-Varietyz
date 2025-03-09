@@ -69,20 +69,108 @@ async function editEmbed(client, channelId, messageId, newEmbed, eventId, embedT
         }
 
         const message = await fetchMessage(channel, messageId);
+
         if (message) {
+            logger.info(`[EmbedManager] Editing message #${messageId} for ${embedType}`);
+
+            // ✅ If this is a universal pattern embed, remove previous attachments
+            const hasAttachments = message.attachments.size > 0;
+            const isImageEmbed = embedType === 'bingo_info';
+
+            if (hasAttachments && !isImageEmbed) {
+                logger.info(`[EmbedManager] Re-sending message WITHOUT an image for ${embedType}`);
+
+                // Delete old message
+                await message.delete();
+                await db.runQuery('DELETE FROM bingo_embeds WHERE message_id = ?', [messageId]);
+
+                // Send new message without an image
+                const newMessage = await channel.send({ embeds: [newEmbed] });
+
+                // Save new message ID
+                await createEmbedRecord(eventId, null, null, null, newMessage.id, channel.id, embedType);
+
+                logger.info(`[EmbedManager] Successfully replaced message for ${embedType} without an image.`);
+                return;
+            }
+
+            // ✅ If no attachment issues, proceed with a normal edit
             await message.edit({ embeds: [newEmbed] });
-            logger.info(`[EmbedManager] Edited message #${messageId}`);
+            logger.info(`[EmbedManager] Updated embed successfully for message #${messageId}`);
         } else {
             logger.warn(`[EmbedManager] Message #${messageId} not found. Deleting embed record.`);
             await db.runQuery('DELETE FROM bingo_embeds WHERE message_id = ?', [messageId]);
 
+            // ✅ Send a new message
             const newMessage = await channel.send({ embeds: [newEmbed] });
 
-            const eventToUse = eventId ?? -1;
+            // Save new message ID
+            await createEmbedRecord(eventId, null, null, null, newMessage.id, channel.id, embedType);
 
-            await createEmbedRecord(eventToUse, null, null, null, newMessage.id, channel.id, embedType);
+            logger.info(`[EmbedManager] Created new ${embedType} embed for event #${eventId} after missing message.`);
+        }
+    } catch (err) {
+        logger.error(`[EmbedManager] Failed to edit embed #${messageId}: ${err.message}`);
+    }
+}
 
-            logger.info(`[EmbedManager] Created new ${embedType} embed for event #${eventToUse} after missing message.`);
+/**
+ * Edits an embed message and ensures that an image attachment is properly included.
+ * If Discord does not allow modifying an attachment, this function re-sends the embed.
+ *
+ * @param {Object} client - The Discord client.
+ * @param {string} channelId - The channel ID where the embed is located.
+ * @param {string} messageId - The message ID of the embed.
+ * @param {EmbedBuilder} newEmbed - The updated embed.
+ * @param {number} eventId - The event ID.
+ * @param {string} embedType - The type of embed (e.g., 'bingo_info').
+ * @param {Array} attachments - Image files to be attached.
+ */
+async function editEmbedAttachment(client, channelId, messageId, newEmbed, eventId, embedType, attachments = []) {
+    try {
+        const channel = client.channels.cache.get(channelId);
+        if (!channel) {
+            logger.warn(`[EmbedManager] Channel #${channelId} not found. Deleting embed record.`);
+            await db.runQuery('DELETE FROM bingo_embeds WHERE channel_id = ?', [channelId]);
+            return;
+        }
+
+        const message = await fetchMessage(channel, messageId);
+
+        if (message) {
+            logger.info(`[EmbedManager] Editing message #${messageId} for ${embedType}`);
+
+            // ✅ Discord does NOT allow editing an attachment, so we must re-send if an image exists
+            if (attachments.length > 0) {
+                logger.info(`[EmbedManager] Re-sending message with new attachment for ${embedType}`);
+
+                // ✅ Delete the old message
+                await message.delete();
+                await db.runQuery('DELETE FROM bingo_embeds WHERE message_id = ?', [messageId]);
+
+                // ✅ Send a new message with the embed and image
+                const newMessage = await channel.send({ embeds: [newEmbed], files: attachments });
+
+                // ✅ Save the new message ID to the database
+                await createEmbedRecord(eventId, null, null, null, newMessage.id, channel.id, embedType);
+
+                logger.info(`[EmbedManager] Successfully replaced message for ${embedType} with image inside the embed.`);
+            } else {
+                // ✅ If no image update is needed, simply edit the existing embed
+                await message.edit({ embeds: [newEmbed] });
+                logger.info(`[EmbedManager] Updated embed successfully for message #${messageId}`);
+            }
+        } else {
+            logger.warn(`[EmbedManager] Message #${messageId} not found. Deleting embed record.`);
+            await db.runQuery('DELETE FROM bingo_embeds WHERE message_id = ?', [messageId]);
+
+            // ✅ Send a new message with the embed and image
+            const newMessage = await channel.send({ embeds: [newEmbed], files: attachments });
+
+            // ✅ Save the new message ID to the database
+            await createEmbedRecord(eventId, null, null, null, newMessage.id, channel.id, embedType);
+
+            logger.info(`[EmbedManager] Created new ${embedType} embed for event #${eventId} after missing message.`);
         }
     } catch (err) {
         logger.error(`[EmbedManager] Failed to edit embed #${messageId}: ${err.message}`);
@@ -217,4 +305,5 @@ module.exports = {
     deleteEmbed,
     fetchMessage,
     purgeStaleEmbeds,
+    editEmbedAttachment,
 };

@@ -9,10 +9,27 @@
 │   └─ 📄 Varietyz Bot.code-workspace
 ├─ 📄 CODE_OF_CONDUCT.md
 ├─ 📄 CONTRIBUTING.md
+├─ 📂 Generic Resource Distribution
+│   ├─ 📄 step_10_lg.png
+│   ├─ 📄 step_11_lg.png
+│   ├─ 📄 step_12_lg.png
+│   ├─ 📄 Step_3_lg.png
+│   ├─ 📄 step_4_lg.png
+│   ├─ 📄 step_5_lg.png
+│   ├─ 📄 step_6_lg.png
+│   ├─ 📄 step_7_lg.png
+│   ├─ 📄 step_8_lg.png
+│   └─ 📄 step_9_lg.png
 ├─ 📄 jsdoc.json
 ├─ 📄 JSDOC_README.md
 ├─ 📄 LICENSE
 ├─ 📄 package.json
+├─ 📂 PSD
+│   ├─ 📄 BingoCard.psd
+│   ├─ 📄 botw_banner.psd
+│   ├─ 📄 Discord Server Banner.psd
+│   ├─ 📄 SOTW_BOTW_GIF.psd
+│   └─ 📄 validated_cross.psd
 ├─ 📄 README.md
 ├─ 📂 readme_collection
 │   └─ 📄 readme.md
@@ -59,7 +76,8 @@
 │   │   │   │   ├─ 📂 competitions
 │   │   │   │   │   ├─ 📂 bingo
 │   │   │   │   │   │   ├─ 📄 bingoEvent.js
-│   │   │   │   │   │   └─ 📄 bingoManagement.js
+│   │   │   │   │   │   ├─ 📄 bingoManagement.js
+│   │   │   │   │   │   └─ 📄 bingoRandomProgress.js
 │   │   │   │   │   ├─ 📄 queueCompetition.js
 │   │   │   │   │   ├─ 📄 setRotationPeriod.js
 │   │   │   │   │   └─ 📄 updateTop10Channel.js
@@ -70,6 +88,7 @@
 │   │   │   │   │   ├─ 📄 registerSecretKeyCC.js
 │   │   │   │   │   └─ 📄 removeSecretKeyCC.js
 │   │   │   │   ├─ 📂 guild
+│   │   │   │   │   ├─ 📄 guildChannelsSetup.js
 │   │   │   │   │   ├─ 📄 setupBasicChannels.js
 │   │   │   │   │   ├─ 📄 setupBingoChannels.js
 │   │   │   │   │   ├─ 📄 setupClanChat.js
@@ -182,10 +201,10 @@
 │   │   │   ├─ 📂 bingo
 │   │   │   │   ├─ 📄 autoTransitionEvents.js
 │   │   │   │   ├─ 📄 bingoCalculations.js
-│   │   │   │   ├─ 📄 bingoEmbedData.js
-│   │   │   │   ├─ 📄 bingoEmbeds.js
+│   │   │   │   ├─ 📄 bingoImageGenerator copy.js
 │   │   │   │   ├─ 📄 bingoImageGenerator.js
 │   │   │   │   ├─ 📄 bingoLeaderboard.js
+│   │   │   │   ├─ 📄 bingoPatternRecognition copy.js
 │   │   │   │   ├─ 📄 bingoPatternRecognition.js
 │   │   │   │   ├─ 📄 bingoPatterns.js
 │   │   │   │   ├─ 📄 bingoService.js
@@ -194,6 +213,9 @@
 │   │   │   │   ├─ 📄 bingoUtils.js
 │   │   │   │   ├─ 📄 dynamicTaskGenerator.js
 │   │   │   │   └─ 📂 embeds
+│   │   │   │       ├─ 📄 bingoEmbedData.js
+│   │   │   │       ├─ 📄 bingoEmbeds.js
+│   │   │   │       ├─ 📄 bingoPatternNotifications.js
 │   │   │   │       └─ 📂 handling
 │   │   │   │           ├─ 📄 bingoEmbedHelper.js
 │   │   │   │           └─ 📄 bingoEmbedManager.js
@@ -215,6 +237,8 @@
 │   │       │   ├─ 📄 dbUtils.js
 │   │       │   ├─ 📄 ensureBasicChannels.js
 │   │       │   ├─ 📄 ensureBingoCategory.js
+│   │       │   ├─ 📄 ensureChannels.js
+│   │       │   ├─ 📄 ensureChannelsConfig.js
 │   │       │   ├─ 📄 ensureCompetitionCategory.js
 │   │       │   ├─ 📄 ensureLiveGainsCategory.js
 │   │       │   ├─ 📄 ensureLoggingCategory.js
@@ -224,6 +248,7 @@
 │   │       │   ├─ 📄 orphanCleaner.js
 │   │       │   ├─ 📄 slashCommandHandler.js
 │   │       │   ├─ 📄 syncClanRanks.js
+│   │       │   ├─ 📄 syncTeamData.js
 │   │       │   ├─ 📄 updatePlayerData.js
 │   │       │   └─ 📄 updatePlayerPoints.js
 │   │       ├─ 📂 fetchers
@@ -259,7 +284,8 @@
 │   │       └─ 📂 normalizing
 │   │           ├─ 📄 normalizeKey.js
 │   │           ├─ 📄 normalizeRsn.js
-│   │           └─ 📄 normalizeStr.js
+│   │           ├─ 📄 normalizeStr.js
+│   │           └─ 📄 normalizeUpper.js
 │   ├─ 📂 resources
 │   │   ├─ 📂 active_ranks
 │   │   │   ├─ 📄 Adamant.png
@@ -289,10 +315,15 @@
 │   │   │   ├─ 📄 Wild.png
 │   │   │   └─ 📄 Zenyte.png
 │   │   ├─ 📂 anim_emojis
+│   │   │   ├─ 📄 bosses_animated.gif
+│   │   │   ├─ 📄 cash_drain.gif
 │   │   │   ├─ 📄 fire_cape.gif
 │   │   │   ├─ 📄 infernal_cape.gif
-│   │   │   └─ 📄 infernal_max_cape.gif
+│   │   │   ├─ 📄 infernal_max_cape.gif
+│   │   │   └─ 📄 skills_animated.gif
 │   │   ├─ 📂 bingo
+│   │   │   ├─ 📄 default.png
+│   │   │   ├─ 📄 default_cross.png
 │   │   │   ├─ 📂 skills
 │   │   │   │   ├─ 📄 agility.png
 │   │   │   │   ├─ 📄 attack.png
@@ -319,7 +350,17 @@
 │   │   │   │   ├─ 📄 thieving.png
 │   │   │   │   └─ 📄 woodcutting.png
 │   │   │   ├─ 📄 template_card.png
-│   │   │   └─ 📄 validated_cross.png
+│   │   │   ├─ 📄 template_card_rosey.png
+│   │   │   ├─ 📄 validated_cross.png
+│   │   │   └─ 📄 validated_cross_rosey.png
+│   │   ├─ 📂 botw_sotw
+│   │   │   ├─ 📄 botw_banner.png
+│   │   │   ├─ 📄 botw_banner_rosey.gif
+│   │   │   ├─ 📄 botw_banner_rosey.png
+│   │   │   ├─ 📄 sotw_banner.png
+│   │   │   ├─ 📄 sotw_banner_rosey.gif
+│   │   │   ├─ 📄 sotw_banner_rosey.png
+│   │   │   └─ 📄 SOTW_BOTW_GIF.gif
 │   │   ├─ 📂 emojis
 │   │   │   ├─ 📄 1_loading.gif
 │   │   │   ├─ 📄 2_loading.gif
@@ -350,7 +391,9 @@
 │   │   │   ├─ 📄 chaos_fanatic.png
 │   │   │   ├─ 📄 check.gif
 │   │   │   ├─ 📄 checkblancoo.gif
-│   │   │   ├─ 📄 clan_loading.gif
+│   │   │   ├─ 📄 clan_icon.png
+│   │   │   ├─ 📄 clan_loading_solo.gif
+│   │   │   ├─ 📄 clan_loading_team.gif
 │   │   │   ├─ 📄 clan_logo.gif
 │   │   │   ├─ 📄 clue_scrolls_all.png
 │   │   │   ├─ 📄 clue_scrolls_beginner.png
@@ -447,6 +490,7 @@
 │   │   │   ├─ 📄 vetion.png
 │   │   │   ├─ 📄 vorkath.png
 │   │   │   ├─ 📄 wintertodt.png
+│   │   │   ├─ 📄 wise_old_man.png
 │   │   │   ├─ 📄 woodcutting.png
 │   │   │   ├─ 📄 zalcano.png
 │   │   │   └─ 📄 zulrah.png
@@ -896,6 +940,6 @@
 │   │   ├─ 📄 dropMainDb.js
 │   │   └─ 📄 dropMsgDb.js
 │   └─ 📄 tasks.js
-├─ 📄 src.rar
+├─ 📄 src.zip
 ├─ 📄 template.hbs
 └─ 📄 TODO.md

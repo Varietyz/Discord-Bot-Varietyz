@@ -66,7 +66,7 @@ module.exports = {
             collector.on('collect', async (i) => {
                 if (i.customId === 'confirm_assign_rsn') {
                     await runQuery('INSERT INTO registered_rsn (player_id, discord_id, rsn, registered_at) VALUES (?, ?, ?, ?)', [womPlayerId, targetUser.id, rsn, new Date().toISOString()]);
-                    await interaction.reply({
+                    await i.update({
                         content: `${loadingEmoji} Collecting player data for ${profileLink} \`(WOM ID: ${womPlayerId})\`...`,
                         flags: 64,
                     });
@@ -89,7 +89,7 @@ module.exports = {
                     );
 
                     if (validRegistration && validRegistration.clan_player_id) {
-                        await interaction.editReply({
+                        await interaction.followUp({
                             content: `${loadingEmoji} ${profileLink} \`(WOM ID: ${womPlayerId})\` is confirmed as a clan member. Registering for bingo...`,
                             flags: 64,
                         });
@@ -98,7 +98,7 @@ module.exports = {
                         logger.info(`Player with WOM ID ${womPlayerId} and RSN ${rsn} is not a clan member. Skipping baseline update.`);
                     }
 
-                    await interaction.editReply({
+                    await interaction.followUp({
                         content: `✅ **Success!** The RSN "${profileLink}" \`(WOM ID: ${womPlayerId})\` assigned to user \`${targetUser.id}\` by admin ${interaction.user.id}`,
                         flags: 64,
                     });
@@ -112,7 +112,7 @@ module.exports = {
                     await targetUser.send({ embeds: [userEmbed] }).catch(() => {
                         logger.warn(`⚠️ Failed to send DM to user \`${targetUser.id}\`.`);
                     });
-                    await i.update({
+                    await interaction.followUp({
                         content: `✅ **Success:** The RSN "${profileLink}" \`(WOM ID: ${womPlayerId})\` has been successfully assigned to <@${targetUser.id}>.`,
                         components: [],
                         flags: 64,
@@ -127,7 +127,7 @@ module.exports = {
             });
             collector.on('end', async (collected, reason) => {
                 if (reason === 'time' && collected.size === 0) {
-                    await interaction.editReply({
+                    await interaction.followUp({
                         content: '⌛ **Timeout:** Confirmation timed out. RSN assignment has been canceled.',
                         components: [],
                         flags: 64,

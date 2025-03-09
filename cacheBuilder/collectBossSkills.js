@@ -1,7 +1,3 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable jsdoc/require-returns */
-// @ts-nocheck
-/* eslint-disable node/no-unsupported-features/es-syntax */
 // cacheImages.js
 
 const axios = require('axios');
@@ -170,6 +166,7 @@ const determineType = (metric) => {
 /**
  *
  * @param {number} ms
+ * @returns
  */
 async function sleep(ms) {
     if (typeof ms !== 'number' || ms < 0) {
@@ -210,17 +207,7 @@ const getUrlMetric = (metric, type) => {
     return metric;
 };
 
-/**
- * Generates the display name for the metric.
- * @param {string} metric - The metric name.
- * @returns {string} - The display name.
- */
-const getDisplayMetric = (metric) => {
-    return metric
-        .split('_')
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-        .join(' ');
-};
+
 
 /**
  * Downloads an image from a given URL and saves it to the cache directory.
@@ -235,7 +222,7 @@ const downloadImage = async (url, filename) => {
             await fs.access(filePath);
             console.log(`📄 Already cached: ${filename}`);
             return;
-        } catch {
+        } catch (err) {
             // File does not exist, proceed to download
         }
 
@@ -276,7 +263,6 @@ const buildImageCache = async () => {
             }
 
             const urlMetric = getUrlMetric(metric, type);
-            const displayMetric = getDisplayMetric(metric);
 
             // Determine the image URL based on the type
             let thumbnailIMG;

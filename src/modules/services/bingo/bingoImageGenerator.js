@@ -34,6 +34,7 @@ const TASK_COORDINATES = {
 /**
  *
  * @param name
+ * @returns
  */
 function splitTaskName(name) {
     if (!name) return { action: '', target: '' };
@@ -57,6 +58,7 @@ function splitTaskName(name) {
  * @param ctx
  * @param text
  * @param maxWidth
+ * @returns
  */
 function getWrappedText(ctx, text, maxWidth) {
     const words = text.split(' ');
@@ -107,8 +109,35 @@ async function generateBingoCard(boardId, id, isTeam = false) {
 
         const completedCrossPath = await getImagePath('validated_cross');
         let completedCrossImg = null;
+
         if (completedCrossPath) {
             completedCrossImg = await loadImage(completedCrossPath);
+        }
+
+        // 2) Fetch competitions of type SOTW or BOTW (simplified).
+        //    If you only want "active" ones, add date filters in your WHERE clause.
+        const comps = await db.getAll(`
+      SELECT metric, type
+      FROM competitions
+      WHERE type IN ('SOTW','BOTW')
+    `);
+
+        // 3) Build a map metric => 'sotw_notif.png' or 'botw_notif.png'
+        //    e.g. "woodcutting" => "sotw_notif.png", "the_whisperer" => "botw_notif.png"
+        const compNotifyMap = {};
+        for (const c of comps) {
+            compNotifyMap[c.metric] = `${c.metric}`;
+        }
+
+        // 4) Pre-load those notification images (optional).
+        //    If you have many, you might store them in a small object cache:
+        const notifImages = {};
+        for (const metricKey in compNotifyMap) {
+            const fileName = compNotifyMap[metricKey];
+            const path = await getCompImagePath(fileName);
+            if (path) {
+                notifImages[metricKey] = await loadImage(path);
+            }
         }
 
         // Determine what to pass to the SQL query:
@@ -139,7 +168,7 @@ async function generateBingoCard(boardId, id, isTeam = false) {
                 continue;
             }
 
-            const { status, imagePath, task_name } = t;
+            const { status, imagePath, task_name, parameter } = t;
 
             drawEmptyBox(ctx, coords.x, coords.y, CROSS_SIZE);
 
@@ -160,7 +189,13 @@ async function generateBingoCard(boardId, id, isTeam = false) {
                 const scaleFactor = Math.min(CROSS_SIZE / originalWidth, CROSS_SIZE / originalHeight) * scaleModifier;
                 const newWidth = originalWidth * scaleFactor;
                 const newHeight = originalHeight * scaleFactor;
-                const centralOffset = isType ? 45 : 55;
+                let centralOffset = isType ? 45 : 55;
+
+                // If the task is completed, move the icon upward by e.g. 20px
+                if (status === 'completed') {
+                    centralOffset -= 30;
+                }
+
                 const xOffset = (CROSS_SIZE - newWidth) / 2;
                 const yOffset = (CROSS_SIZE - newHeight) / 2 + centralOffset;
                 ctx.drawImage(iconImg, coords.x + xOffset, coords.y + yOffset, newWidth, newHeight);
@@ -171,48 +206,88 @@ async function generateBingoCard(boardId, id, isTeam = false) {
                 ctx.fillText('No Image', coords.x + CROSS_SIZE / 2, coords.y + CROSS_SIZE / 2);
             }
 
-            // Draw task text.
-            const textOffset = 15;
-            const { action, target } = splitTaskName(task_name);
-            ctx.fillStyle = '#000000';
-            ctx.font = '36px RuneScape';
-            ctx.textAlign = 'center';
-            // Create a drop-shadow effect for better legibility.
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset - 1);
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset - 1);
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset + 1);
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset + 1);
-            ctx.fillStyle = '#dc8a00'; // Orange
-            ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset);
+            if (status !== 'completed') {
+                // Draw task objective text.
+                const textOffset = 15;
+                const { action, target } = splitTaskName(task_name);
+                ctx.fillStyle = '#000000';
+                ctx.font = '36px RuneScape';
+                ctx.textAlign = 'center';
+                ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset - 1);
+                ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset - 1);
+                ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset + 1);
+                ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset + 1);
+                ctx.fillStyle = '#dc8a00'; // Orange // ctx.fillStyle = '#ff7aa5'; // Pink Rosey
+                ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset);
 
-            const actionToTargetSpacing = 17;
-            const targetStartY = coords.y + 70 + actionToTargetSpacing + textOffset;
-            const formattedTarget = normalizeUpper(target);
-            const wrappedTargetLines = getWrappedText(ctx, formattedTarget, CROSS_SIZE - 20);
-            const lineHeight = 28;
-            wrappedTargetLines.forEach((line, index) => {
-                ctx.fillText(line, coords.x + CROSS_SIZE / 2, targetStartY + index * lineHeight);
-            });
+                const actionToTargetSpacing = 17;
+                const targetStartY = coords.y + 70 + actionToTargetSpacing + textOffset;
+                const formattedTarget = normalizeUpper(target);
+                const wrappedTargetLines = getWrappedText(ctx, formattedTarget, CROSS_SIZE - 20);
+                const lineHeight = 28;
 
+                wrappedTargetLines.forEach((line, index) => {
+                    ctx.fillStyle = '#000000';
+                    // Create a drop-shadow effect for better legibility.
+                    ctx.fillText(line, coords.x + CROSS_SIZE / 2 - 1, targetStartY + index * lineHeight - 1);
+                    ctx.fillText(line, coords.x + CROSS_SIZE / 2 + 1, targetStartY + index * lineHeight - 1);
+                    ctx.fillText(line, coords.x + CROSS_SIZE / 2 - 1, targetStartY + index * lineHeight + 1);
+                    ctx.fillText(line, coords.x + CROSS_SIZE / 2 + 1, targetStartY + index * lineHeight + 1);
+                    ctx.fillStyle = '#dc8a00'; // Orange // ctx.fillStyle = '#ff7aa5'; // Pink Rosey
+                    ctx.fillText(line, coords.x + CROSS_SIZE / 2, targetStartY + index * lineHeight);
+                });
+            }
             if (status === 'completed' && completedCrossImg) {
                 ctx.drawImage(completedCrossImg, coords.x, coords.y, CROSS_SIZE, CROSS_SIZE);
             }
 
-            // Draw points text.
-            const pointsText = `${t.points_reward} pts`;
-            ctx.font = '32px RuneScape';
+            // 9) If there's a matching competition for this metric (parameter),
+            //    draw the appropriate "sotw_notif.png" or "botw_notif.png" in the top-right corner
+            const notifImg = notifImages[parameter];
+
+            ctx.font = '28px RuneScape';
             ctx.textAlign = 'left';
             ctx.fillStyle = '#000000';
-            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 - 1);
-            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 - 1);
-            ctx.fillText(pointsText, coords.x + 10 - 1, coords.y + CROSS_SIZE - 10 + 1);
-            ctx.fillText(pointsText, coords.x + 10 + 1, coords.y + CROSS_SIZE - 10 + 1);
-            ctx.fillStyle = '#00ff00';
+
+            const pointsText = `${t.points_reward} pts`;
+            let bonusText = ''; // Separate text for (+50)
+
+            if (notifImg) {
+                // ✅ Draw the notification image
+                const overlaySize = 32;
+                const overlayX = coords.x + 12;
+                const overlayY = coords.y + CROSS_SIZE + 10 - overlaySize - 47;
+                ctx.drawImage(notifImg, overlayX, overlayY, overlaySize, overlaySize);
+
+                bonusText = ' (+50)';
+            }
+
+            // ✅ Outline for the main text (28px)
+            for (const offset of [-1, 1]) {
+                ctx.fillText(pointsText, coords.x + 10 + offset, coords.y + CROSS_SIZE - 10);
+                ctx.fillText(pointsText, coords.x + 10, coords.y + CROSS_SIZE - 10 + offset);
+            }
+
+            // ✅ Draw main points text (28px)
+            ctx.fillStyle = notifImg ? '#19ffe8' : '#00ff00'; // Cyan if bonus, Green otherwise
             ctx.fillText(pointsText, coords.x + 10, coords.y + CROSS_SIZE - 10);
 
+            // ✅ Draw the "+50" bonus in a **smaller font**
+            if (bonusText) {
+                ctx.font = '18px RuneScape';
+                ctx.fillStyle = '#000000'; // Cyan color
+                const textWidth = ctx.measureText(pointsText).width; // Align correctly
+                for (const offset of [-1, 1]) {
+                    ctx.fillText(bonusText, coords.x + 10 + textWidth + 30 + offset, coords.y + CROSS_SIZE - 12);
+                    ctx.fillText(bonusText, coords.x + 10 + textWidth + 30, coords.y + CROSS_SIZE - 12 + offset);
+                }
+                ctx.fillStyle = '#19ffe8';
+                ctx.fillText(bonusText, coords.x + 10 + textWidth + 30, coords.y + CROSS_SIZE - 12);
+            }
+
+            ctx.font = '28px RuneScape';
             // Draw progress text.
             const progressText = `${t.progress}%`;
-            ctx.font = '28px RuneScape';
             ctx.textAlign = 'right';
             const hue = Math.floor((t.progress / 100) * 120);
             const progressColor = `hsl(${hue}, 100%, 50%)`;
@@ -241,7 +316,7 @@ async function generateBingoCard(boardId, id, isTeam = false) {
             const progressColor = `hsl(${hue}, 100%, 50%)`;
             ctx.font = '32px RuneScape';
             ctx.textAlign = 'left';
-            ctx.fillStyle = '#dc8a00';
+            ctx.fillStyle = '#dc8a00'; // ctx.fillStyle = '#ff7aa5'; // Pink Rosey
             ctx.fillText('Overall:', coordsX, coordsY);
             const overallWidth = ctx.measureText('Overall:').width + 4;
             ctx.fillStyle = '#000000';
@@ -277,12 +352,30 @@ function drawEmptyBox(ctx, x, y, size) {
 /**
  *
  * @param fileName
+ * @returns
  */
 async function getImagePath(fileName) {
     const row = await db.image.getOne(
         `
     SELECT file_path
     FROM bingo
+    WHERE file_name = ?
+  `,
+        [fileName],
+    );
+    return row ? row.file_path : null;
+}
+
+/**
+ *
+ * @param fileName
+ * @returns
+ */
+async function getCompImagePath(fileName) {
+    const row = await db.image.getOne(
+        `
+    SELECT file_path
+    FROM emojis
     WHERE file_name = ?
   `,
         [fileName],
@@ -309,7 +402,7 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
       bbc.task_id,
       bt.description AS task_name,
       bt.type,
-      bt.parameter,
+      bt.parameter AS parameter,
       bt.value,
       COALESCE(SUM(btp.progress_value), 0) AS progress_value,
       bt.base_points AS points_reward,
@@ -333,12 +426,9 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
   LIMIT 15
 `;
 
-    logger.info(`[BingoImageGenerator] Running SQL: ${sql}`);
     const eventId = await getEventId(boardId);
     const params = [...playerIdsArray, eventId, boardId];
-    logger.info(`[BingoImageGenerator] Using parameters: ${JSON.stringify(params)}`);
     const rows = await db.getAll(sql, params);
-    logger.info(`[BingoImageGenerator] Collected tasks: ${JSON.stringify(rows, null, 2)}`);
 
     // Enrich rows with image paths based on task type.
     for (const row of rows) {
@@ -416,6 +506,7 @@ async function getPlayerTasks(boardId, playerIds, isTeam = false) {
  *
  * @param progressValue
  * @param target
+ * @returns
  */
 function calculateProgressPercentage(progressValue, target) {
     const effectiveTarget = target;
@@ -428,6 +519,7 @@ function calculateProgressPercentage(progressValue, target) {
  * @param eventId
  * @param id
  * @param isTeam
+ * @returns
  */
 async function calculateOverallProgress(eventId, id, isTeam = false) {
     if (isTeam) {
@@ -445,6 +537,7 @@ async function calculateOverallProgress(eventId, id, isTeam = false) {
 /**
  *
  * @param boardId
+ * @returns
  */
 async function getEventId(boardId) {
     const row = await db.getOne(

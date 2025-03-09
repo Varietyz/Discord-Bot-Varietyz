@@ -4,6 +4,30 @@ const handleCreate = require('../../../utils/helpers/commands/bingo/teams/handle
 const handleJoin = require('../../../utils/helpers/commands/bingo/teams/handleJoin');
 const handleLeave = require('../../../utils/helpers/commands/bingo/teams/handleLeave');
 const handleList = require('../../../utils/helpers/commands/bingo/teams/handleList');
+const { getOngoingEventId } = require('../../../utils/helpers/commands/bingo/teams/teamCommandHelpers');
+const dbUtils = require('../../../utils/essentials/dbUtils');
+
+/**
+ *
+ * @param interaction
+ */
+async function autocomplete(interaction) {
+    try {
+        const eventId = await getOngoingEventId();
+        if (!eventId) {
+            return interaction.respond([]);
+        }
+
+        const query = interaction.options.getFocused().toLowerCase();
+        const teams = await dbUtils.getAll('SELECT team_name FROM bingo_teams WHERE event_id = ? AND LOWER(team_name) LIKE ? ORDER BY team_name ASC LIMIT 25', [eventId, `%${query}%`]);
+
+        const choices = teams.map((t) => ({ name: t.team_name, value: t.team_name }));
+        await interaction.respond(choices);
+    } catch (error) {
+        logger.error(`[Autocomplete] Error fetching team names: ${error.message}`);
+        await interaction.respond([]);
+    }
+}
 
 // --- Command Export --- //
 module.exports = {
@@ -21,7 +45,7 @@ module.exports = {
             sub
                 .setName('join')
                 .setDescription('Join an existing Bingo team.')
-                .addStringOption((o) => o.setName('team_name').setDescription('Team name').setRequired(true))
+                .addStringOption((o) => o.setName('team_name').setDescription('Team name').setRequired(true).setAutocomplete(true))
                 .addStringOption((o) => o.setName('passkey').setDescription('Passkey').setRequired(true)),
         )
         .addSubcommand((sub) => sub.setName('leave').setDescription('Leave your current Bingo team.'))
@@ -50,5 +74,14 @@ module.exports = {
                 await interaction.editReply({ content: '❌ An error occurred handling your request.' });
             }
         }
+    },
+
+    /**
+     * Autocomplete handler for team names when using `/bingo-team join`.
+     * @param {Interaction} interaction - The Discord interaction.
+     */
+    async autocomplete(interaction) {
+        if (interaction.options.getSubcommand() !== 'join') return;
+        await autocomplete(interaction); // ✅ Calls the `autocomplete` function from `handleJoin.js`
     },
 };
