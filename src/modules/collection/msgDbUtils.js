@@ -1,4 +1,5 @@
-const { dbPromise, SYSTEM_PATTERNS } = require('./msgDbConstants');
+const db = require('../utils/essentials/dbUtils');
+const { SYSTEM_PATTERNS } = require('./msgDbConstants');
 function isChatMessage(message) {
     return /\*\*[^*]+\*\*:\s/.test(message);
 }
@@ -101,8 +102,7 @@ function cleanupEmojiSystemMessage(message) {
     return { username: null, cleanedMessage: reformatText(message) };
 }
 async function getRecentMessages(limit = 50) {
-    const db = await dbPromise;
-    return db.all('SELECT message FROM chat_messages ORDER BY timestamp DESC LIMIT ?', [limit]);
+    return db.messages.getAll('SELECT message FROM chat_messages ORDER BY timestamp DESC LIMIT ?', [limit]);
 }
 module.exports = {
     getRecentMessages,

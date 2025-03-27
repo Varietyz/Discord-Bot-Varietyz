@@ -1,6 +1,7 @@
-const { dbPromise, systemTables, emojiCleanupTypes } = require('./msgDbConstants');
+const { systemTables, emojiCleanupTypes } = require('./msgDbConstants');
 const { reformatText, isChatMessage, cleanupEmojiSystemMessage, cleanupKeysRow, cleanupTasksRow, cleanupChatRow, combineExtraName, detectSystemMessage } = require('./msgDbUtils');
 const logger = require('../utils/essentials/logger');
+const db = require('../utils/essentials/dbUtils');
 /**
  *
  * @param rsn
@@ -14,8 +15,7 @@ async function saveMessage(rsn, message, messageId, timestamp) {
             const { username, cleanedMessage } = cleanupChatRow(message);
             if (username) rsn = username;
             message = cleanedMessage;
-            const db = await dbPromise;
-            await db.run('INSERT OR IGNORE INTO chat_messages (rsn, message, message_id, timestamp) VALUES (?, ?, ?, ?)', [rsn, message, messageId, new Date(timestamp).toISOString()]);
+            await db.messages.runQuery('INSERT OR IGNORE INTO chat_messages (rsn, message, message_id, timestamp) VALUES (?, ?, ?, ?)', [rsn, message, messageId, new Date(timestamp).toISOString()]);
             logger.info(`✅ 💬 Chat message stored: [${rsn}] ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
             return;
         }
@@ -50,8 +50,7 @@ async function saveMessage(rsn, message, messageId, timestamp) {
         }
         rsn = reformatText(rsn);
         message = reformatText(message);
-        const db = await dbPromise;
-        await db.run('INSERT OR IGNORE INTO chat_messages (rsn, message, message_id, timestamp) VALUES (?, ?, ?, ?)', [rsn, message, messageId, new Date(timestamp).toISOString()]);
+        await db.messages.runQuery('INSERT OR IGNORE INTO chat_messages (rsn, message, message_id, timestamp) VALUES (?, ?, ?, ?)', [rsn, message, messageId, new Date(timestamp).toISOString()]);
         logger.info(`✅ Fallback chat message stored: [${rsn}] ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
     } catch (error) {
         logger.error('❌ Database Save Error:', error);
@@ -67,13 +66,12 @@ async function saveMessage(rsn, message, messageId, timestamp) {
  */
 async function saveSystemMessage(type, rsn, message, messageId, timestamp) {
     try {
-        const db = await dbPromise;
         const tableName = systemTables[type];
         if (!tableName) {
             logger.warn(`⚠️ No table mapping defined for system type: ${type}`);
             return;
         }
-        await db.run(`INSERT OR IGNORE INTO ${tableName} (rsn, message, message_id, timestamp) VALUES (?, ?, ?, ?)`, [rsn, message, messageId, new Date(timestamp).toISOString()]);
+        await db.messages.runQuery(`INSERT OR IGNORE INTO ${tableName} (rsn, message, message_id, timestamp) VALUES (?, ?, ?, ?)`, [rsn, message, messageId, new Date(timestamp).toISOString()]);
         logger.info(`✅ 🎉 Saved system message of type [${type}] from [${rsn}]: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
     } catch (error) {
         logger.error(`❌ Error saving system message (type ${type}):`, error);

@@ -1,5 +1,11 @@
 const schedule = require('node-schedule');
 const logger = require('../../utils/essentials/logger');
+/**
+ *
+ * @param endTime
+ * @param rotationCallback
+ * @param scheduledJobs
+ */
 function scheduleRotation(endTime, rotationCallback, scheduledJobs) {
     const jobName = 'rotation';
     if (scheduledJobs.has(jobName)) {
@@ -9,6 +15,9 @@ function scheduleRotation(endTime, rotationCallback, scheduledJobs) {
         logger.info('🚫 **Cleared existing scheduled rotation job.**');
     }
     let isRotating = false;
+    /**
+     *
+     */
     async function safeRotationCallback() {
         if (isRotating) {
             logger.warn('Rotation already in progress. Skipping duplicate call.');
@@ -31,6 +40,13 @@ function scheduleRotation(endTime, rotationCallback, scheduledJobs) {
     scheduledJobs.set(jobName, job);
     logger.info(`✅ **Scheduled rotation** for \`${endTime.toISOString()}\`.`);
 }
+/**
+ *
+ * @param db
+ * @param rotationCallback
+ * @param constants
+ * @param scheduledJobs
+ */
 async function scheduleRotationsOnStartup(db, rotationCallback, constants, scheduledJobs) {
     try {
         const now = new Date().toISOString();

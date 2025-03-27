@@ -1,18 +1,21 @@
+const pLimit = require('p-limit'); // Ensure p-limit is installed: npm install p-limit
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('../utils/essentials/logger');
-const { runQuery, getAll } = require('../utils/essentials/dbUtils');
-const { sleep } = require('../utils/helpers/sleepUtil');
+const { runQuery, getAll, runTransaction } = require('../utils/essentials/dbUtils');
 const { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable } = require('../utils/fetchers/lastFetchedTime');
 const { updateEventBaseline } = require('./bingo/bingoTaskManager');
+
 /**
- *
- * @param str
+ * Normalize a string to lower-case with underscores.
+ * @param {string} str
+ * @returns {string}
  */
 function normalize(str) {
     return String(str).toLowerCase().replace(/\s+/g, '_');
 }
+
 /**
- *
+ * Ensure that the player_data table exists.
  */
 async function ensurePlayerDataTable() {
     await runQuery(`
@@ -31,9 +34,11 @@ async function ensurePlayerDataTable() {
     );
   `);
 }
+
 /**
- *
- * @param rawData
+ * Transform raw API player data into an array of rows for the database.
+ * @param {object} rawData
+ * @returns {Array<Object>}
  */
 function transformPlayerData(rawData) {
     const rows = [];
@@ -109,21 +114,16 @@ function transformPlayerData(rawData) {
     }
     return rows;
 }
+
 /**
- *
- * @param playerName
- * @param rawData
+ * Build upsert query objects for the given player data rows.
+ * @param {number} player_id
+ * @param {string} rsn
+ * @param {Array} rows
+ * @returns {Array<Object>}
  */
-async function savePlayerDataToDb(playerName, rawData) {
-    await ensurePlayerDataTable();
-    const cleanedPlayerName = playerName.toLowerCase().trim();
-    const playerResult = await getAll('SELECT player_id, rsn FROM registered_rsn WHERE LOWER(rsn) = ? LIMIT 1', [cleanedPlayerName]);
-    if (playerResult.length === 0) {
-        logger.warn(`❌ No player_id found for ${playerName}. Skipping save.`);
-        return;
-    }
-    const { player_id, rsn } = playerResult[0];
-    const rows = transformPlayerData(rawData);
+function buildUpsertQueries(player_id, rsn, rows) {
+    const queries = [];
     const upsertQuery = `
     INSERT INTO player_data (
       player_id, rsn, type, metric, kills, score, level, exp, last_changed, last_updated
@@ -138,12 +138,57 @@ async function savePlayerDataToDb(playerName, rawData) {
       last_updated = excluded.last_updated;
   `;
     for (const row of rows) {
-        await runQuery(upsertQuery, [player_id, rsn, row.type, row.metric, row.kills, row.score, row.level, row.exp, row.last_changed, row.last_updated]);
+        queries.push({
+            query: upsertQuery,
+            params: [player_id, rsn, row.type, row.metric, row.kills, row.score, row.level, row.exp, row.last_changed, row.last_updated],
+        });
     }
-    //logger.info(`✅ Upserted data for ${playerName} (player_id: ${player_id}, rsn: ${rsn})`);
+    return queries;
 }
+
 /**
- *
+ * Process a single player's data.
+ * Determines whether to force an update or simply fetch details,
+ * then transforms the data and returns DB upsert queries.
+ * @param {string} playerId
+ * @param {string} rsn
+ * @returns {Promise<Array<Object>>}
+ */
+async function processPlayer(playerId, rsn) {
+    try {
+        const lastFetched = await getLastFetchedTime(playerId);
+        const now = new Date();
+        let playerData;
+        if (lastFetched) {
+            const hoursSinceLastFetch = (now.getTime() - lastFetched.getTime()) / (1000 * 60 * 60);
+            if (hoursSinceLastFetch > 4) {
+                logger.info(`🔄 Updating player ${rsn} on WOM API...`);
+                playerData = await WOMApiClient.request('players', 'updatePlayer', rsn);
+                await setLastFetchedTime(playerId);
+            } else {
+                logger.info(`📌 Fetching details for ${rsn} on WOM API...`);
+                playerData = await WOMApiClient.request('players', 'getPlayerDetails', rsn);
+            }
+        } else {
+            logger.info(`🔄 First-time update for ${rsn} on WOM API...`);
+            playerData = await WOMApiClient.request('players', 'updatePlayer', rsn);
+            await setLastFetchedTime(playerId);
+        }
+        if (!playerData) {
+            logger.warn(`⚠️ No data returned for ${rsn}. Skipping.`);
+            return [];
+        }
+        const rows = transformPlayerData(playerData);
+        return buildUpsertQueries(playerId, rsn, rows);
+    } catch (err) {
+        logger.error(`❌ Error processing player ${rsn}: ${err.message}`);
+        return [];
+    }
+}
+
+/**
+ * Load registered players from the database.
+ * @returns {Promise<Object>}
  */
 async function loadRegisteredRsnData() {
     try {
@@ -164,56 +209,76 @@ async function loadRegisteredRsnData() {
         return {};
     }
 }
+
 /**
- *
+ * Fetch and save data for all registered players.
+ * This function collects up all DB queries from processing each player,
+ * then writes them in a single batch transaction.
  */
 async function fetchAndSaveRegisteredPlayerData() {
     logger.info('🔄 Starting fetch for registered player data...');
     try {
         const registeredPlayers = await loadRegisteredRsnData();
-        logger.info(`📊 Loaded ${Object.keys(registeredPlayers).length} registered players.`);
-        if (Object.keys(registeredPlayers).length === 0) {
+        const playerEntries = Object.entries(registeredPlayers);
+        logger.info(`📊 Loaded ${playerEntries.length} registered players.`);
+        if (playerEntries.length === 0) {
             logger.warn('⚠️ No registered players found. Aborting data fetch.');
             return { fetchFailed: false };
         }
-        let fetchFailed = false;
-        for (const [playerId, { rsn }] of Object.entries(registeredPlayers)) {
-            logger.info(`🔍 Processing player: ${rsn} (player_id: ${playerId})`);
-            try {
-                const lastFetched = await getLastFetchedTime(playerId);
-                const now = new Date();
-                let playerData;
-                if (lastFetched) {
-                    const hoursSinceLastFetch = (now.getTime() - lastFetched.getTime()) / (1000 * 60 * 60);
-                    if (hoursSinceLastFetch > 4) {
-                        logger.info(`🔄 Updating player ${rsn} on WOM API...`);
-                        playerData = await WOMApiClient.request('players', 'updatePlayer', rsn);
-                        await setLastFetchedTime(playerId);
-                    } else {
-                        //logger.info(`📌 No update needed for ${rsn}.`);
-                        playerData = await WOMApiClient.request('players', 'getPlayerDetails', rsn);
-                    }
-                } else {
-                    logger.info(`🔄 First-time update for ${rsn} on WOM API...`);
-                    playerData = await WOMApiClient.request('players', 'updatePlayer', rsn);
-                    await setLastFetchedTime(playerId);
-                }
-                await savePlayerDataToDb(rsn, playerData);
-                await sleep(1500);
-            } catch (err) {
-                logger.error(`❌ Error processing player ${rsn}: ${err.message}`);
-                fetchFailed = true;
-            }
+        const limit = pLimit(2); // Limit concurrent API calls to
+        const allQueries = [];
+        await Promise.all(
+            playerEntries.map(([playerId, { rsn }]) =>
+                limit(() =>
+                    processPlayer(playerId, rsn).then((queries) => {
+                        if (queries.length > 0) {
+                            allQueries.push(...queries);
+                        }
+                    }),
+                ),
+            ),
+        );
+        if (allQueries.length > 0) {
+            logger.info(`📝 Batch writing ${allQueries.length} upsert queries to the database...`);
+            await runTransaction(allQueries);
         }
-        return { fetchFailed };
+        return { fetchFailed: false };
     } catch (error) {
         logger.error(`❌ Error during fetch and save operation: ${error.message}`);
         return { fetchFailed: true };
     }
 }
+
 /**
- *
- * @param currentClanUsers
+ * Standalone function to save player data to the database.
+ * This is provided for use by other functions that require individual data writes.
+ * It transforms the provided rawData and writes it in a batch transaction.
+ * @param {string} playerName
+ * @param {object} rawData
+ */
+async function savePlayerDataToDb(playerName, rawData) {
+    await ensurePlayerDataTable();
+    const cleanedPlayerName = playerName.toLowerCase().trim();
+    const playerResult = await getAll('SELECT player_id, rsn FROM registered_rsn WHERE LOWER(rsn) = ? LIMIT 1', [cleanedPlayerName]);
+    if (playerResult.length === 0) {
+        logger.warn(`❌ No player_id found for ${playerName}. Skipping save.`);
+        return;
+    }
+    const { player_id, rsn } = playerResult[0];
+    const rows = transformPlayerData(rawData);
+    if (rows.length === 0) return;
+    const queries = buildUpsertQueries(player_id, rsn, rows);
+    try {
+        await runTransaction(queries);
+        logger.info(`✅ Upserted data for ${playerName} (player_id: ${player_id}, rsn: ${rsn})`);
+    } catch (error) {
+        logger.error(`❌ Failed to save player data for ${playerName}: ${error.message}`);
+    }
+}
+
+/**
+ * Remove data for players not in the current registered list.
+ * @param {Set} currentClanUsers - Set of current player IDs.
  */
 async function removeNonMatchingPlayers(currentClanUsers) {
     const allPlayers = await getAll('SELECT DISTINCT player_id FROM player_data');
@@ -224,8 +289,11 @@ async function removeNonMatchingPlayers(currentClanUsers) {
         }
     }
 }
+
 /**
- *
+ * Main function to fetch and update player data.
+ * Ensures tables exist, fetches player data in batch, cleans up old records,
+ * and updates event baselines.
  */
 async function fetchAndUpdatePlayerData() {
     logger.info('🔄 Starting player data update process.');
@@ -239,7 +307,6 @@ async function fetchAndUpdatePlayerData() {
     try {
         const allRegistered = await getAll('SELECT player_id FROM registered_rsn');
         const currentClanUsers = new Set(allRegistered.map((row) => row.player_id));
-
         logger.info(`📊 Retrieved current RSN list from registered_rsn. Total registered: ${currentClanUsers.size}`);
         await removeNonMatchingPlayers(currentClanUsers);
     } catch (err) {
@@ -248,6 +315,7 @@ async function fetchAndUpdatePlayerData() {
     await updateEventBaseline();
     logger.info('✅ Player data update process completed.');
 }
+
 module.exports = {
     fetchAndUpdatePlayerData,
     fetchAndSaveRegisteredPlayerData,

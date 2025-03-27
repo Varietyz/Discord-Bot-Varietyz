@@ -72,7 +72,6 @@ const updateAllTimeLeaderboard = async (client) => {
 
         const sotwEmoji = await getEmojiWithFallback('emoji_overall', '📊');
         const botwEmoji = await getEmojiWithFallback('emoji_slayer', '🐲');
-        const notifEmoji = await getEmojiWithFallback('emoji_animatedarrowyellow', '-');
         const notifEmojiTwo = await getEmojiWithFallback('emoji_animatedarrowwhite', '-');
 
         // Await the formatter functions.
@@ -80,7 +79,6 @@ const updateAllTimeLeaderboard = async (client) => {
         const botwLeaderboard = await formatLeaderboard(topBOTW, botwEmoji, 'KC');
 
         const profileLinkGain = await getPlayerLink(highestSingleGain.rsn);
-        const profileLinkGainer = await getPlayerLink(biggestOverallGainer.rsn);
 
         const embed = new EmbedBuilder()
             .setTitle('🏆 **All-Time Top 10 Players** 🏆')
@@ -88,11 +86,6 @@ const updateAllTimeLeaderboard = async (client) => {
                 { name: `__**${sotwEmoji} Skill Of The Week**__`, value: sotwLeaderboard, inline: true },
                 { name: '\u200b', value: '\u200b', inline: true },
                 { name: `__**${botwEmoji} Boss Of The Week**__`, value: botwLeaderboard, inline: true },
-                {
-                    name: '\u200b',
-                    value: `🏅 **Biggest Overall Gainer**\n${biggestOverallGainer ? `> ${notifEmoji} **${profileLinkGainer}** gained \`${biggestOverallGainer.total_gain.toLocaleString()} ${overallMetricLabel}\` in total.` : '_No data available_'}`,
-                    inline: false,
-                },
                 {
                     name: '\u200b',
                     value: `📈 **Highest Single Competition Gain**\n${

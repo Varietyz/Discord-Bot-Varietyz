@@ -16,6 +16,7 @@ const { buildPollDropdown } = require('./embedHandler');
 const { recordCompetitionWinner, updateFinalLeaderboard } = require('./competitionWinners');
 const { updateAllTimeLeaderboard } = require('./alltimeCompetitionWinners');
 const migrateEndedCompetitions = require('../../../migrations/migrateEndedCompetitions');
+const { refreshBingoInfoEmbed } = require('../bingo/embeds/bingoInfoData');
 /**
  *
  */
@@ -28,12 +29,14 @@ class CompetitionService {
         this.client = client;
         this.scheduledJobs = new Map();
     }
+
     /**
      *
      */
     async initialize() {
         await scheduleRotationsOnStartup(db, () => this.startNextCompetitionCycle(), constants, this.scheduledJobs);
     }
+
     /**
      *
      */
@@ -43,6 +46,8 @@ class CompetitionService {
             const competitionTypes = ['SOTW', 'BOTW'];
             let overallNearestEndTime = null;
             let pauseForRotationUpdate = false;
+            let cycleUpdated = false;
+
             for (const type of competitionTypes) {
                 await removeInvalidCompetitions(db);
                 await this.processEndedCompetitions(type);
@@ -62,9 +67,24 @@ class CompetitionService {
                     pauseForRotationUpdate = true;
                 }
                 pauseForRotationUpdate = await this.createNewCompetitions(type, lastCompetition, votesExist, pauseForRotationUpdate);
+                if (pauseForRotationUpdate) cycleUpdated = true;
+
                 overallNearestEndTime = await this.getNearestFutureCompetition(type, overallNearestEndTime);
             }
+
             await this.finalizeRotation(overallNearestEndTime, pauseForRotationUpdate);
+
+            if (cycleUpdated) {
+                const ongoingEvents = await db.getAll(`
+                SELECT event_id
+                FROM bingo_state
+                WHERE state = 'ongoing'
+              `);
+                for (const { event_id } of ongoingEvents) {
+                    if (!event_id) continue;
+                    await refreshBingoInfoEmbed(event_id, this.client);
+                }
+            }
         } catch (err) {
             logger.error(`❌ Error in startNextCompetitionCycle: ${err.message}`);
         }
@@ -114,6 +134,7 @@ class CompetitionService {
             logger.info(`ℹ️ **Info:** No votes and no queued competitions for \`${type}\`. Creating a random competition.`);
             await purgeChannel(channel);
             await this.createDefaultCompetitions(type);
+
             return true;
         }
         if (queuedCompetitions.length > 0) {
@@ -198,8 +219,9 @@ class CompetitionService {
      */
     async finalizeRotation(overallNearestEndTime, pauseForRotationUpdate) {
         logger.info('✅ **Success:** Next competition cycle setup completed.');
+
         if (pauseForRotationUpdate) {
-            await sleep(63000);
+            await sleep(15000);
         }
         await this.updateCompetitionData();
         if (overallNearestEndTime) {
@@ -229,7 +251,7 @@ class CompetitionService {
             const randomSkill = await this.getRandomMetric('Skill');
             const randomBoss = await this.getRandomMetric('Boss');
             const now = new Date();
-            const startsAt = new Date(now.getTime() + 60000);
+            const startsAt = new Date(now.getTime() + 10000);
             const rotationWeeksResult = await db.getOne('SELECT value FROM config WHERE key = ?', ['rotation_period_weeks']);
             const rotationWeeks = rotationWeeksResult ? parseInt(rotationWeeksResult.value, 10) : 1;
             const endsAt = calculateEndDate(rotationWeeks);
@@ -252,7 +274,7 @@ class CompetitionService {
         try {
             const { type, metric } = competition;
             const now = new Date();
-            const startsAt = new Date(now.getTime() + 60000);
+            const startsAt = new Date(now.getTime() + 10000);
             const rotationWeeksResult = await db.getOne('SELECT value FROM config WHERE key = ?', ['rotation_period_weeks']);
             const rotationWeeks = rotationWeeksResult ? parseInt(rotationWeeksResult.value, 10) : 1;
             const endsAt = calculateEndDate(rotationWeeks);
@@ -296,7 +318,7 @@ class CompetitionService {
             }
         }
         const newType = competition.type && competition.type.toUpperCase() === 'SOTW' ? 'SOTW' : 'BOTW';
-        const startsAt = new Date(now.getTime() + 60000);
+        const startsAt = new Date(now.getTime() + 10000);
         const rotationWeeksResult = await db.getOne('SELECT value FROM config WHERE key = ?', ['rotation_period_weeks']);
         const rotationWeeks = rotationWeeksResult && !isNaN(parseInt(rotationWeeksResult.value, 10)) ? parseInt(rotationWeeksResult.value, 10) : 1;
         const endsAt = calculateEndDate(rotationWeeks);
@@ -329,6 +351,7 @@ class CompetitionService {
             throw err;
         }
     }
+
     /**
      *
      * @param interaction

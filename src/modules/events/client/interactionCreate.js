@@ -15,9 +15,9 @@ module.exports = {
         } else if (interaction.isAutocomplete()) {
             await handleAutocomplete(interaction, client.commands);
         } else if (interaction.isButton()) {
-            logger.log(`🟡 Button Clicked: ${interaction.customId}`);
+            logger.info(`🟡 Button Clicked: ${interaction.customId}`);
             if (modalIds.includes(interaction.customId)) {
-                logger.log('🟠 Opening Modal...');
+                logger.info('🟠 Opening Modal...');
                 const existing = await db.getOne('SELECT * FROM modal_tracking WHERE modal_key = ? AND registered_by = ?', [interaction.customId, interaction.user.id]);
                 if (existing) {
                     return interaction.reply({
@@ -32,7 +32,7 @@ module.exports = {
             if (!interaction.customId) {
                 return interaction.reply({ content: '❌ Modal submission failed. No custom ID found.', flags: 64 });
             }
-            logger.log(`🔴 Modal Submitted: ${interaction.customId}`);
+            logger.info(`🔴 Modal Submitted: ${interaction.customId}`);
             await handleModalSubmission(interaction);
         } else if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'vote_dropdown' && client.competitionService) {

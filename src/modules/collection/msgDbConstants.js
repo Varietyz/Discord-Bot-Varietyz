@@ -1,10 +1,4 @@
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
 require('dotenv').config();
-const dbPromise = open({
-    filename: 'src/data/messages.db',
-    driver: sqlite3.Database,
-});
 const emojiCleanupTypes = ['DROP', 'QUESTS', 'COLLECTION_LOG', 'PERSONAL_BEST', 'PVP', 'PET_DROP', 'LEVEL_UP', 'COMBAT_ACHIEVEMENTS', 'CLUE_DROP', 'ATTENDANCE', 'DIARY'];
 const systemTables = {
     DROP: 'drops',
@@ -39,7 +33,6 @@ const SYSTEM_PATTERNS = {
     KEYS: ['has opened a loot key worth'],
 };
 module.exports = {
-    dbPromise,
     systemTables,
     SYSTEM_PATTERNS,
     emojiCleanupTypes,

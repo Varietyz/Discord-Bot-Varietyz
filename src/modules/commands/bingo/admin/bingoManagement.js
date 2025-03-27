@@ -1,10 +1,10 @@
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const db = require('../../../../utils/essentials/dbUtils');
-const logger = require('../../../../utils/essentials/logger');
-const { autoTransitionEvents } = require('../../../../services/bingo/autoTransitionEvents');
-const { updateBingoProgress } = require('../../../../services/bingo/bingoService');
-const client = require('../../../../../main');
-const { updateEventBaseline } = require('../../../../services/bingo/bingoTaskManager');
+const db = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
+const { autoTransitionEvents } = require('../../../services/bingo/autoTransitionEvents');
+const { updateBingoProgress } = require('../../../services/bingo/bingoService');
+const client = require('../../../../main');
+const { updateEventBaseline } = require('../../../services/bingo/bingoTaskManager');
 
 module.exports = {
     data: new SlashCommandBuilder()

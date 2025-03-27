@@ -52,7 +52,7 @@ module.exports = {
         semi: ['error', 'always'],                       // Require or disallow semicolons instead of ASI
         'max-len': ['warn', { code: 250 }],            // Enforce a maximum line length of 250 characters
         'no-console': 'warn',                            // Warn about the use of console (can be set to 'off' if desired)
-        'prefer-const': 'error'                          // Suggest using const over let when variables are not reassigned
+        'prefer-const': 'warn'                          // Suggest using const over let when variables are not reassigned
     },
 
     // Settings for plugins

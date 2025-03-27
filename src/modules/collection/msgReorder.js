@@ -1,6 +1,6 @@
 require('dotenv').config();
-const { dbPromise } = require('./msgDbConstants');
 const logger = require('../utils/essentials/logger');
+const db = require('../utils/essentials/dbUtils');
 const systemTables = {
     DROP: 'drops',
     RAID_DROP: 'raid_drops',
@@ -18,46 +18,57 @@ const systemTables = {
     KEYS: 'loot_key_rewards',
     CHAT: 'chat_messages',
 };
-async function reorderTable(db, tableName) {
+/**
+ * 🔄 Reorder a Table & Preserve Schema
+ * @param {string} tableName - The table to reorder.
+ */
+async function reorderTable(tableName) {
     try {
-        await db.exec('BEGIN TRANSACTION;');
+        if (typeof tableName !== 'string') {
+            logger.error(`❌ Invalid table name: ${JSON.stringify(tableName)}`);
+            return;
+        }
+
         const tempTable = `${tableName}_temp`;
-        await db.exec(`
-            CREATE TABLE ${tempTable} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rsn TEXT,
-                message TEXT,
-                message_id TEXT UNIQUE,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        await db.exec(`
-            INSERT INTO ${tempTable} (rsn, message, message_id, timestamp)
-            SELECT rsn, message, message_id, timestamp
-            FROM ${tableName}
+
+        await db.messages.runQuery('BEGIN TRANSACTION;');
+
+        await db.messages.runQuery(`
+            CREATE TABLE ${tempTable} AS 
+            SELECT * FROM ${tableName} 
             ORDER BY timestamp ASC;
         `);
-        await db.exec(`DROP TABLE ${tableName};`);
-        await db.exec(`ALTER TABLE ${tempTable} RENAME TO ${tableName};`);
-        await db.exec('COMMIT;');
-        logger.info(`✅ Table "\`${tableName}\`" has been permanently reordered and schema preserved.`);
+        await db.messages.runQuery(`DROP TABLE IF EXISTS ${tableName};`);
+        await db.messages.runQuery(`ALTER TABLE ${tempTable} RENAME TO ${tableName};`);
+
+        await db.messages.runQuery('COMMIT;');
+        logger.info(`✅ Table "\`${tableName}\`" has been reordered.`);
     } catch (error) {
-        await db.exec('ROLLBACK;');
+        await db.messages.runQuery('ROLLBACK;');
         logger.error(`❌ Error reordering table "\`${tableName}\`": ${error.message}`);
     }
 }
+
+/**
+ *
+ */
 async function reorderAllTables() {
     try {
-        const db = await dbPromise;
         for (const tableName of Object.values(systemTables)) {
-            logger.info(`\n🔄 Reordering table: \`${tableName}\``);
-            await reorderTable(db, tableName);
+            if (typeof tableName !== 'string' || !tableName.trim()) {
+                logger.error(`❌ Skipping invalid table name: ${JSON.stringify(tableName)}`);
+                continue;
+            }
+
+            logger.info(`🔄 Reordering table: \`${tableName}\``);
+            await reorderTable(tableName);
         }
         logger.info('\n✅ All tables have been processed successfully.');
     } catch (error) {
         logger.error('❌ Error reordering all tables:', error);
     }
 }
+
 module.exports = {
     reorderAllTables,
 };

@@ -1,4 +1,9 @@
 const logger = require('./logger');
+/**
+ *
+ * @param interaction
+ * @param commands
+ */
 async function handleSlashCommand(interaction, commands) {
     try {
         const command = commands.find((cmd) => cmd.data.name === interaction.commandName);
@@ -14,6 +19,11 @@ async function handleSlashCommand(interaction, commands) {
         logger.error(`🚨 **Execution Error:** Error executing \`${interaction.commandName}\`: ${err.message}`);
     }
 }
+/**
+ *
+ * @param interaction
+ * @param commands
+ */
 async function handleAutocomplete(interaction, commands) {
     try {
         const command = commands.find((cmd) => cmd.data.name === interaction.commandName);
@@ -41,7 +51,7 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (error) => {
     logger.error(`🚨 **Uncaught Exception:** ${error.message}`);
     logger.error(error.stack);
-    process.exit(1);
+    throw error;
 });
 module.exports = {
     handleAutocomplete,

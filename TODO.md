@@ -28,6 +28,7 @@
 
 1. **Raid Scheduler:**
 
+    - Fee per entry (Counts towards bingo pot)
     - Allow live interaction for scheduling raids using Discord buttons.
     - Lock interaction for other users while a participant schedules or until a timeout occurs.
     - Include configuration options for time, participants, and activity type.

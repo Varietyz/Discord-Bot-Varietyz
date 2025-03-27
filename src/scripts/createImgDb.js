@@ -103,6 +103,6 @@ function createTables(db) {
         });
     } catch (error) {
         logger.error(`Database initialization failed: ${error.message}`);
-        process.exit(1); // Exit with failure code.
+        throw error; // Exit with failure code.
     }
 })();

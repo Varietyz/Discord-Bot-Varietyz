@@ -341,4 +341,5 @@ async function refreshBingoInfoEmbed(eventId, client) {
 
 module.exports = {
     refreshBingoInfoEmbed,
+    buildActivePatternFields,
 };

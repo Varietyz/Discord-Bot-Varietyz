@@ -48,10 +48,9 @@ async function generateDynamicTasks() {
 }
 
 const POINTS_CONFIG = {
-    Exp: { multiplier: 4 / 100000, fixed: null },
-    Kill: { multiplier: 1.25, fixed: null },
-    Score: { multiplier: 1.5, fixed: null },
-    Message: { multiplier: null, fixed: 25 },
+    Exp: { multiplier: 3 / 100000, fixed: null },
+    Kill: { multiplier: 2, fixed: null },
+    Score: { multiplier: 2.5, fixed: null },
     Default: { multiplier: null, fixed: 10 },
 };
 

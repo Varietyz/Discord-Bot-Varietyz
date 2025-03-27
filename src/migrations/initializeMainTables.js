@@ -131,6 +131,16 @@ const initializeMainTables = async () => {
                 last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (player_id, type)
             `,
+            player_point_transactions: `
+    transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_id INTEGER NOT NULL,
+    receiver_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    points INTEGER NOT NULL,
+    transaction_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES registered_rsn(player_id),
+    FOREIGN KEY (receiver_id) REFERENCES registered_rsn(player_id)
+            `,
         };
 
         for (const [table, schema] of Object.entries(tables)) {

@@ -1,11 +1,11 @@
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const { updateBingoProgress } = require('../../../../services/bingo/bingoService');
-const logger = require('../../../../utils/essentials/logger');
-const client = require('../../../../../main');
-const { autoTransitionEvents, handleEventCompletion, rotateAndStartNewEvent } = require('../../../../services/bingo/autoTransitionEvents');
-const getEmojiWithFallback = require('../../../../utils/fetchers/getEmojiWithFallback');
-const dbUtils = require('../../../../utils/essentials/dbUtils');
-const { refreshBingoInfoEmbed } = require('../../../../services/bingo/embeds/bingoInfoData');
+const { updateBingoProgress } = require('../../../services/bingo/bingoService');
+const logger = require('../../../utils/essentials/logger');
+const client = require('../../../../main');
+const { autoTransitionEvents, handleEventCompletion, rotateAndStartNewEvent } = require('../../../services/bingo/autoTransitionEvents');
+const getEmojiWithFallback = require('../../../utils/fetchers/getEmojiWithFallback');
+const dbUtils = require('../../../utils/essentials/dbUtils');
+const { refreshBingoInfoEmbed } = require('../../../services/bingo/embeds/bingoInfoData');
 
 module.exports = {
     data: new SlashCommandBuilder()

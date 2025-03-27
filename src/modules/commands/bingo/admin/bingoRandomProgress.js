@@ -1,9 +1,9 @@
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const db = require('../../../../utils/essentials/dbUtils');
-const logger = require('../../../../utils/essentials/logger');
-const {synchronizeTaskCompletion} = require('../../../../utils/essentials/syncTeamData');
-const { updateBingoProgress } = require('../../../../services/bingo/bingoService');
-const client = require('../../../../../main');
+const db = require('../../../utils/essentials/dbUtils');
+const logger = require('../../../utils/essentials/logger');
+const { synchronizeTaskCompletion } = require('../../../utils/essentials/syncTeamData');
+const { updateBingoProgress } = require('../../../services/bingo/bingoService');
+const client = require('../../../../main');
 
 // Utility: random integer in [min, max]
 /**

@@ -31,7 +31,7 @@ async function getPlayerLink(rsn) {
     if (!playerRsnObj && !playerClanObj) {
         const playerNameForLink = encodeURIComponent(normalizeRsn(rsn));
         const profileLink = `https://wiseoldman.net/players/${playerNameForLink}`;
-        return `❌ [${rsn}](${profileLink})`; // Default for unregistered RSNs & non-clan members
+        return `**[${rsn}](${profileLink})**`; // Default for unregistered RSNs & non-clan members
     }
 
     // ✅ Determine the best available RSN and player ID

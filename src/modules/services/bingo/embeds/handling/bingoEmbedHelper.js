@@ -13,8 +13,18 @@ const logger = require('../../../../utils/essentials/logger');
 async function fetchChannel(client, channelKey) {
     const channelId = await getChannelId(channelKey);
     if (!channelId) throw new Error(`No ${channelKey} configured.`);
-    const channel = client.channels.cache.get(channelId);
-    if (!channel) throw new Error(`Channel #${channelId} not found in guild.`);
+
+    // Try to retrieve the channel from the cache
+    let channel = client.channels?.cache.get(channelId);
+
+    // If not found in cache, fetch from the API
+    if (!channel) {
+        try {
+            channel = await client.channels.fetch(channelId);
+        } catch (error) {
+            throw new Error(`Channel #${channelId} not found in guild.`);
+        }
+    }
     return channel;
 }
 

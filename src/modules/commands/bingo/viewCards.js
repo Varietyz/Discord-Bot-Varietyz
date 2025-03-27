@@ -10,6 +10,7 @@ const { computeOverallPercentage, computeTeamPartialPoints, computeIndividualPar
 const getEmojiWithFallback = require('../../utils/fetchers/getEmojiWithFallback');
 const { getTeamTaskProgress, getPlayerTaskProgress } = require('../../services/bingo/embeds/bingoEmbedData');
 const getPlayerLink = require('../../utils/fetchers/getPlayerLink');
+const { buildActivePatternFields } = require('../../services/bingo/embeds/bingoInfoData');
 
 /**
  *
@@ -246,6 +247,28 @@ module.exports = {
 };
 
 /**
+ * Builds an embed displaying the active Bingo patterns for a given event.
+ * @param {number} eventId - The event identifier.
+ * @param {number} [numRows=3] - The number of rows for the pattern grid.
+ * @param {number} [numCols=5] - The number of columns for the pattern grid.
+ * @returns {Promise<EmbedBuilder>} The embed containing active pattern fields.
+ */
+async function buildActivePatternsEmbed(eventId, numRows = 3, numCols = 5) {
+    // Fetch active patterns from the database.
+    const patternRows = await db.getAll('SELECT pattern_key, created_at FROM bingo_pattern_rotation WHERE event_id=?', [eventId]);
+    // Build dynamic pattern fields using your helper.
+    const dynamicPatternFields = await buildActivePatternFields(patternRows, numRows, numCols);
+
+    // Create and configure the embed.
+    const embed = new EmbedBuilder().setTitle('🎯 Active Patterns').setColor(0x00ff00).setTimestamp();
+
+    // Append each dynamic field.
+    dynamicPatternFields.forEach((field) => embed.addFields(field));
+
+    return embed;
+}
+
+/**
  * Generates a formatted Bingo card embed for an individual player.
  * @param {number} boardId - The board identifier.
  * @param {Object} player - Player object containing { player_id, rsn }.
@@ -332,7 +355,9 @@ const generateBingoEmbed = async (boardId, player) => {
                 `> ### ${playerData.taskProgressStr}\n`,
         );
 
-    return { embed, file };
+    const patternsEmbed = await buildActivePatternsEmbed(boardId, 3, 5);
+
+    return { embeds: [embed, patternsEmbed], file };
 };
 
 /**
@@ -344,8 +369,11 @@ const generateBingoEmbed = async (boardId, player) => {
 const handleBingoCardDisplay = async (interaction, boardId, userRows) => {
     if (userRows.length === 1) {
         // ✅ Single RSN: No pagination, display card directly.
-        const { embed, file } = await generateBingoEmbed(boardId, userRows[0]);
-        return await interaction.editReply({ content: '\u200b', embeds: [embed], files: [file] });
+        const {
+            embeds: [embed, patternsEmbed],
+            file,
+        } = await generateBingoEmbed(boardId, userRows[0]);
+        return await interaction.editReply({ content: '\u200b', embeds: [embed, patternsEmbed], files: [file] });
     } else if (userRows.length > 1) {
         // ✅ Multiple RSNs: Use pagination.
         return await paginateIndividualCards(interaction, boardId, userRows);
@@ -549,10 +577,11 @@ async function generateTeamCard(interaction, boardId, teamId, teamName) {
         leaderboardDescription += `> ### ${taskProgressStr}\n\n`;
 
         embed.setDescription(leaderboardDescription);
+        const patternsEmbed = await buildActivePatternsEmbed(boardId, 3, 5);
 
         return interaction.editReply({
             content: '\u200b',
-            embeds: [embed],
+            embeds: [embed, patternsEmbed],
             files: [file],
             flags: 64,
         });

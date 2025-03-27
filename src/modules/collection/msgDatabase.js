@@ -1,10 +1,13 @@
 require('dotenv').config();
-const { dbPromise, systemTables } = require('./msgDbConstants');
+const { systemTables } = require('./msgDbConstants');
 const logger = require('../utils/essentials/logger');
+const db = require('../utils/essentials/dbUtils');
+
+/**
+ *
+ */
 async function initializeMsgTables() {
-    const db = await dbPromise;
-    await db.exec('PRAGMA journal_mode=WAL;');
-    await db.exec(`
+    await db.messages.runQuery(`
   CREATE TABLE IF NOT EXISTS chat_messages (
     idx INTEGER PRIMARY KEY AUTOINCREMENT,
     rsn TEXT,
@@ -13,14 +16,14 @@ async function initializeMsgTables() {
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
-    await db.exec(`
+    await db.messages.runQuery(`
   CREATE TABLE IF NOT EXISTS meta_info (
     key TEXT PRIMARY KEY,
     value TEXT
   );
 `);
     for (const tableName of Object.values(systemTables)) {
-        await db.exec(`
+        await db.messages.runQuery(`
     CREATE TABLE IF NOT EXISTS ${tableName} (
       idx INTEGER PRIMARY KEY AUTOINCREMENT,
       rsn TEXT,

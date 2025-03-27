@@ -1,10 +1,14 @@
 // /modules/services/bingo/bingoImageGenerator.js
+require('dotenv').config();
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const path = require('path');
 const { computeOverallPercentage, computeTeamPartialPoints, computeIndividualPartialPoints } = require('./bingoCalculations');
 const normalizeUpper = require('../../utils/normalizing/normalizeUpper');
+const getPlayerRank = require('../../utils/fetchers/getPlayerRank');
+const getTeamName = require('../../utils/fetchers/getTeamName');
+const getPlayerRsn = require('../../utils/fetchers/getPlayerRsn');
 
 const fontPath = path.join(__dirname, '../../../assets/runescape_bold.ttf');
 registerFont(fontPath, { family: 'RuneScape' });
@@ -12,6 +16,13 @@ registerFont(fontPath, { family: 'RuneScape' });
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1248;
 const CROSS_SIZE = 359;
+
+const BOTW_COLOR = '#fe695d'; // Red-pink
+const SOTW_COLOR = '#19ffe8'; // Cyan
+const POINTS_COLOR = '#00ff00'; // Green
+const OUTLINE_COLOR = '#000000'; // Black
+const TEXT_COLOR = '#dc8a00'; // Orange
+//const TEXT_COLOR = '#ff7aa5'; // Pink (Rosey)
 
 const TASK_COORDINATES = {
     1: { x: 19, y: 92 },
@@ -109,9 +120,34 @@ async function generateBingoCard(boardId, id, isTeam = false) {
 
         const completedCrossPath = await getImagePath('validated_cross');
         let completedCrossImg = null;
-
         if (completedCrossPath) {
             completedCrossImg = await loadImage(completedCrossPath);
+        }
+
+        // Load overlay image for SOTW tasks.
+        const overlaySotwPath = await getImagePath('overlay_sotw');
+        let overlaySotwImg = null;
+        if (overlaySotwPath) {
+            overlaySotwImg = await loadImage(overlaySotwPath);
+        }
+
+        // Load overlay image for BOTW tasks.
+        const overlayBotwPath = await getImagePath('overlay_botw');
+        let overlayBotwImg = null;
+        if (overlayBotwPath) {
+            overlayBotwImg = await loadImage(overlayBotwPath);
+        }
+
+        const dividerPath = await getImagePath('divider');
+        let dividerImg = null;
+        if (dividerPath) {
+            dividerImg = await loadImage(dividerPath);
+        }
+
+        const clanLogoPath = await getImagePath('clan_logo');
+        let clanLogoImg = null;
+        if (clanLogoPath) {
+            clanLogoImg = await loadImage(clanLogoPath);
         }
 
         // 2) Fetch competitions of type SOTW or BOTW (simplified).
@@ -125,8 +161,10 @@ async function generateBingoCard(boardId, id, isTeam = false) {
         // 3) Build a map metric => 'sotw_notif.png' or 'botw_notif.png'
         //    e.g. "woodcutting" => "sotw_notif.png", "the_whisperer" => "botw_notif.png"
         const compNotifyMap = {};
+        const compTypeMap = {};
         for (const c of comps) {
             compNotifyMap[c.metric] = `${c.metric}`;
+            compTypeMap[c.metric] = c.type;
         }
 
         // 4) Pre-load those notification images (optional).
@@ -169,6 +207,7 @@ async function generateBingoCard(boardId, id, isTeam = false) {
             }
 
             const { status, imagePath, task_name, parameter } = t;
+            const compType = compTypeMap[parameter];
 
             drawEmptyBox(ctx, coords.x, coords.y, CROSS_SIZE);
 
@@ -179,6 +218,13 @@ async function generateBingoCard(boardId, id, isTeam = false) {
                 } catch (imgErr) {
                     logger.warn(`[BingoImageGenerator] Could not load custom image for task_id=${t.task_id}: ${imgErr.message}`);
                 }
+            }
+
+            // Draw the divider overlay at a fixed offset relative to the cell.
+            if (status !== 'completed' && dividerImg) {
+                const dividerOffsetX = 11; // 64 - 19
+                const dividerOffsetY = 57; // 308 - 92
+                ctx.drawImage(dividerImg, coords.x + dividerOffsetX, coords.y + dividerOffsetY);
             }
 
             const isType = t.type === 'Exp' || t.type === 'Level';
@@ -210,15 +256,24 @@ async function generateBingoCard(boardId, id, isTeam = false) {
                 // Draw task objective text.
                 const textOffset = 15;
                 const { action, target } = splitTaskName(task_name);
-                ctx.fillStyle = '#000000';
+                ctx.fillStyle = OUTLINE_COLOR;
                 ctx.font = '36px RuneScape';
                 ctx.textAlign = 'center';
                 ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset - 1);
                 ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset - 1);
                 ctx.fillText(action, coords.x + CROSS_SIZE / 2 - 1, coords.y + 30 + textOffset + 1);
                 ctx.fillText(action, coords.x + CROSS_SIZE / 2 + 1, coords.y + 30 + textOffset + 1);
-                ctx.fillStyle = '#dc8a00'; // Orange // ctx.fillStyle = '#ff7aa5'; // Pink Rosey
-                ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset);
+
+                if (compType === 'BOTW') {
+                    ctx.fillStyle = BOTW_COLOR;
+                    ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset);
+                } else if (compType === 'SOTW') {
+                    ctx.fillStyle = SOTW_COLOR;
+                    ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset);
+                } else {
+                    ctx.fillStyle = TEXT_COLOR;
+                    ctx.fillText(action, coords.x + CROSS_SIZE / 2, coords.y + 30 + textOffset);
+                }
 
                 const actionToTargetSpacing = 17;
                 const targetStartY = coords.y + 70 + actionToTargetSpacing + textOffset;
@@ -227,77 +282,131 @@ async function generateBingoCard(boardId, id, isTeam = false) {
                 const lineHeight = 28;
 
                 wrappedTargetLines.forEach((line, index) => {
-                    ctx.fillStyle = '#000000';
+                    ctx.fillStyle = OUTLINE_COLOR;
                     // Create a drop-shadow effect for better legibility.
                     ctx.fillText(line, coords.x + CROSS_SIZE / 2 - 1, targetStartY + index * lineHeight - 1);
                     ctx.fillText(line, coords.x + CROSS_SIZE / 2 + 1, targetStartY + index * lineHeight - 1);
                     ctx.fillText(line, coords.x + CROSS_SIZE / 2 - 1, targetStartY + index * lineHeight + 1);
                     ctx.fillText(line, coords.x + CROSS_SIZE / 2 + 1, targetStartY + index * lineHeight + 1);
-                    ctx.fillStyle = '#dc8a00'; // Orange // ctx.fillStyle = '#ff7aa5'; // Pink Rosey
-                    ctx.fillText(line, coords.x + CROSS_SIZE / 2, targetStartY + index * lineHeight);
+
+                    if (compType === 'BOTW') {
+                        ctx.fillStyle = BOTW_COLOR;
+                        ctx.fillText(line, coords.x + CROSS_SIZE / 2, targetStartY + index * lineHeight);
+                    } else if (compType === 'SOTW') {
+                        ctx.fillStyle = SOTW_COLOR;
+                        ctx.fillText(line, coords.x + CROSS_SIZE / 2, targetStartY + index * lineHeight);
+                    } else {
+                        ctx.fillStyle = TEXT_COLOR;
+                        ctx.fillText(line, coords.x + CROSS_SIZE / 2, targetStartY + index * lineHeight);
+                    }
                 });
-            }
-            if (status === 'completed' && completedCrossImg) {
-                ctx.drawImage(completedCrossImg, coords.x, coords.y, CROSS_SIZE, CROSS_SIZE);
             }
 
             // 9) If there's a matching competition for this metric (parameter),
             //    draw the appropriate "sotw_notif.png" or "botw_notif.png" in the top-right corner
+            // Get the notification image (if any) and determine bonus text.
             const notifImg = notifImages[parameter];
+            const pointsText = `${t.points_reward} pts`;
+            const bonusText = notifImg ? ' (+50)' : '';
 
+            // Set main font and text properties for the points text.
             ctx.font = '28px RuneScape';
             ctx.textAlign = 'left';
-            ctx.fillStyle = '#000000';
 
-            const pointsText = `${t.points_reward} pts`;
-            let bonusText = ''; // Separate text for (+50)
+            // Define spacing and image size.
+            const leftMargin = 10; // left margin for starting x
+            const imageTextSpacing = 6; // space between image and text
+            const bonusOffset = 30; // additional offset between points and bonus text
 
+            let currentX = coords.x + leftMargin;
+
+            const textY = coords.y + CROSS_SIZE - 10;
+
+            // Assume `parameter` holds the metric for the task.
+            let overlayToDraw = null;
+            if (compType === 'SOTW' && overlaySotwImg) {
+                overlayToDraw = overlaySotwImg;
+            } else if (compType === 'BOTW' && overlayBotwImg) {
+                overlayToDraw = overlayBotwImg;
+            }
+
+            if (overlayToDraw) {
+                ctx.drawImage(overlayToDraw, coords.x, coords.y, CROSS_SIZE, CROSS_SIZE);
+            }
+
+            if (status === 'completed' && completedCrossImg) {
+                ctx.drawImage(completedCrossImg, coords.x, coords.y, CROSS_SIZE, CROSS_SIZE);
+            }
+
+            // If an image exists, draw it and update the x coordinate for text.
             if (notifImg) {
-                // ✅ Draw the notification image
-                const overlaySize = 32;
-                const overlayX = coords.x + 12;
-                const overlayY = coords.y + CROSS_SIZE + 10 - overlaySize - 47;
-                ctx.drawImage(notifImg, overlayX, overlayY, overlaySize, overlaySize);
-
-                bonusText = ' (+50)';
+                const targetHeight = 28;
+                const scaleFactor = targetHeight / notifImg.height;
+                const targetWidth = notifImg.width * scaleFactor;
+                const imageY = textY - 15 - targetHeight / 2;
+                ctx.drawImage(notifImg, currentX, imageY, targetWidth, targetHeight);
+                currentX += targetWidth + imageTextSpacing;
             }
 
-            // ✅ Outline for the main text (28px)
+            // ✅ Draw the main points text with an outline effect.
+            // First, draw the outline by offsetting the text slightly.
+            ctx.fillStyle = OUTLINE_COLOR; // Outline color
             for (const offset of [-1, 1]) {
-                ctx.fillText(pointsText, coords.x + 10 + offset, coords.y + CROSS_SIZE - 10);
-                ctx.fillText(pointsText, coords.x + 10, coords.y + CROSS_SIZE - 10 + offset);
+                ctx.fillText(pointsText, currentX + offset, textY);
+                ctx.fillText(pointsText, currentX, textY + offset);
             }
 
-            // ✅ Draw main points text (28px)
-            ctx.fillStyle = notifImg ? '#19ffe8' : '#00ff00'; // Cyan if bonus, Green otherwise
-            ctx.fillText(pointsText, coords.x + 10, coords.y + CROSS_SIZE - 10);
+            // Then, draw the main text in the appropriate color.
+            if (compType === 'BOTW') {
+                ctx.fillStyle = BOTW_COLOR;
+            } else if (compType === 'SOTW') {
+                ctx.fillStyle = SOTW_COLOR;
+            } else {
+                ctx.fillStyle = POINTS_COLOR;
+            }
 
-            // ✅ Draw the "+50" bonus in a **smaller font**
+            ctx.fillText(pointsText, currentX, textY);
+
+            // If there's bonus text, draw it in a smaller font next to the points text.
             if (bonusText) {
+                // Switch to a smaller font for the bonus text.
                 ctx.font = '18px RuneScape';
-                ctx.fillStyle = '#000000'; // Cyan color
-                const textWidth = ctx.measureText(pointsText).width; // Align correctly
-                for (const offset of [-1, 1]) {
-                    ctx.fillText(bonusText, coords.x + 10 + textWidth + 30 + offset, coords.y + CROSS_SIZE - 12);
-                    ctx.fillText(bonusText, coords.x + 10 + textWidth + 30, coords.y + CROSS_SIZE - 12 + offset);
-                }
-                ctx.fillStyle = '#19ffe8';
-                ctx.fillText(bonusText, coords.x + 10 + textWidth + 30, coords.y + CROSS_SIZE - 12);
-            }
+                // Measure the width of the points text to align the bonus text properly.
+                const textWidth = ctx.measureText(pointsText).width;
+                // Calculate x coordinate for the bonus text.
+                const bonusX = currentX + textWidth + bonusOffset;
 
-            ctx.font = '28px RuneScape';
-            // Draw progress text.
-            const progressText = `${t.progress}%`;
-            ctx.textAlign = 'right';
-            const hue = Math.floor((t.progress / 100) * 120);
-            const progressColor = `hsl(${hue}, 100%, 50%)`;
-            ctx.fillStyle = '#000000';
-            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 - 1);
-            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 - 1);
-            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 + 1);
-            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 + 1);
-            ctx.fillStyle = progressColor;
-            ctx.fillText(progressText, coords.x + CROSS_SIZE - 10, coords.y + CROSS_SIZE - 10);
+                // Draw bonus text outline (using a similar offset technique).
+                ctx.fillStyle = OUTLINE_COLOR; // Outline color for bonus text
+                for (const offset of [-1, 1]) {
+                    ctx.fillText(bonusText, bonusX + offset, textY - 2);
+                    ctx.fillText(bonusText, bonusX, textY - 2 + offset);
+                }
+
+                // Draw the bonus text with its final color.
+                if (compType === 'BOTW') {
+                    ctx.fillStyle = BOTW_COLOR;
+                    ctx.fillText(bonusText, bonusX, textY - 2);
+                } else if (compType === 'SOTW') {
+                    ctx.fillStyle = SOTW_COLOR;
+                    ctx.fillText(bonusText, bonusX, textY - 2);
+                }
+            }
+            if (status !== 'completed' && t.progress > 0) {
+                ctx.font = '28px RuneScape';
+                // Draw progress text.
+                const progressText = `${t.progress}%`;
+                ctx.textAlign = 'right';
+                const hue = Math.floor((t.progress / 100) * 120);
+                const progressColor = `hsl(${hue}, 100%, 50%)`;
+                ctx.fillStyle = OUTLINE_COLOR;
+                ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 - 1);
+                ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 - 1);
+                ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 - 1, coords.y + CROSS_SIZE - 10 + 1);
+                ctx.fillText(progressText, coords.x + CROSS_SIZE - 10 + 1, coords.y + CROSS_SIZE - 10 + 1);
+                ctx.fillStyle = progressColor;
+                ctx.fillText(progressText, coords.x + CROSS_SIZE - 10, coords.y + CROSS_SIZE - 10);
+            }
         }
 
         // Use the actual id for overall progress calculations.
@@ -316,16 +425,147 @@ async function generateBingoCard(boardId, id, isTeam = false) {
             const progressColor = `hsl(${hue}, 100%, 50%)`;
             ctx.font = '32px RuneScape';
             ctx.textAlign = 'left';
-            ctx.fillStyle = '#dc8a00'; // ctx.fillStyle = '#ff7aa5'; // Pink Rosey
-            ctx.fillText('Overall:', coordsX, coordsY);
-            const overallWidth = ctx.measureText('Overall:').width + 4;
-            ctx.fillStyle = '#000000';
-            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY - 1);
-            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY - 1);
-            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY + 1);
-            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY + 1);
-            ctx.fillStyle = progressColor;
-            ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth, coordsY);
+            if (overall > 0) {
+                ctx.fillStyle = OUTLINE_COLOR;
+                ctx.fillText('Overall:', coordsX - 1, coordsY - 1);
+                ctx.fillText('Overall:', coordsX + 1, coordsY - 1);
+                ctx.fillText('Overall:', coordsX - 1, coordsY + 1);
+                ctx.fillText('Overall:', coordsX + 1, coordsY + 1);
+                ctx.fillStyle = TEXT_COLOR;
+                ctx.fillText('Overall:', coordsX, coordsY);
+
+                const overallWidth = ctx.measureText('Overall:').width + 4;
+                ctx.fillStyle = OUTLINE_COLOR;
+                ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY - 1);
+                ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY - 1);
+                ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth - 1, coordsY + 1);
+                ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth + 1, coordsY + 1);
+                ctx.fillStyle = progressColor;
+                ctx.fillText(`${overall.toFixed(2)}%`, coordsX + overallWidth, coordsY);
+            }
+        }
+
+        const clanName = `${process.env.CLAN_NAME} — Bingo`;
+        const spacing = 10; // spacing between logo and text
+        const centerY = 45; // vertical center for both logo and text
+
+        if (clanLogoImg) {
+            // Desired logo height
+            const targetHeight = 32;
+            const scaleFactor = targetHeight / clanLogoImg.height;
+            const logoWidth = clanLogoImg.width * scaleFactor;
+
+            // Set text properties and measure text width
+            ctx.font = '32px RuneScape';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            const textWidth = ctx.measureText(clanName).width;
+
+            // Calculate total combined width and starting x coordinate
+            const totalWidth = logoWidth + spacing + textWidth;
+            const startX = (CANVAS_WIDTH - totalWidth) / 2;
+
+            // Draw the logo so that its vertical center aligns with centerY
+            ctx.drawImage(clanLogoImg, startX, centerY - targetHeight / 2, logoWidth, targetHeight);
+
+            // Draw text to the right of the logo
+            const textX = startX + logoWidth + spacing;
+
+            // Draw text outline (shadow)
+            ctx.fillStyle = OUTLINE_COLOR;
+            ctx.fillText(clanName, textX - 1, centerY - 1);
+            ctx.fillText(clanName, textX + 1, centerY - 1);
+            ctx.fillText(clanName, textX - 1, centerY + 1);
+            ctx.fillText(clanName, textX + 1, centerY + 1);
+
+            // Draw main text
+            ctx.fillStyle = TEXT_COLOR;
+            ctx.fillText(clanName, textX, centerY);
+        } else {
+            // Fallback: center text if no logo is available
+            ctx.font = '32px RuneScape';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Draw outline
+            ctx.fillStyle = OUTLINE_COLOR;
+            ctx.fillText(clanName, CANVAS_WIDTH / 2 - 1, centerY - 1);
+            ctx.fillText(clanName, CANVAS_WIDTH / 2 + 1, centerY - 1);
+            ctx.fillText(clanName, CANVAS_WIDTH / 2 - 1, centerY + 1);
+            ctx.fillText(clanName, CANVAS_WIDTH / 2 + 1, centerY + 1);
+            // Draw main text
+            ctx.fillStyle = TEXT_COLOR;
+            ctx.fillText(clanName, CANVAS_WIDTH / 2, centerY);
+        }
+
+        if (id > 0) {
+            // Get sender's name: if team, get team name; otherwise, player RSN.
+            const senderName = isTeam ? await getTeamName(id) : await getPlayerRsn(id);
+            const playerRank = await getPlayerRank(id);
+            logger.info(`Collected Rank: ${playerRank}`);
+            const clanRankPath = await getRankImagePath(`${playerRank}`);
+            logger.info(`Found Path: ${clanRankPath}`);
+            let clanRankImg = null;
+            if (clanRankPath) {
+                clanRankImg = await loadImage(clanRankPath);
+            }
+
+            let displayName = `${senderName}`;
+
+            if (isTeam) {
+                displayName = `Team: ${senderName}`;
+            }
+
+            // Set up some constants for spacing and margins.
+            const rightMargin = 16; // Distance from the right edge
+            const spacing = 5; // Space between the rank image and the text
+            const senderY = 45; // Vertical center for both the image and text
+
+            ctx.font = '32px RuneScape';
+            ctx.textBaseline = 'middle'; // This makes vertical centering easier
+
+            if (displayName !== 'null') {
+                if (clanRankImg) {
+                    // Define the desired height for the rank image.
+                    const targetHeight = 24;
+                    // Calculate the scale factor and target width while preserving aspect ratio.
+                    const scaleFactor = targetHeight / clanRankImg.height;
+                    const rankWidth = clanRankImg.width * scaleFactor;
+                    // Measure the width of the sender's name.
+                    const textWidth = ctx.measureText(senderName).width;
+                    // The total width of the group is the rank image width + spacing + text width.
+                    const totalWidth = rankWidth + spacing + textWidth;
+                    // Calculate the starting x so that the group is right-aligned:
+                    // The right edge is at CANVAS_WIDTH - rightMargin.
+                    const startX = CANVAS_WIDTH - rightMargin - totalWidth;
+                    // Draw the rank image so that it's vertically centered.
+                    ctx.drawImage(clanRankImg, startX, senderY - targetHeight / 2, rankWidth, targetHeight);
+
+                    // Draw the sender name to the right of the rank image.
+                    // We use left alignment for the text now.
+                    const textX = startX + rankWidth + spacing;
+
+                    // Draw text outline (shadow) for better legibility.
+                    ctx.fillStyle = OUTLINE_COLOR;
+                    ctx.fillText(displayName, textX - 1, senderY - 1);
+                    ctx.fillText(displayName, textX + 1, senderY - 1);
+                    ctx.fillText(displayName, textX - 1, senderY + 1);
+                    ctx.fillText(displayName, textX + 1, senderY + 1);
+
+                    // Draw the main sender name text.
+                    ctx.fillStyle = TEXT_COLOR;
+                    ctx.fillText(displayName, textX, senderY);
+                } else {
+                    // Fallback: if no rank image is available, just right-align the text.
+                    ctx.textAlign = 'right';
+                    ctx.fillStyle = OUTLINE_COLOR;
+                    ctx.fillText(displayName, CANVAS_WIDTH - rightMargin - 1, senderY - 1);
+                    ctx.fillText(displayName, CANVAS_WIDTH - rightMargin + 1, senderY - 1);
+                    ctx.fillText(displayName, CANVAS_WIDTH - rightMargin - 1, senderY + 1);
+                    ctx.fillText(displayName, CANVAS_WIDTH - rightMargin + 1, senderY + 1);
+                    ctx.fillStyle = TEXT_COLOR;
+                    ctx.fillText(displayName, CANVAS_WIDTH - rightMargin, senderY);
+                }
+            }
         }
 
         const finalBuffer = canvas.toBuffer('image/png');
@@ -359,6 +599,23 @@ async function getImagePath(fileName) {
         `
     SELECT file_path
     FROM bingo
+    WHERE file_name = ?
+  `,
+        [fileName],
+    );
+    return row ? row.file_path : null;
+}
+
+/**
+ *
+ * @param fileName
+ * @returns
+ */
+async function getRankImagePath(fileName) {
+    const row = await db.image.getOne(
+        `
+    SELECT file_path
+    FROM ranks
     WHERE file_name = ?
   `,
         [fileName],

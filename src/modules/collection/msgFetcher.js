@@ -1,10 +1,10 @@
 require('dotenv').config();
-const { dbPromise } = require('./msgDbConstants');
 const { getRecentMessages, detectSystemMessage } = require('./msgDbUtils');
 const { saveMessage } = require('./msgDbSave');
 const { reorderAllTables } = require('./msgReorder');
 const logger = require('../utils/essentials/logger');
 const db = require('../utils/essentials/dbUtils');
+const { systemTables } = require('./msgDbConstants');
 /**
  *
  * @param idA
@@ -122,59 +122,32 @@ async function fetchAndStoreChannelHistory(client) {
     }
 }
 /**
- *
- * @param messageIds
+ * 🔎 Get Existing Message IDs Across All System Tables
+ * @param {Array<string>} messageIds - List of message IDs to check.
+ * @returns {Set<string>} - Set of existing message IDs.
  */
 async function getExistingMessageIds(messageIds) {
-    if (messageIds.length === 0) return new Set();
+    if (!messageIds.length) return new Set();
+
     const placeholders = messageIds.map(() => '?').join(',');
-    const sql = `
-    SELECT message_id FROM chat_messages WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM drops WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM raid_drops WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM pvp_messages WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM quest_completed WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM collection_log WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM personal_bests WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM pet_drops WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM level_ups WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM combat_achievements WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM clue_rewards WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM clan_traffic WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM diary_completed WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM combat_tasks_completed WHERE message_id IN (${placeholders})
-    UNION
-    SELECT message_id FROM loot_key_rewards WHERE message_id IN (${placeholders});
-  `;
-    const db = await dbPromise;
-    const allParams = Array(15).fill(messageIds).flat();
+    const queries = Object.values(systemTables)
+        .map((table) => `SELECT message_id FROM ${table} WHERE message_id IN (${placeholders})`)
+        .join(' UNION ');
+
     try {
-        const rows = await db.all(sql, allParams);
+        const rows = await db.messages.getAll(queries, [...messageIds, ...messageIds]);
         return new Set(rows.map((row) => row.message_id));
     } catch (err) {
-        logger.error('❌ Error in getExistingMessageIds (all tables):', err);
+        logger.error('❌ Error in getExistingMessageIds:', err);
         return new Set();
     }
 }
+
 /**
  *
  */
 async function getLastFetchedMessageId() {
-    const db = await dbPromise;
-    const row = await db.get('SELECT value FROM meta_info WHERE key = "last_fetched_message_id"');
+    const row = await db.messages.getOne('SELECT value FROM meta_info WHERE key = "last_fetched_message_id"');
     return row ? row.value : null;
 }
 /**
@@ -182,8 +155,7 @@ async function getLastFetchedMessageId() {
  * @param messageId
  */
 async function setLastFetchedMessageId(messageId) {
-    const db = await dbPromise;
-    await db.run(
+    await db.messages.runQuery(
         `
     INSERT INTO meta_info (key, value)
     VALUES ("last_fetched_message_id", ?)

@@ -1,5 +1,15 @@
 const logger = require('../../utils/essentials/logger');
 const { Metric } = require('@wise-old-man/utils');
+/**
+ *
+ * @param womclient
+ * @param db
+ * @param type
+ * @param metric
+ * @param startsAt
+ * @param endsAt
+ * @param constants
+ */
 async function createCompetition(womclient, db, type, metric, startsAt, endsAt, constants) {
     try {
         const title = type === 'SOTW' ? `${metric.replace(/_/g, ' ').toUpperCase()} SOTW` : `${metric.replace(/_/g, ' ').toUpperCase()} BOTW`;
@@ -29,6 +39,7 @@ async function createCompetition(womclient, db, type, metric, startsAt, endsAt, 
             [competitionId, title, metric, type, startsAt.toISOString(), endsAt.toISOString(), verificationCode, rotationIndex],
         );
         logger.info(`🚀 Created competition \`${competitionId}\` of type \`${type}\` with metric \`${metric}\` and rotation index \`${rotationIndex}\`.`);
+
         return newComp;
     } catch (err) {
         logger.error(`❌ Error in createCompetition: ${err.message}`);

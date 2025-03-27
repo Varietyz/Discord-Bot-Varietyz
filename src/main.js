@@ -14,6 +14,9 @@ const CompetitionService = require('./modules/services/competitionServices/compe
 const { generateDynamicTasks } = require('./modules/services/bingo/dynamicTaskGenerator');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
+const { closeDatabases, cancelAllDbOperations } = require('./modules/utils/essentials/dbUtils');
+const globalState = require('./config/globalState');
+const WOMApiClient = require('./api/wise_old_man/apiClient');
 
 const commands = [];
 const functions = [];
@@ -115,8 +118,43 @@ const initializeBot = async () => {
         await fetchAndStoreChannelHistory(client);
     } catch (error) {
         logger.error(`🚨 Initialization Failed: ${error.message}`);
+        process.exit(1);
     }
 };
 initializeBot();
+
+/**
+ *
+ * @param signal
+ */
+async function gracefulShutdown(signal) {
+    logger.info(`Received ${signal}. Initiating graceful shutdown...`);
+    globalState.isShuttingDown = true; // Set the flag so dbutils can know shutdown is in progress
+    try {
+        // Remove listeners that might trigger DB operations
+        client.removeAllListeners();
+
+        cancelAllDbOperations();
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Close the database connections
+        await closeDatabases();
+
+        // Disconnect from Discord
+        await client.destroy();
+
+        await WOMApiClient.close();
+
+        logger.info('Shutdown complete. Exiting now.');
+        process.exit(0);
+    } catch (error) {
+        logger.error(`Error during shutdown: ${error.message}`);
+        process.exit(1);
+    }
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 module.exports = client;
