@@ -29,7 +29,7 @@ module.exports.execute = async (interaction) => {
 
         const normalizedRsn = normalizeStr(rsn);
         const playerData = await fetchPlayerData(normalizedRsn);
-        const profileLink = await getPlayerLink(normalizedRsn);
+        const profileLink = await getPlayerLink(rsn);
         const validation = validateRsn(rsn);
         const currentTime = Date.now();
 
