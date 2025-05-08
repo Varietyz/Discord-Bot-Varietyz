@@ -3,12 +3,6 @@ const { savePlayerDataToDb } = require('../../services/playerDataExtractor');
 const { getLastFetchedTime, setLastFetchedTime } = require('../fetchers/lastFetchedTime');
 const logger = require('./logger');
 
-/**
- * Updates the data for a given RSN using the WOM API.
- * @param {string} rsn
- * @param {number} playerId
- * @param {number} eventId
- */
 async function updatePlayerData(rsn, playerId) {
     try {
         logger.info(`🔄 Updating data for ${rsn} (player: ${playerId})...`);

@@ -2,10 +2,7 @@ const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedB
 const db = require('../utils/essentials/dbUtils');
 const logger = require('../utils/essentials/logger');
 const modalId = 'register_clanchat_webhook_modal';
-/**
- *
- * @param interaction
- */
+
 async function showRegisterClanchatModal(interaction) {
     const modal = new ModalBuilder().setCustomId('register_clanchat_webhook_modal').setTitle('Register Clanchat Webhook');
     const secretKeyInput = new TextInputBuilder().setCustomId('secret_key').setLabel('Secret Key').setStyle(TextInputStyle.Short).setRequired(true);
@@ -17,10 +14,7 @@ async function showRegisterClanchatModal(interaction) {
     modal.addComponents(row1, row2, row3);
     await interaction.showModal(modal);
 }
-/**
- *
- * @param interaction
- */
+
 async function execute(interaction) {
     if (!interaction.fields) {
         return interaction.reply({ content: '❌ Error processing modal submission. Missing fields.', flags: 64 });
@@ -108,9 +102,7 @@ async function execute(interaction) {
         }
     }
 }
-/**
- *
- */
+
 async function generateClanChatKey() {
     const query = `
         SELECT MAX(CAST(SUBSTR(clanchat_key, LENGTH('chathook_') + 1) AS INTEGER)) AS maxKey

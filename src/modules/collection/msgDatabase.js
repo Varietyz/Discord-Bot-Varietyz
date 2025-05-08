@@ -3,9 +3,6 @@ const { systemTables } = require('./msgDbConstants');
 const logger = require('../utils/essentials/logger');
 const db = require('../utils/essentials/dbUtils');
 
-/**
- *
- */
 async function initializeMsgTables() {
     await db.messages.runQuery(`
   CREATE TABLE IF NOT EXISTS chat_messages (
@@ -33,7 +30,9 @@ async function initializeMsgTables() {
     );
   `);
     }
-    logger.info('✅ **Success:** Database initialized with WAL mode. All chat and system tables are created.');
+    logger.info(
+        '✅ **Success:** Database initialized with WAL mode. All chat and system tables are created.'
+    );
 }
 module.exports = {
     initializeMsgTables,

@@ -1,64 +1,59 @@
 module.exports = {
-    // Specify the plugins used by ESLint
+
     plugins: ['jsdoc', 'node'],
 
-    // Extend recommended ESLint and Node.js configurations
     extends: [
         'eslint:recommended',
         'plugin:node/recommended'
     ],
 
-    // Define the environments your script is designed to run in
     env: {
-        node: true,        // Node.js global variables and Node.js scoping
-        es2021: true       // Enable all ECMAScript 2021 globals and syntax
+        node: true,        
+        es2021: true       
     },
 
-    // Parser options to specify ECMAScript features
     parserOptions: {
-        ecmaVersion: 'latest',    // Allows for the parsing of modern ECMAScript features
-        sourceType: 'commonjs'      // Allows for the use of imports
+        ecmaVersion: 'latest',    
+        sourceType: 'commonjs'      
     },
 
-    // Define custom rules and override default settings
     rules: {
-        // JSDoc Rules
-        'jsdoc/check-alignment': 'warn',              // Ensure JSDoc comments are properly aligned
-        'jsdoc/check-indentation': 'warn',            // Check that JSDoc blocks are correctly indented
-        'jsdoc/check-param-names': 'warn',            // Verify that parameter names in JSDoc match those in the function
+
+        'jsdoc/check-alignment': 'warn',              
+        'jsdoc/check-indentation': 'warn',            
+        'jsdoc/check-param-names': 'warn',            
         'jsdoc/require-jsdoc': [
             'warn',
             {
                 require: {
-                    FunctionDeclaration: true,          // Require JSDoc for function declarations
-                    MethodDefinition: true,            // Require JSDoc for class methods
-                    ClassDeclaration: true             // Require JSDoc for class declarations
+                    FunctionDeclaration: true,          
+                    MethodDefinition: true,            
+                    ClassDeclaration: true             
                 }
             }
         ],
-        'jsdoc/require-param': 'warn',                 // Ensure that @param tags are present in JSDoc
-        'jsdoc/require-returns': 'warn',               // Ensure that @returns tags are present in JSDoc
+        'jsdoc/require-param': 'warn',                 
+        'jsdoc/require-returns': 'warn',               
 
-        // Node.js Rules
-        'node/no-missing-require': 'error',            // Disallow require() expressions with missing modules
-        'node/no-unpublished-require': 'error',        // Disallow require() expressions referencing modules that are not listed in package.json
-        'node/no-deprecated-api': 'error',              // Disallow deprecated Node.js APIs
-        'node/callback-return': 'error',                // Enforce return after a callback
-        'node/exports-style': ['error', 'module.exports'], // Enforce the consistent use of module.exports
+        'node/no-missing-require': [ 'error',{ allowModules: ['@discordjs/rest', 'p-queue'] }],            
+        'node/no-unpublished-require': 'error',        
+        'node/no-deprecated-api': 'error',              
+        'node/callback-return': 'error',                
+        'node/exports-style': ['error', 'module.exports'], 
+        'no-process-exit': 'off',
 
-        // General Coding Style Rules
-        indent: ['error', 4],                           // Enforce consistent indentation (4 spaces)
-        quotes: ['error', 'single'],                     // Enforce the consistent use of single quotes
-        semi: ['error', 'always'],                       // Require or disallow semicolons instead of ASI
-        'max-len': ['warn', { code: 250 }],            // Enforce a maximum line length of 250 characters
-        'no-console': 'warn',                            // Warn about the use of console (can be set to 'off' if desired)
-        'prefer-const': 'warn'                          // Suggest using const over let when variables are not reassigned
+        indent: ['error', 4],                           
+        quotes: ['error', 'single'],                     
+        semi: ['error', 'always'],                       
+        'max-len': ['warn', { code: 250 }],            
+        'no-console': 'warn',                            
+        'prefer-const': 'warn'                          
     },
 
-    // Settings for plugins
     settings: {
         node: {
-            tryExtensions: ['.js', '.json']              // File extensions to try for imports
+            version: '>=22.0.0',                  
+            tryExtensions: ['.js', '.json']              
         }
     }
 };

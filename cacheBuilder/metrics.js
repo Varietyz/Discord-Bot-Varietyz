@@ -1,7 +1,5 @@
-// metrics.js
-
 const metrics = [
-    // Boss Metrics
+
     'abyssal_sire',
     'alchemical_hydra',
     'amoxliatl',
@@ -67,7 +65,6 @@ const metrics = [
     'zalcano',
     'zulrah',
 
-    // Skill Metrics
     'overall',
     'attack',
     'defence',
@@ -93,7 +90,6 @@ const metrics = [
     'hunter',
     'construction',
 
-    // Activity Metrics (Excluded from cache)
     'league_points',
     'bounty_hunter_hunter',
     'bounty_hunter_rogue',

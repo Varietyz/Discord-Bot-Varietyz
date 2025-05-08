@@ -2,13 +2,7 @@ const { systemTables, emojiCleanupTypes } = require('./msgDbConstants');
 const { reformatText, isChatMessage, cleanupEmojiSystemMessage, cleanupKeysRow, cleanupTasksRow, cleanupChatRow, combineExtraName, detectSystemMessage } = require('./msgDbUtils');
 const logger = require('../utils/essentials/logger');
 const db = require('../utils/essentials/dbUtils');
-/**
- *
- * @param rsn
- * @param message
- * @param messageId
- * @param timestamp
- */
+
 async function saveMessage(rsn, message, messageId, timestamp) {
     try {
         if (isChatMessage(message)) {
@@ -56,14 +50,7 @@ async function saveMessage(rsn, message, messageId, timestamp) {
         logger.error('❌ Database Save Error:', error);
     }
 }
-/**
- *
- * @param type
- * @param rsn
- * @param message
- * @param messageId
- * @param timestamp
- */
+
 async function saveSystemMessage(type, rsn, message, messageId, timestamp) {
     try {
         const tableName = systemTables[type];

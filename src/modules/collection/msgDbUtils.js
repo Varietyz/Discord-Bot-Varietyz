@@ -1,8 +1,10 @@
 const db = require('../utils/essentials/dbUtils');
 const { SYSTEM_PATTERNS } = require('./msgDbConstants');
+
 function isChatMessage(message) {
     return /\*\*[^*]+\*\*:\s/.test(message);
 }
+
 function detectSystemMessage(message) {
     if (isChatMessage(message)) return null;
     for (const [type, patterns] of Object.entries(SYSTEM_PATTERNS)) {
@@ -17,10 +19,12 @@ function detectSystemMessage(message) {
     }
     return null;
 }
+
 function reformatText(text) {
     if (!text) return text;
     return text.replace(/\\/g, '').replace(/\s+/g, ' ').trim();
 }
+
 function combineExtraName(user, message) {
     user = reformatText(user);
     message = reformatText(message);
@@ -35,6 +39,7 @@ function combineExtraName(user, message) {
     const newMessage = tokens.slice(index).join(' ');
     return { user: combinedUser, message: newMessage };
 }
+
 function cleanupChatRow(message) {
     if (!message) return { username: null, cleanedMessage: message };
     const regex = /^(?:<:[^>]+>\s*)+\*\*(.+?)\*\*:\s*(.*)$/;
@@ -46,6 +51,7 @@ function cleanupChatRow(message) {
     }
     return { username: null, cleanedMessage: reformatText(message) };
 }
+
 function cleanupTasksRow(message) {
     if (!message) return { username: null, cleanedMessage: message };
     const regex = /^CA_ID.*?\|(.+)$/i;
@@ -69,6 +75,7 @@ function cleanupTasksRow(message) {
     }
     return { username: null, cleanedMessage: reformatText(message) };
 }
+
 function cleanupKeysRow(message) {
     if (!message) return { username: null, cleanedMessage: message };
     const regex = /^(.*?)\s+(has opened a loot key.*)$/i;
@@ -80,6 +87,7 @@ function cleanupKeysRow(message) {
     }
     return { username: null, cleanedMessage: reformatText(message) };
 }
+
 function cleanupEmojiSystemMessage(message) {
     if (!message) return { username: null, cleanedMessage: reformatText(message) };
     message = message.replace(/^💬OSRS\s*\|\s*Clan\s*Chat\s*/i, '');
@@ -101,6 +109,7 @@ function cleanupEmojiSystemMessage(message) {
     }
     return { username: null, cleanedMessage: reformatText(message) };
 }
+
 async function getRecentMessages(limit = 50) {
     return db.messages.getAll('SELECT message FROM chat_messages ORDER BY timestamp DESC LIMIT ?', [limit]);
 }

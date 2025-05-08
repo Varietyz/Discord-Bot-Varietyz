@@ -74,7 +74,6 @@ module.exports = {
                     const guild = interaction.guild;
                     await fetchAndProcessMember(guild, targetUser.id);
 
-                    // Query for clan membership by joining registered_rsn and clan_members
                     const validRegistration = await getOne(
                         `
     SELECT r.*, cm.player_id AS clan_player_id

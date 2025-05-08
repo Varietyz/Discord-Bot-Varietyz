@@ -1,30 +1,12 @@
-/**
- * channels.js
- *
- * A single slash command that handles:
- *   /channels setup <category|all>
- *   /channels remove_all <category|all>
- *   /channels change <key> <channel>
- *   /channels list [category?]
- *
- * Self-contained: All channel/category definitions, permission overwrites,
- * and "live gains" webhook logic are in this single file.
- */
-
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionFlagsBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
 
-// Adjust these imports to match your project's file structure
 const logger = require('../../../utils/essentials/logger');
 const db = require('../../../utils/essentials/dbUtils');
 const { ensureAllChannels } = require('../../../utils/essentials/ensureChannels');
 
-// Destructure your DB methods (assuming they exist under db.guild)
 const { getOne, getAll, runQuery } = db.guild;
 
-/* ------------------------------------------------------------------
- * 3) LIVE GAINS WEBHOOK LOGIC
- * ------------------------------------------------------------------ */
 const liveGainsMapping = {
     clanchat_channel: { key: 'webhook_osrs_clan_chat', name: '💬OSRS | Clan Chat' },
     clue_scrolls_channel: { key: 'webhook_osrs_clue_scroll_completed', name: '📜OSRS | Clue scroll completed' },
@@ -36,31 +18,21 @@ const liveGainsMapping = {
     quests_channel: { key: 'webhook_osrs_quest_completed', name: '🧭OSRS | Quest completed' },
 };
 
-/**
- * If a channelKey is in liveGainsMapping, ensure a webhook is assigned (or moved).
- * @param guild
- * @param channelKey
- * @param channel
- */
 async function ensureWebhookAssignment(guild, channelKey, channel) {
     try {
         const desired = liveGainsMapping[channelKey];
-        if (!desired) return; // not in the live gains set
+        if (!desired) return; 
 
-        // Must have "Manage Webhooks" permission
         if (!channel.permissionsFor(guild.client.user)?.has(PermissionsBitField.Flags.ManageWebhooks)) {
             logger.warn(`⚠️ Bot lacks ManageWebhooks in #${channel.name}`);
             return;
         }
 
-        // Check DB for existing record
         const existing = await getOne('SELECT webhook_id, webhook_url, channel_id FROM guild_webhooks WHERE webhook_key = ?', [desired.key]);
 
-        // Attempt to find a matching webhook in the new channel
         const whs = await channel.fetchWebhooks();
         let webhook = existing ? whs.find((w) => w.url === existing.webhook_url) : null;
 
-        // If DB says old channel was different, try to move that webhook
         if (!webhook && existing?.channel_id && existing.channel_id !== channel.id) {
             const oldChan = guild.channels.cache.get(existing.channel_id);
             if (oldChan) {
@@ -80,7 +52,6 @@ async function ensureWebhookAssignment(guild, channelKey, channel) {
             }
         }
 
-        // If still no webhook, create one
         if (!webhook) {
             webhook = await channel.createWebhook({
                 name: desired.name,
@@ -89,7 +60,6 @@ async function ensureWebhookAssignment(guild, channelKey, channel) {
             logger.info(`✅ Created webhook in #${channel.name}`);
         }
 
-        // Upsert DB record
         await runQuery(
             `INSERT INTO guild_webhooks (webhook_key, webhook_id, webhook_url, channel_id)
        VALUES (?, ?, ?, ?)
@@ -100,7 +70,6 @@ async function ensureWebhookAssignment(guild, channelKey, channel) {
             [desired.key, webhook.id, webhook.url, channel.id],
         );
 
-        // If it’s the clanchat_channel, also update clanchat_config (example)
         if (channelKey === 'clanchat_channel') {
             await db.runQuery('UPDATE clanchat_config SET channel_id = ?, webhook_url = ?', [channel.id, webhook.url]);
             logger.info(`✅ Updated clanchat_config to #${channel.name}`);
@@ -110,14 +79,6 @@ async function ensureWebhookAssignment(guild, channelKey, channel) {
     }
 }
 
-/* ------------------------------------------------------------------
- * 4) SUBCOMMAND CATEGORIES
- * ------------------------------------------------------------------ */
-
-/**
- * For convenience, define these "categories" => array of channel_keys
- * used by remove_all and list subcommands.
- */
 const categories = {
     basic: ['clan_members_channel', 'name_change_channel', 'auto_roles_channel', 'activity_voice_channel'],
     bingo: ['bingo_notification_channel', 'bingo_card_channel', 'bingo_leaderboard_channel', 'bingo_patterns_channel'],
@@ -143,33 +104,29 @@ const categories = {
         'critical_alerts',
     ],
 };
-// Flatten all keys for autocomplete
-const allKeys = Object.values(categories).flat();
 
-/* ------------------------------------------------------------------
- * 5) EXPORT THE SLASH COMMAND
- * ------------------------------------------------------------------ */
+const allKeys = Object.values(categories).flat();
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('channels')
         .setDescription('ADMIN: Unified channel management (setup, remove, change, list).')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        // /channels setup <category|all>
+
         .addSubcommand((sub) =>
             sub
                 .setName('setup')
                 .setDescription('Create missing channels for a specific category or all.')
                 .addStringOption((opt) => opt.setName('category').setDescription('Which category (basic/bingo/competition/live_gains/logging) or "all"?').setRequired(true).setAutocomplete(true)),
         )
-        // /channels remove_all <category|all>
+
         .addSubcommand((sub) =>
             sub
                 .setName('remove_all')
                 .setDescription('Delete channels (and DB entries) for a category or all.')
                 .addStringOption((opt) => opt.setName('category').setDescription('Which category or "all"?').setRequired(true).setAutocomplete(true)),
         )
-        // /channels change <key> <channel>
+
         .addSubcommand((sub) =>
             sub
                 .setName('change')
@@ -177,7 +134,7 @@ module.exports = {
                 .addStringOption((opt) => opt.setName('key').setDescription('Channel key.').setRequired(true).setAutocomplete(true))
                 .addChannelOption((opt) => opt.setName('channel').setDescription('Which channel to assign?').setRequired(true)),
         )
-        // /channels list [category?]
+
         .addSubcommand((sub) =>
             sub
                 .setName('list')
@@ -190,15 +147,13 @@ module.exports = {
 
         try {
             if (subcommand === 'setup') {
-                // Because we might do multiple DB calls, let's do a deferred reply
+
                 await interaction.deferReply({ flags: 64 });
                 const category = interaction.options.getString('category', true);
 
-                // "all" => Ensure everything, then do live_gains webhooks
                 if (category === 'all') {
                     await ensureAllChannels(interaction.guild);
 
-                    // handle webhooks for live_gains
                     for (const key of categories.live_gains) {
                         const row = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', [key]);
                         if (row) {
@@ -209,8 +164,6 @@ module.exports = {
                     return interaction.editReply('✅ Created **all** channels from config.');
                 }
 
-                // If it's a single category, we still ensure everything
-                // but only do additional webhook logic if it's "live_gains"
                 await ensureAllChannels(interaction.guild);
 
                 if (category === 'live_gains') {
@@ -229,7 +182,7 @@ module.exports = {
                 const category = interaction.options.getString('category', true);
 
                 if (category === 'all') {
-                    // Remove everything
+
                     const rows = await getAll('SELECT channel_id FROM ensured_channels');
                     for (const { channel_id } of rows) {
                         const c = interaction.guild.channels.cache.get(channel_id);
@@ -241,7 +194,6 @@ module.exports = {
                     return interaction.editReply('🗑️ Removed **all** ensured channels + DB records.');
                 }
 
-                // Remove only that category's channel keys
                 const catKeys = categories[category];
                 if (!catKeys) {
                     return interaction.editReply(`❌ Unknown category \`${category}\``);
@@ -268,7 +220,6 @@ module.exports = {
                     });
                 }
 
-                // Upsert the ensured_channels row
                 await runQuery(
                     `INSERT INTO ensured_channels (channel_key, channel_id)
            VALUES (?, ?)
@@ -276,7 +227,6 @@ module.exports = {
                     [key, channel.id],
                 );
 
-                // If it's a live_gains key, ensure webhooks
                 if (categories.live_gains.includes(key)) {
                     await ensureWebhookAssignment(interaction.guild, key, channel);
                 }
@@ -331,20 +281,17 @@ module.exports = {
         const focused = interaction.options.getFocused(true);
         const value = focused.value.toLowerCase();
 
-        // 1) category
         if (focused.name === 'category') {
             const catChoices = Object.keys(categories).concat(['all']);
             const filtered = catChoices.filter((c) => c.toLowerCase().includes(value));
             return interaction.respond(filtered.map((c) => ({ name: c, value: c })));
         }
 
-        // 2) key
         if (focused.name === 'key') {
             const filtered = allKeys.filter((k) => k.toLowerCase().includes(value));
             return interaction.respond(filtered.map((k) => ({ name: k, value: k })));
         }
 
-        // default fallback
         return interaction.respond([]);
     },
 };

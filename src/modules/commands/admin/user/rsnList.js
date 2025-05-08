@@ -24,12 +24,7 @@ const loadClanMembers = async () => {
         rankIndex: rankHierarchy[member.rank.toLowerCase()] ?? -1,
     }));
 };
-/**
- *
- * @param userId
- * @param rsns
- * @param clanMembers
- */
+
 async function prepareUserContent(userId, rsns, clanMembers) {
     const userTag = `\n<@${userId}>`;
     const rsnContentArray = await Promise.all(

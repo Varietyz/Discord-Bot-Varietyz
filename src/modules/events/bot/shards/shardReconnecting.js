@@ -4,5 +4,5 @@ module.exports = {
     once: false,
     async execute(id) {
         logger.warn(`🔄 Shard ${id} is Reconnecting...`);
-    },
+    }
 };

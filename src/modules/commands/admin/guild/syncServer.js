@@ -2,9 +2,10 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 const logger = require('../../../utils/essentials/logger');
 const {
-    guild: { runQuery, getAll },
+    guild: { runQuery, getAll }
 } = require('../../../utils/essentials/dbUtils');
 const { formatCustomEmoji } = require('../../../utils/helpers/formatCustomEmoji');
+
 function getUniqueKey(name, type, existingKeys) {
     const cleanName = name
         .toLowerCase()
@@ -24,17 +25,23 @@ function getUniqueKey(name, type, existingKeys) {
     existingKeys.add(uniqueKey);
     return uniqueKey;
 }
+
 async function cleanupDeletedItems(existingIds, table, idColumn) {
     const storedItems = await getAll(`SELECT ${idColumn} FROM ${table}`);
     for (const item of storedItems) {
         if (!existingIds.has(item[idColumn])) {
             await runQuery(`DELETE FROM ${table} WHERE ${idColumn} = ?`, [item[idColumn]]);
-            logger.info(`🗑️ Removed ${idColumn} ${item[idColumn]} from ${table} (no longer exists in Discord).`);
+            logger.info(
+                `🗑️ Removed ${idColumn} ${item[idColumn]} from ${table} (no longer exists in Discord).`
+            );
         }
     }
 }
 module.exports = {
-    data: new SlashCommandBuilder().setName('sync_server').setDescription('ADMIN: Fetch, store, and clean up all relevant server data for the bot.').setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
+    data: new SlashCommandBuilder()
+        .setName('sync_server')
+        .setDescription('ADMIN: Fetch, store, and clean up all relevant server data for the bot.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
     async execute(interaction) {
         try {
             if (!interaction.deferred && !interaction.replied) {
@@ -45,7 +52,7 @@ module.exports = {
             if (!guild) {
                 return await interaction.reply({
                     content: '❌ **Error:** This command must be run in a server.',
-                    flags: 64,
+                    flags: 64
                 });
             }
             logger.info(`🔄 Fetching and cleaning server data for guild: ${guild.name} (${guild.id})`);
@@ -69,7 +76,7 @@ module.exports = {
                     name: channel.name,
                     type: channel.type,
                     category: channel.parent?.name || 'uncategorized',
-                    permissions: channel.permissionsFor(guild.roles.everyone)?.bitfield.toString() || '0',
+                    permissions: channel.permissionsFor(guild.roles.everyone)?.bitfield.toString() || '0'
                 });
             }
             for (const ch of channelsToSave) {
@@ -82,7 +89,7 @@ module.exports = {
                              type        = excluded.type,
                              category    = excluded.category,
                              permissions = excluded.permissions`,
-                    [ch.id, ch.key, ch.name, ch.type, ch.category, ch.permissions],
+                    [ch.id, ch.key, ch.name, ch.type, ch.category, ch.permissions]
                 );
             }
             logger.info(`📌 Stored/updated ${channelsToSave.length} channels.`);
@@ -103,7 +110,7 @@ module.exports = {
                 rolesToSave.push({
                     id: role.id,
                     key: roleKey,
-                    permissions: role.permissions.bitfield.toString(),
+                    permissions: role.permissions.bitfield.toString()
                 });
             }
             for (const r of rolesToSave) {
@@ -113,7 +120,7 @@ module.exports = {
                      ON CONFLICT(role_id) DO UPDATE
                          SET role_key   = excluded.role_key,
                              permissions= excluded.permissions`,
-                    [r.id, r.key, r.permissions],
+                    [r.id, r.key, r.permissions]
                 );
             }
             logger.info(`🔑 Stored/updated ${rolesToSave.length} roles.`);
@@ -136,7 +143,7 @@ module.exports = {
                     key: emojiKey,
                     name: emoji.name,
                     format: formatCustomEmoji(emoji),
-                    animated: emoji.animated ? 1 : 0,
+                    animated: emoji.animated ? 1 : 0
                 });
             }
             for (const e of emojisToSave) {
@@ -148,14 +155,14 @@ module.exports = {
                              emoji_name  = excluded.emoji_name,
                              emoji_format= excluded.emoji_format,
                              animated    = excluded.animated`,
-                    [e.id, e.key, e.name, e.format, e.animated],
+                    [e.id, e.key, e.name, e.format, e.animated]
                 );
             }
             logger.info(`😃 Stored/updated ${emojisToSave.length} emojis.`);
             await guild.members.fetch();
-            const membersToSave = Array.from(guild.members.cache.values()).map((member) => ({
+            const membersToSave = Array.from(guild.members.cache.values()).map(member => ({
                 id: member.id,
-                username: member.user.username,
+                username: member.user.username
             }));
             for (const m of membersToSave) {
                 await runQuery(
@@ -163,7 +170,7 @@ module.exports = {
                      VALUES (?, ?)
                      ON CONFLICT(user_id) DO UPDATE
                          SET username = excluded.username`,
-                    [m.id, m.username],
+                    [m.id, m.username]
                 );
             }
             logger.info(`👥 Stored/updated ${membersToSave.length} members.`);
@@ -188,7 +195,7 @@ module.exports = {
                     key,
                     name: webhook.name || guild.name,
                     url: webhook.url,
-                    channelId: webhook.channelId || null,
+                    channelId: webhook.channelId || null
                 });
             }
             for (const w of webhooksToSave) {
@@ -200,15 +207,23 @@ module.exports = {
                              webhook_name = excluded.webhook_name,
                              webhook_url  = excluded.webhook_url,
                              channel_id   = excluded.channel_id`,
-                    [w.id, w.key, w.name, w.url, w.channelId],
+                    [w.id, w.key, w.name, w.url, w.channelId]
                 );
             }
             logger.info(`📡 Stored/updated ${webhooksToSave.length} webhooks.`);
-            await cleanupDeletedItems(new Set(channelsToSave.map((c) => c.id)), 'guild_channels', 'channel_id');
-            await cleanupDeletedItems(new Set(rolesToSave.map((r) => r.id)), 'guild_roles', 'role_id');
-            await cleanupDeletedItems(new Set(emojisToSave.map((e) => e.id)), 'guild_emojis', 'emoji_id');
-            await cleanupDeletedItems(new Set(membersToSave.map((m) => m.id)), 'guild_members', 'user_id');
-            await cleanupDeletedItems(new Set(webhooksToSave.map((w) => w.id)), 'guild_webhooks', 'webhook_id');
+            await cleanupDeletedItems(
+                new Set(channelsToSave.map(c => c.id)),
+                'guild_channels',
+                'channel_id'
+            );
+            await cleanupDeletedItems(new Set(rolesToSave.map(r => r.id)), 'guild_roles', 'role_id');
+            await cleanupDeletedItems(new Set(emojisToSave.map(e => e.id)), 'guild_emojis', 'emoji_id');
+            await cleanupDeletedItems(new Set(membersToSave.map(m => m.id)), 'guild_members', 'user_id');
+            await cleanupDeletedItems(
+                new Set(webhooksToSave.map(w => w.id)),
+                'guild_webhooks',
+                'webhook_id'
+            );
             const embed = new EmbedBuilder()
                 .setColor(0x2ecc71)
                 .setTitle('✅ Server Data Initialized & Cleaned')
@@ -217,7 +232,7 @@ module.exports = {
 
 This ensures that the bot has **up-to-date information** about channels, roles, members, emojis, and webhooks.  
 
-🔹 *If you've added or removed anything recently, it's now reflected in the bot's database.*`,
+🔹 *If you've added or removed anything recently, it's now reflected in the bot's database.*`
                 )
                 .addFields(
                     { name: '📌 Channels', value: `**\`${channelsToSave.length}\`**`, inline: true },
@@ -225,7 +240,7 @@ This ensures that the bot has **up-to-date information** about channels, roles, 
                     { name: '😃 Emojis', value: `**\`${emojisToSave.length}\`**`, inline: true },
                     { name: '👥 Members', value: `**\`${membersToSave.length}\`**`, inline: true },
                     { name: '🔗 Webhooks', value: `**\`${webhooksToSave.length}\`**`, inline: true },
-                    { name: '\u200b', value: '\u200b', inline: true },
+                    { name: '\u200b', value: '\u200b', inline: true }
                 )
                 .setTimestamp();
             await interaction.editReply({ embeds: [embed] });
@@ -234,8 +249,8 @@ This ensures that the bot has **up-to-date information** about channels, roles, 
         } catch (error) {
             logger.error(`❌ Error executing /admin_initialize_guild: ${error.message}`);
             await interaction.editReply({
-                content: `❌ Error initializing server data: ${error.message}`,
+                content: `❌ Error initializing server data: ${error.message}`
             });
         }
-    },
+    }
 };

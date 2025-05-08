@@ -1,56 +1,15 @@
-// @ts-nocheck
-/* eslint-disable no-process-exit */
-/**
- * @fileoverview
- * **Database Initialization Script** 🛠️
- *
- * This script initializes and sets up the SQLite database for the Varietyz Bot.
- * It deletes any existing database file to ensure a clean setup and then creates all necessary tables:
- * - `registered_rsn`: Stores registered RuneScape names.
- * - `clan_members`: Stores information about clan members.
- * - `recent_name_changes`: Tracks recent name changes.
- * - `player_data`: Stores various player-specific data points.
- * - `player_fetch_times`: Tracks the last time player data was fetched.
- * - `active_inactive`: Tracks active and inactive player progression.
- *
- * The script logs the success or failure of each table creation process and closes the database connection
- * gracefully upon completion.
- *
- * **External Dependencies:**
- * - **SQLite3**: For interacting with the SQLite database.
- * - **fs**: For file system operations (deleting existing database, creating directories).
- * - **path**: For constructing file paths.
- * - **logger**: For logging operations and errors.
- *
- * @module scripts/create_db
- */
-
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const logger = require('../modules/utils/essentials/logger'); // Import the logger
+const logger = require('../modules/utils/essentials/logger'); 
 
-/**
- * Path to the SQLite database file.
- * @constant {string}
- */
 const dbPath = path.join(__dirname, '..', 'data', 'image_cache.db');
 
-/**
- * Initializes the SQLite database by deleting any existing database file,
- * creating the necessary directories, and establishing a new database connection.
- *
- * @function initializeDatabase
- * @returns {sqlite3.Database} The new SQLite database instance.
- *
- * @example
- * const db = initializeDatabase();
- */
 function initializeDatabase() {
-    // Establish a new database connection.
+
     const db = new sqlite3.Database(dbPath, (err) => {
         if (err) {
             logger.error(`❌ Error connecting to SQLite: ${err.message}`);
-            throw err; // Terminate script if connection fails.
+            throw err; 
         } else {
             logger.info(`✅ Connected to SQLite at: ${dbPath}`);
         }
@@ -59,12 +18,6 @@ function initializeDatabase() {
     return db;
 }
 
-/**
- * Drops tables on demand.
- *
- * @function dropTables
- * @param {sqlite3.Database} db - The SQLite database instance.
- */
 async function dropTables(db) {
     const tables = ['emojis', 'elarged_emojis', 'ranks', 'skills_bosses', 'src'];
 
@@ -88,15 +41,12 @@ async function dropTables(db) {
     }
 }
 
-// Main execution flow.
 (async function main() {
     try {
         const db = initializeDatabase();
 
-        // Execute dropTables and wait until it completes
         await dropTables(db);
 
-        // ✅ Close database AFTER all tables are removed
         db.close((err) => {
             if (err) {
                 logger.error(`❌ Error closing the database: ${err.message}`);
@@ -107,6 +57,6 @@ async function dropTables(db) {
         });
     } catch (error) {
         logger.error(`❌ Database initialization failed: ${error.message}`);
-        throw error; // Exit with failure code.
+        throw error; 
     }
 })();

@@ -1,5 +1,3 @@
-// src/modules/events/channelDelete.js
-
 const { EmbedBuilder, AuditLogEvent, ChannelType } = require('discord.js');
 const {
     guild: { getOne, runQuery },

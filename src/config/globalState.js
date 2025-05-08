@@ -1,4 +1,3 @@
-// globalState.js
 module.exports = {
-    isShuttingDown: false,
+    isShuttingDown: false
 };

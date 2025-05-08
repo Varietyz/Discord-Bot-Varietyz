@@ -1,11 +1,7 @@
-// /modules/services/bingo/dynamicTaskGenerator.js
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const capitalizeName = require('../../utils/helpers/capitalizeName');
 
-/**
- *
- */
 async function clearDynamicTasks() {
     try {
         logger.info('[BingoService] clearDynamicTasks() → Starting...');
@@ -14,7 +10,7 @@ async function clearDynamicTasks() {
             `
             DELETE FROM bingo_tasks
             WHERE is_dynamic = 1
-            `,
+            `
         );
 
         if (result.changes > 0) {
@@ -27,15 +23,16 @@ async function clearDynamicTasks() {
     }
 }
 
-/**
- *
- */
 async function generateDynamicTasks() {
     logger.info('🔄 [DynamicTaskGenerator] Generating dynamic Bingo tasks...');
 
-    const existingCount = await db.getOne('SELECT COUNT(*) AS count FROM bingo_tasks WHERE is_dynamic = 1');
+    const existingCount = await db.getOne(
+        'SELECT COUNT(*) AS count FROM bingo_tasks WHERE is_dynamic = 1'
+    );
     if (existingCount && existingCount.count > 0) {
-        logger.info('Dynamic tasks already exist. Skipping generation to avoid duplicates.');
+        logger.info(
+            'Dynamic tasks already exist. Skipping generation to avoid duplicates.'
+        );
         return;
     }
 
@@ -44,7 +41,9 @@ async function generateDynamicTasks() {
     await generateBossTasks();
 
     await generateActivityTasks();
-    logger.info('🎲 [DynamicTaskGenerator] Successfully generated dynamic Bingo tasks!');
+    logger.info(
+        '🎲 [DynamicTaskGenerator] Successfully generated dynamic Bingo tasks!'
+    );
 }
 
 const POINTS_CONFIG = {
@@ -54,11 +53,6 @@ const POINTS_CONFIG = {
     Default: { multiplier: null, fixed: 10 },
 };
 
-/**
- *
- * @param type
- * @param value
- */
 function calculateBasePoints(type, value) {
     const config = POINTS_CONFIG[type] || POINTS_CONFIG.Default;
     if (config.fixed !== null) return config.fixed;
@@ -66,31 +60,56 @@ function calculateBasePoints(type, value) {
     return POINTS_CONFIG.Default.fixed;
 }
 
-/**
- *
- * @param min
- * @param max
- * @param step
- */
 function generateRandomValue(min, max, step) {
     const steps = Math.floor((max - min) / step) + 1;
     const randomStep = Math.floor(Math.random() * steps);
     return min + randomStep * step;
 }
 
-/**
- *
- */
 async function generateBossTasks() {
-    const RAID_BOSSES = ['chambers_of_xeric', 'tombs_of_amascut', 'theatre_of_blood'];
-    const HARD_RAID_BOSSES = ['chambers_of_xeric_challenge_mode', 'tombs_of_amascut_expert', 'theatre_of_blood_hard_mode'];
+    const RAID_BOSSES = [
+        'chambers_of_xeric',
+        'tombs_of_amascut',
+        'theatre_of_blood',
+    ];
+    const HARD_RAID_BOSSES = [
+        'chambers_of_xeric_challenge_mode',
+        'tombs_of_amascut_expert',
+        'theatre_of_blood_hard_mode',
+    ];
     const LOOT_BOSSES = ['lunar_chests', 'barrows_chests'];
     const SPECIAL_BOSSES = ['hespori', 'skotizo', 'bryophyta', 'obor'];
     const HARD_BOSSES = ['corporeal_beast'];
     const RARE_BOSSES = ['mimic'];
-    const MINIGAME_BOSSES = ['tztok_jad', 'tzkal_zuk', 'sol_heredit', 'the_corrupted_gauntlet', 'the_gauntlet'];
-    const WILDERNESS_BOSSES = ['chaos_fanatic', 'crazy_archaeologist', 'scorpia', 'king_black_dragon', 'chaos_elemental', 'calvarion', 'vetion', 'spindel', 'venenatis', 'artio', 'callisto'];
-    const SLAYER_BOSSES = ['grotesque_guardians', 'abyssal_sire', 'kraken', 'cerberus', 'araxxor', 'thermonuclear_smoke_devil', 'alchemical_hydra'];
+    const MINIGAME_BOSSES = [
+        'tztok_jad',
+        'tzkal_zuk',
+        'sol_heredit',
+        'the_corrupted_gauntlet',
+        'the_gauntlet',
+    ];
+    const WILDERNESS_BOSSES = [
+        'chaos_fanatic',
+        'crazy_archaeologist',
+        'scorpia',
+        'king_black_dragon',
+        'chaos_elemental',
+        'calvarion',
+        'vetion',
+        'spindel',
+        'venenatis',
+        'artio',
+        'callisto',
+    ];
+    const SLAYER_BOSSES = [
+        'grotesque_guardians',
+        'abyssal_sire',
+        'kraken',
+        'cerberus',
+        'araxxor',
+        'thermonuclear_smoke_devil',
+        'alchemical_hydra',
+    ];
 
     const bosses = await db.getAll(`
         SELECT name 
@@ -136,9 +155,14 @@ async function generateBossTasks() {
         }
 
         const description = `${actionText} ${value} ${formattedName}`;
-        const existing = await db.getOne('SELECT COUNT(*) AS count FROM bingo_tasks WHERE description = ?', [description]);
+        const existing = await db.getOne(
+            'SELECT COUNT(*) AS count FROM bingo_tasks WHERE description = ?',
+            [description]
+        );
         if (existing.count > 0) {
-            logger.warn(`⚠️ [DynamicTaskGenerator] Duplicate task detected: ${description}`);
+            logger.warn(
+                `⚠️ [DynamicTaskGenerator] Duplicate task detected: ${description}`
+            );
             continue;
         }
 
@@ -185,15 +209,11 @@ async function generateBossTasks() {
                 (category, type, description, parameter, value, is_dynamic, base_points)
                 VALUES ('Boss', 'Kill', ?, ?, ?, 1, ?)
             `,
-            [description, boss.name, value, basePoints],
+            [description, boss.name, value, basePoints]
         );
     }
 }
 
-/**
- *
- * @param xp
- */
 function roundXP(xp) {
     const THRESHOLD = 1000000;
     const ROUND_STEP_BELOW = 5000;
@@ -202,11 +222,14 @@ function roundXP(xp) {
     return Math.floor(xp / roundStep) * roundStep;
 }
 
-/**
- *
- */
 async function generateSkillTasks() {
-    const SLOW_SKILLS = ['slayer', 'runecrafting', 'hunter', 'agility', 'farming'];
+    const SLOW_SKILLS = [
+        'slayer',
+        'runecrafting',
+        'hunter',
+        'agility',
+        'farming',
+    ];
     const EXPENSIVE_SKILLS = ['prayer', 'construction', 'herblore'];
     let MIN_XP = 750000;
     let MAX_RANDOM_XP = 3500000;
@@ -232,9 +255,14 @@ async function generateSkillTasks() {
         const value = roundXP(rawXP);
         const description = `Gain ${value.toLocaleString()} XP in ${formattedName}`;
 
-        const existing = await db.getOne('SELECT COUNT(*) AS count FROM bingo_tasks WHERE description = ?', [description]);
+        const existing = await db.getOne(
+            'SELECT COUNT(*) AS count FROM bingo_tasks WHERE description = ?',
+            [description]
+        );
         if (existing.count > 0) {
-            logger.warn(`⚠️ [DynamicTaskGenerator] Duplicate task detected: ${description}`);
+            logger.warn(
+                `⚠️ [DynamicTaskGenerator] Duplicate task detected: ${description}`
+            );
             continue;
         }
 
@@ -254,14 +282,11 @@ async function generateSkillTasks() {
                 (category, type, description, parameter, value, is_dynamic, base_points)
                 VALUES ('Skill', 'Exp', ?, ?, ?, 1, ?)
             `,
-            [description, skill.name, value, basePoints],
+            [description, skill.name, value, basePoints]
         );
     }
 }
 
-/**
- *
- */
 async function generateActivityTasks() {
     const MINIGAMES = ['guardians_of_the_rift'];
     const EASY_CLUES = ['clue_scrolls_beginner', 'clue_scrolls_easy'];
@@ -320,10 +345,15 @@ async function generateActivityTasks() {
         }
 
         const description = `${actionText} ${value} ${taskName}`;
-        const existing = await db.getOne('SELECT COUNT(*) AS count FROM bingo_tasks WHERE description = ?', [description]);
+        const existing = await db.getOne(
+            'SELECT COUNT(*) AS count FROM bingo_tasks WHERE description = ?',
+            [description]
+        );
 
         if (existing.count > 0) {
-            logger.warn(`⚠️ [DynamicTaskGenerator] Duplicate task detected: ${description}`);
+            logger.warn(
+                `⚠️ [DynamicTaskGenerator] Duplicate task detected: ${description}`
+            );
             continue;
         }
 
@@ -344,7 +374,7 @@ async function generateActivityTasks() {
                 (category, type, description, parameter, value, is_dynamic, base_points)
                 VALUES ('Activity', 'Score', ?, ?, ?, 1, ?)
             `,
-            [description, activity.name, value, basePoints],
+            [description, activity.name, value, basePoints]
         );
     }
 }

@@ -1,17 +1,27 @@
 const logger = require('../../utils/essentials/logger');
 const { Metric } = require('@wise-old-man/utils');
-/**
- *
- * @param womclient
- * @param db
- * @param type
- * @param metric
- * @param startsAt
- * @param endsAt
- * @param constants
- */
+
 async function createCompetition(womclient, db, type, metric, startsAt, endsAt, constants) {
     try {
+        const recent = await db.getOne(
+            `SELECT ends_at FROM competitions 
+     WHERE type = ? 
+       AND ends_at >= DATETIME('now', '-1 day') 
+     ORDER BY ends_at DESC 
+     LIMIT 1`,
+            [type]
+        );
+
+        if (recent) {
+            const lastEnd = new Date(recent.ends_at);
+            const now = new Date();
+            const hoursSinceLast = (now - lastEnd) / 1000 / 3600;
+            if (hoursSinceLast < 3) {
+                logger.warn(`🕒 Cooldown active: ${type} was created less than 3 hours ago.`);
+                return null;
+            }
+        }
+
         const title = type === 'SOTW' ? `${metric.replace(/_/g, ' ').toUpperCase()} SOTW` : `${metric.replace(/_/g, ' ').toUpperCase()} BOTW`;
         const metricKey = metric.toUpperCase();
         if (!Metric[metricKey]) {

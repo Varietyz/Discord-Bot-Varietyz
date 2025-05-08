@@ -2,9 +2,6 @@ const { calculateTeamEffectiveProgress } = require('../../services/bingo/bingoCa
 const db = require('./dbUtils');
 const logger = require('./logger');
 
-/**
- *
- */
 async function fixMismatchedTeamIds() {
     const query = `
         WITH current_event AS (
@@ -26,12 +23,6 @@ async function fixMismatchedTeamIds() {
     }
 }
 
-/**
- *
- * @param eventId
- * @param teamId
- * @param playerId
- */
 async function synchronizeTaskCompletion(eventId, teamId, playerId) {
     try {
         logger.info(`[TeamJoinSync] Checking task completion for Player #${playerId} in Team #${teamId}.`);
@@ -55,14 +46,12 @@ async function synchronizeTaskCompletion(eventId, teamId, playerId) {
                 last_updated: member.last_updated,
             }));
 
-            // Check if the player already has a completion recorded.
             const playerRecord = teamMembersProgress.find((entry) => entry.playerId === playerId);
             const alreadyCompleted = playerRecord && playerRecord.status === 'completed';
 
             const effectiveProgress = calculateTeamEffectiveProgress(teamMembersProgress, taskTarget.value);
             const playerEffectiveProgress = effectiveProgress.find((entry) => entry.playerId === playerId);
 
-            // If the player's own record indicates a completion, respect that.
             if (alreadyCompleted) {
                 logger.info(`[TeamJoinSync] Player #${playerId} already has a completed record for Task #${task_id}.`);
             } else if (playerEffectiveProgress) {

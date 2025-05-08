@@ -1,13 +1,24 @@
 const CompetitionService = require('./modules/services/competitionServices/competitionService');
 const { updateData } = require('./modules/services/memberChannel');
 const { processNameChanges } = require('./modules/services/nameChanges');
-const { fetchAndUpdatePlayerData } = require('./modules/services/playerDataExtractor');
+const {
+    fetchAndUpdatePlayerData,
+} = require('./modules/services/playerDataExtractor');
 const { fetchAndProcessMember } = require('./modules/services/autoRoles');
 const { updateVoiceChannel } = require('./modules/services/activeMembers');
-const { updateBingoProgress } = require('./modules/services/bingo/bingoService');
+const {
+    updateBingoProgress,
+} = require('./modules/services/bingo/bingoService');
 const { getAll } = require('./modules/utils/essentials/dbUtils');
 const logger = require('./modules/utils/essentials/logger');
-const { autoTransitionEvents } = require('./modules/services/bingo/autoTransitionEvents');
+const {
+    autoTransitionEvents,
+} = require('./modules/services/bingo/autoTransitionEvents');
+const {
+    savePerformanceSnapshot,
+} = require('./modules/collection/savePerformanceStats');
+const { fetchAndCacheDomainHealth } = require('./api/central/domainHealth');
+
 require('dotenv').config();
 module.exports = [
     {
@@ -49,7 +60,9 @@ module.exports = [
                 logger.error('Guild not found');
                 return;
             }
-            const userIds = await getAll('SELECT DISTINCT discord_id FROM registered_rsn');
+            const userIds = await getAll(
+                'SELECT DISTINCT discord_id FROM registered_rsn'
+            );
             for (const { discord_id: userId } of userIds) {
                 await fetchAndProcessMember(guild, userId);
             }
@@ -76,6 +89,20 @@ module.exports = [
         name: 'updateBingoProgress',
         func: async (client) => await updateBingoProgress(client),
         interval: 60 * 5,
+        runOnStart: true,
+        runAsTask: true,
+    },
+    {
+        name: 'savePerformanceSnapshot',
+        func: async (client) => await savePerformanceSnapshot(client),
+        interval: 60 * 1,
+        runOnStart: true,
+        runAsTask: true,
+    },
+    {
+        name: 'fetchAndCacheDomainHealth',
+        func: async () => await fetchAndCacheDomainHealth(),
+        interval: 60 * 60 * 2,
         runOnStart: true,
         runAsTask: true,
     },

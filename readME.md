@@ -1,6 +1,6 @@
 # Varietyz Bot
 
-![Varietyz Bot Banner](https://i.ibb.co/sFRG1QW/Main-Banner.gif)
+![Varietyz Bot Banner](https://i.ibb.co/sFRG1QW/Main-banner.png)
 
 Welcome to **Varietyz Bot**, the ultimate Discord companion designed specifically for Old School RuneScape (OSRS) clans! Varietyz Bot offers a comprehensive suite of tools to enhance your clan's management, foster community engagement, and streamline your clan experience. Whether you're a clan leader looking to streamline clan management or a member eager to showcase your in-game accomplishments, Varietyz Bot has you covered.
 

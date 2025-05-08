@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const db = require('../../utils/essentials/dbUtils');
 const logger = require('../../utils/essentials/logger');

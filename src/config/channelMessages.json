@@ -1,0 +1,63 @@
+{
+  "rules_msg": {
+    "type": "embed",
+    "content": "Please carefully read through the rules below. React with ✅ to accept and continue.",
+    "embed": {
+      "title": "Server Rules",
+      "description": "1) **Respect & Kindness**: Treat all members with respect. Harassment, hate speech, or any form of discrimination is strictly prohibited.\n\n2) **No Toxic Behavior**: Trolling, personal attacks, or intentionally disruptive behavior will not be tolerated.\n\n3) **Zero Tolerance for Hate**: Racist, sexist, homophobic, or otherwise hateful language results in immediate action.\n\n4) **Relevant Topics**: Keep conversations on-topic for each channel. Off-topic posts belong in the appropriate sections.\n\n5) **No Spam or Self-Promotion**: Excessive advertising, spamming, or posting referral codes without permission is not allowed.\n\n6) **Follow Discord TOS**: All users must adhere to Discord’s Terms of Service and Community Guidelines.\n\n7) **Staff Decisions**: Moderators and admins have the final say. If asked to stop or move a conversation, comply promptly.\n\nWe appreciate everyone’s cooperation to keep this server a friendly, welcoming place. Enjoy your time here!",
+      "color": 16711680,
+      "imageUrl": "https://example.com/rules_image.png",
+      "thumbnailUrl": "https://example.com/thumb.png",
+      "footerText": "Thanks for reading & following our rules!"
+    }
+  },
+
+  "welcome_msg": {
+    "type": "text",
+    "content": "Welcome to Varietyz! Please check <#rules_channel_id> for guidelines.",
+    "embed": null,
+    "reactions": ["👋"]
+  },
+
+  "verification_msg": {
+    "type": "embed",
+    "content": "Please react with ✅ below to verify and unlock the rest of the server.",
+    "embed": {
+      "title": "🔑 Verification Required",
+      "description": "Welcome to **Varietyz**!\n\nTo protect our community from spam and abuse, we ask that all new users verify themselves by reacting with ✅.\n\nOnce verified, you’ll gain access to all channels including guides, events, and community chat.",
+      "color": 3066993,
+      "thumbnailUrl": "https://example.com/verify_icon.png",
+      "footerText": "Your journey begins here."
+    },
+    "reactions": ["✅"]
+  },
+  "roles_msg": {
+    "type": "both",
+    "content": "React below to assign yourself a progression role!",
+    "embed": {
+      "title": "Pick Your Progression Tier",
+      "description": "• React with 👶 for **Nervous Noob**\n• React with 📘 for **Mid-Level**\n• React with 🔥 for **Experienced**\n• React with 💀 for **Maxed PvMer**",
+      "color": 65280,
+      "imageUrl": null,
+      "thumbnailUrl": null,
+      "footerText": "You can change your tier at any time."
+    },
+    "reactions": ["👶", "📘", "🔥", "💀"]
+  },
+  "clan_achievements_msg": {
+    "type": "text",
+    "content": "🎉 Post your latest achievements here: 99s, pets, uniques, etc. React with 🏆 to celebrate!",
+    "reactions": ["🏆", "🎉"]
+  },
+  "server_info_msg": {
+    "type": "embed",
+    "content": "Welcome to the server — here's everything you need to know to get started!",
+    "embed": {
+      "title": "🪷 Welcome to Varietyz",
+      "description": "**Your adventure starts here.**\n\nVarietyz is the official community hub for all things tied to our YouTube channel — from cinematic OSRS music video guides to ADHD-friendly PvM content and meme-fueled parody events.\n\nWhether you're a Nervous Noob or a Maxed PvMer, there's a place here for you.\n\nHere's what you'll find:\n\n🎬 **MV-G Production** — Behind-the-scenes looks, lore, and community cameos.\n📚 **PvM Guides** — Bite-sized boss guides made for Busyscapers.\n🤡 **Parody Events** — Light-hearted chaos, custom outfits, and themed boss rushes.\n🏆 **Clan Activities** — Join clan events, bossing nights, and skilling competitions.\n🔒 **Progression Roles** — Earn ranks from 👶 Nervous Noob to 💀 Maxed PvMer.\n\nThis server evolves alongside the channel. Your voice helps shape what comes next.",
+      "color": 16744448,
+      "thumbnailUrl": "https://example.com/server_icon.png",
+      "footerText": "React in #verification to begin your journey 🌱"
+    }
+  }
+}

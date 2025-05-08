@@ -13,7 +13,6 @@ module.exports = {
 
             const userId = interaction.user.id;
 
-            // 🔍 Ensure the user is both in registered_rsn and clan_members
             const player = await db.getOne(
                 `
                 SELECT rr.player_id, rr.rsn 
@@ -30,7 +29,6 @@ module.exports = {
 
             const playerId = player.player_id;
 
-            // 🔹 Fetch total points per type
             const pointData = await db.getAll(
                 `
                 SELECT type, COALESCE(SUM(points), 0) AS total
@@ -41,7 +39,6 @@ module.exports = {
                 [playerId],
             );
 
-            // 🔹 Fetch last 5 sent transactions
             const sentTransactions = await db.getAll(
                 `
                 SELECT t.type, t.points, t.transaction_date, rr.rsn AS receiver
@@ -54,7 +51,6 @@ module.exports = {
                 [playerId],
             );
 
-            // 🔹 Fetch last 5 received transactions
             const receivedTransactions = await db.getAll(
                 `
                 SELECT t.type, t.points, t.transaction_date, rr.rsn AS sender
@@ -67,7 +63,6 @@ module.exports = {
                 [playerId],
             );
 
-            // 🔄 Format sent transactions
             const sentHistory = sentTransactions.length
                 ? (
                     await Promise.all(
@@ -79,7 +74,6 @@ module.exports = {
                 ).join('\n')
                 : '_No sent transactions._';
 
-            // 🔄 Format received transactions
             const receivedHistory = receivedTransactions.length
                 ? (
                     await Promise.all(
@@ -93,14 +87,12 @@ module.exports = {
 
             const totalPoints = await getPlayerTotalPoints(playerId);
 
-            // 🏦 Build Embed
             const embed = new EmbedBuilder()
                 .setTitle(`💰 ${player.rsn}'s Wallet`)
                 .setColor(0xffd700)
                 .setDescription('Here is an overview of your points and recent transactions.')
                 .addFields({ name: '⭐ Total points', value: `**\`${totalPoints}\`** pts`, inline: false });
 
-            // 🔹 Add separate fields for each point type
             if (pointData.length) {
                 pointData.forEach((p) => {
                     embed.addFields({ name: `🏆 ${p.type} points`, value: `**\`${p.total}\`** pts`, inline: true });
@@ -109,7 +101,6 @@ module.exports = {
                 embed.addFields({ name: '📊 Points Per Type', value: '_No points available._', inline: false });
             }
 
-            // 🔄 Add transaction history
             embed.addFields({ name: '🔼 Sent Transactions', value: sentHistory, inline: false }, { name: '🔽 Received Transactions', value: receivedHistory, inline: false }).setTimestamp();
 
             return interaction.editReply({ embeds: [embed] });

@@ -3,6 +3,7 @@ const { getAll } = require('./dbUtils');
 const {
     messages: { getAll: getAllMessages, runQuery: runMessagesQuery },
 } = require('./dbUtils');
+
 async function buildPlayerNameMappings() {
     const rows = await getAll(`
     SELECT player_id, old_rsn, new_rsn, resolved_at
@@ -26,6 +27,7 @@ async function buildPlayerNameMappings() {
     }
     return latestByPlayer;
 }
+
 async function buildGlobalRsnMap() {
     const playerMap = await buildPlayerNameMappings();
     const globalMap = new Map();
@@ -36,6 +38,7 @@ async function buildGlobalRsnMap() {
     }
     return globalMap;
 }
+
 async function globalHistoricalRenameFromRecentChanges() {
     try {
         const globalMap = await buildGlobalRsnMap();

@@ -4,5 +4,5 @@ module.exports = {
     once: false,
     async execute(id, replayedEvents) {
         logger.info(`🎯 Shard ${id} Resumed (${replayedEvents} Events Replayed).`);
-    },
+    }
 };

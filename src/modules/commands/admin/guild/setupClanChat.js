@@ -89,14 +89,7 @@ module.exports = {
         }
     },
 };
-/**
- *
- * @param interaction
- * @param newChannel
- * @param currentChannelId
- * @param oldWebhookRow
- * @param moveOldWebhook
- */
+
 async function finalizeClanChatSetup(interaction, newChannel, currentChannelId, oldWebhookRow, moveOldWebhook) {
     if (currentChannelId) {
         await db.guild.runQuery('UPDATE ensured_channels SET channel_id = ? WHERE channel_key = ?', [newChannel.id, 'clanchat_channel']);

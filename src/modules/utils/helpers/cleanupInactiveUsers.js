@@ -1,5 +1,6 @@
 const { getAll, runTransaction } = require('../essentials/dbUtils');
 const logger = require('../essentials/logger');
+
 async function cleanupInactiveUsers(guild) {
     try {
         logger.info('🔄 **Starting inactive user cleanup...**');

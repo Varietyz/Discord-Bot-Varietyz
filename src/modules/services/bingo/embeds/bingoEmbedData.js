@@ -2,12 +2,6 @@ const db = require('../../../utils/essentials/dbUtils');
 const logger = require('../../../utils/essentials/logger');
 const { calculatePatternBonus } = require('../bingoPatternRecognition');
 
-/**
- *
- * @param eventId
- * @param playerId
- * @returns
- */
 async function getProgressEmbedData(eventId, playerId) {
     try {
         const progressQuery = `
@@ -83,15 +77,9 @@ async function getProgressEmbedData(eventId, playerId) {
     }
 }
 
-/**
- * Retrieves Final Results Embed Data for a Bingo Event.
- * - Fetches Top Players, Top Teams, and Pattern Bonuses.
- * @param {number} eventId - The ID of the Bingo event.
- * @returns {Object} - Event results including top players, teams, and pattern bonuses.
- */
 async function getFinalResultsEmbedData(eventId) {
     try {
-        // 🎯 Fetch Top 5 Players (Individual)
+
         const topPlayersQuery = `
             SELECT 
                 rr.rsn, 
@@ -114,7 +102,6 @@ async function getFinalResultsEmbedData(eventId) {
         `;
         const topPlayers = await db.getAll(topPlayersQuery, [eventId]);
 
-        // 🎯 Fetch Top 3 Teams
         const topTeamsQuery = `
             SELECT 
                 t.team_name, 
@@ -133,7 +120,6 @@ async function getFinalResultsEmbedData(eventId) {
         `;
         const topTeams = await db.getAll(topTeamsQuery, [eventId]);
 
-        // 🎯 Fetch Pattern Bonuses
         const patternBonusesQuery = `
             SELECT 
                 bpa.pattern_key, 
@@ -144,7 +130,6 @@ async function getFinalResultsEmbedData(eventId) {
         `;
         const patternBonusesRaw = await db.getAll(patternBonusesQuery, [eventId]);
 
-        // ✅ Calculate Bonus Points Using calculatePatternBonus()
         const patternBonuses = patternBonusesRaw.map((bonus) => {
             return {
                 pattern_key: bonus.pattern_key,
@@ -160,11 +145,6 @@ async function getFinalResultsEmbedData(eventId) {
     }
 }
 
-/**
- *
- * @param eventId
- * @returns
- */
 async function getNewCompletions(eventId) {
     const query = `
         SELECT 
@@ -195,11 +175,6 @@ async function getNewCompletions(eventId) {
     return await db.getAll(query, [eventId]);
 }
 
-/**
- *
- * @param eventId
- * @returns
- */
 async function getPlayerProgress(eventId) {
     return await db.getAll(
         `
@@ -217,14 +192,6 @@ async function getPlayerProgress(eventId) {
     );
 }
 
-/**
- * 📊 Get Team Progress for Leaderboard
- * - Sums up completed points, extra points, and completed tasks.
- * - A task is considered completed if total progress meets or exceeds the target.
- *
- * @param {number} eventId - The ID of the event
- * @returns {Promise<Array>} - Array of team progress objects
- */
 async function getTeamProgress(eventId) {
     return await db.getAll(
         `
@@ -254,11 +221,6 @@ async function getTeamProgress(eventId) {
     );
 }
 
-/**
- *
- * @param eventId
- * @returns
- */
 async function getIndividualLeaderboard(eventId) {
     return await db.getAll(
         `
@@ -292,11 +254,6 @@ async function getIndividualLeaderboard(eventId) {
     );
 }
 
-/**
- *
- * @param eventId
- * @returns
- */
 async function getTeamLeaderboard(eventId) {
     return await db.getAll(
         `
@@ -321,14 +278,6 @@ async function getTeamLeaderboard(eventId) {
     );
 }
 
-/**
- * 📝 Retrieves the task progress for a player in a specific event.
- * - Includes the task status to check for completion.
- *
- * @param {number} eventId - The ID of the event
- * @param {number} playerId - The ID of the player
- * @returns {Promise<Array>} - Array of task progress objects
- */
 async function getPlayerTaskProgress(eventId, playerId) {
     const tasks = await db.getAll(
         `
@@ -352,12 +301,6 @@ async function getPlayerTaskProgress(eventId, playerId) {
     return tasks;
 }
 
-/**
- *
- * @param eventId
- * @param teamId
- * @returns
- */
 async function getTeamTaskProgress(eventId, teamId) {
     const tasks = await db.getAll(
         `
@@ -381,14 +324,6 @@ async function getTeamTaskProgress(eventId, teamId) {
     return tasks;
 }
 
-/**
- * 📊 Get Top Players for the Leaderboard
- * - Includes players with `total_points > 0` OR `progress_value > 0`
- * - Sorts by `total_points DESC`, then by `progress_value DESC`
- *
- * @param {number} eventId - The Bingo Event ID.
- * @returns {Promise<Array>} - Array of top players sorted for leaderboard.
- */
 async function getTopPlayers(eventId) {
     const results = await db.getAll(
         `
@@ -410,19 +345,13 @@ async function getTopPlayers(eventId) {
         [eventId, eventId],
     );
 
-    // ✅ Ensure function returns valid data
     if (!results || results.length === 0) {
         return [];
     }
 
-    return results.slice(0, 5); // ✅ Apply limit AFTER debugging
+    return results.slice(0, 5); 
 }
 
-/**
- *
- * @param eventId
- * @returns
- */
 async function getTopTeams(eventId) {
     const results = await db.getAll(
         `
@@ -444,7 +373,6 @@ async function getTopTeams(eventId) {
         [eventId, eventId],
     );
 
-    // Return the top teams (adjust the limit as needed)
     return results.slice(0, 3);
 }
 

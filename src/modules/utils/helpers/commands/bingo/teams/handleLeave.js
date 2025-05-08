@@ -1,20 +1,28 @@
 const db = require('../../../../essentials/dbUtils');
-const client = require('../../../../../../main');
-const { reassignTeamProgress, getOngoingEventId, getActivePlayer, appendBingoProgression } = require('./teamCommandHelpers');
+const client = require('../../../../../discordClient');
+const {
+    reassignTeamProgress,
+    getOngoingEventId,
+    getActivePlayer,
+    appendBingoProgression,
+} = require('./teamCommandHelpers');
 
-/**
- *
- * @param interaction
- */
 async function handleLeave(interaction) {
     const eventId = await getOngoingEventId();
     if (!eventId) {
-        return interaction.editReply({ content: '❌ No ongoing Bingo event found.', flags: 64 });
+        return interaction.editReply({
+            content: '❌ No ongoing Bingo event found.',
+            flags: 64,
+        });
     }
 
     const { playerId } = await getActivePlayer(interaction.user.id);
     if (!playerId) {
-        return interaction.editReply({ content: '❌ You must have a registered RSN and be an active clan member to leave a team.', flags: 64 });
+        return interaction.editReply({
+            content:
+        '❌ You must have a registered RSN and be an active clan member to leave a team.',
+            flags: 64,
+        });
     }
 
     const memberRow = await db.getOne(
@@ -25,11 +33,14 @@ async function handleLeave(interaction) {
         WHERE tm.player_id = ?
           AND t.event_id = ?
         `,
-        [playerId, eventId],
+        [playerId, eventId]
     );
 
     if (!memberRow) {
-        return interaction.editReply({ content: '❌ You are not in any team for this event.', flags: 64 });
+        return interaction.editReply({
+            content: '❌ You are not in any team for this event.',
+            flags: 64,
+        });
     }
 
     if (memberRow.player_id === playerId) {
@@ -42,7 +53,7 @@ async function handleLeave(interaction) {
             ORDER BY joined_at ASC
             LIMIT 1
             `,
-            [memberRow.team_id, playerId],
+            [memberRow.team_id, playerId]
         );
 
         if (newCaptain) {
@@ -52,14 +63,14 @@ async function handleLeave(interaction) {
                 SET player_id = ?
                 WHERE team_id = ?
                 `,
-                [newCaptain.player_id, memberRow.team_id],
+                [newCaptain.player_id, memberRow.team_id]
             );
             await db.runQuery(
                 `
                 DELETE FROM bingo_team_members
                 WHERE team_id = ? AND player_id = ?
                 `,
-                [memberRow.team_id, playerId],
+                [memberRow.team_id, playerId]
             );
             await db.runQuery(
                 `
@@ -67,7 +78,7 @@ async function handleLeave(interaction) {
                 SET team_id = NULL
                 WHERE event_id = ? AND player_id = ?
                 `,
-                [eventId, playerId],
+                [eventId, playerId]
             );
 
             await reassignTeamProgress(eventId, playerId, 0);
@@ -84,14 +95,14 @@ async function handleLeave(interaction) {
                 DELETE FROM bingo_team_members
                 WHERE team_id = ?
                 `,
-                [memberRow.team_id],
+                [memberRow.team_id]
             );
             await db.runQuery(
                 `
                 DELETE FROM bingo_teams
                 WHERE team_id = ?
                 `,
-                [memberRow.team_id],
+                [memberRow.team_id]
             );
 
             await reassignTeamProgress(eventId, playerId, 0);
@@ -109,7 +120,7 @@ async function handleLeave(interaction) {
             DELETE FROM bingo_team_members
             WHERE team_id = ? AND player_id = ?
             `,
-            [memberRow.team_id, playerId],
+            [memberRow.team_id, playerId]
         );
 
         await reassignTeamProgress(eventId, playerId, 0);

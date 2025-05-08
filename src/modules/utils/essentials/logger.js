@@ -23,10 +23,13 @@ const createLogDirectories = () => {
 };
 const logger = winston.createLogger({
     level: 'debug',
-    format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
+    format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        logFormat
+    ),
     transports: [
         new winston.transports.Console({
-            format: winston.format.combine(winston.format.colorize(), logFormat),
+            format: winston.format.combine(winston.format.colorize(), logFormat)
         }),
         new winston.transports.DailyRotateFile({
             filename: path.join(getYearMonthPath(), '%DATE%.md'),
@@ -34,16 +37,19 @@ const logger = winston.createLogger({
             maxSize: '20m',
             maxFiles: '7d',
             level: 'debug',
-            format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
-            auditFile: path.join('logs', 'handler', 'audit.json'),
-        }),
-    ],
+            format: winston.format.combine(
+                winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+                logFormat
+            ),
+            auditFile: path.join('logs', 'handler', 'audit.json')
+        })
+    ]
 });
 const initializeLogger = () => {
     createLogDirectories();
 };
 initializeLogger();
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
     logger.error(`🚨 **Uncaught Exception:** ${error.message}`);
     throw error;
 });

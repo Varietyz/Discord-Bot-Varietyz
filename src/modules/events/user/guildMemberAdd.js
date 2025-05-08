@@ -11,43 +11,66 @@ module.exports = {
             logger.warn('⚠️ [GuildMemberAdd] No guild found for member join event.');
             return;
         }
-        logger.info(`⏳ [GuildMemberAdd] ${member.user.tag} joined but is pending onboarding.`);
+        logger.info(
+            `⏳ [GuildMemberAdd] ${member.user.tag} joined but is pending onboarding.`
+        );
         const onboardedMember = await waitForOnboarding(member);
         if (!onboardedMember) {
-            logger.warn(`❌ [GuildMemberAdd] ${member.user.tag} left before completing onboarding.`);
+            logger.warn(
+                `❌ [GuildMemberAdd] ${member.user.tag} left before completing onboarding.`
+            );
             return;
         }
         try {
-            logger.info(`✅ [Onboarding Complete] ${onboardedMember.user.tag} has entered the server.`);
-            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['member_logs']);
+            logger.info(
+                `✅ [Onboarding Complete] ${onboardedMember.user.tag} has entered the server.`
+            );
+            const logChannelData = await getOne(
+                'SELECT channel_id FROM ensured_channels WHERE channel_key = ?',
+                ['member_logs']
+            );
             if (!logChannelData) {
                 logger.warn('⚠️ No log channel found for "member_logs" in database.');
                 return;
             }
-            const logChannel = await onboardedMember.guild.channels.fetch(logChannelData.channel_id).catch(() => null);
+            const logChannel = await onboardedMember.guild.channels
+                .fetch(logChannelData.channel_id)
+                .catch(() => null);
             if (!logChannel) {
-                logger.warn(`⚠️ Could not fetch log channel ID: ${logChannelData.channel_id}`);
+                logger.warn(
+                    `⚠️ Could not fetch log channel ID: ${logChannelData.channel_id}`
+                );
                 return;
             }
-            const isBot = onboardedMember.user.bot ? '`🤖 Yes (Bot)`' : '`👤 No (Human)`';
+            const isBot = onboardedMember.user.bot
+                ? '`🤖 Yes (Bot)`'
+                : '`👤 No (Human)`';
             const createdAt = `<t:${Math.floor(onboardedMember.user.createdTimestamp / 1000)}:R>`;
             const joinedAt = `<t:${Math.floor(onboardedMember.joinedTimestamp / 1000)}:R>`;
             const assignedRoles =
-                onboardedMember.roles.cache
-                    .filter((role) => role.id !== onboardedMember.guild.id)
-                    .map((role) => `<@&${role.id}>`)
-                    .join(', ') || '`None`';
+        onboardedMember.roles.cache
+            .filter((role) => role.id !== onboardedMember.guild.id)
+            .map((role) => `<@&${role.id}>`)
+            .join(', ') || '`None`';
             const badges = getBadges(onboardedMember.user.flags);
             const isFlagged = isUserSuspicious(onboardedMember);
             const nitroStatus = getNitroStatus(onboardedMember);
-            const serverBoosts = onboardedMember.premiumSince ? `<t:${Math.floor(onboardedMember.premiumSinceTimestamp / 1000)}:R>` : '`No Boosts`';
+            const serverBoosts = onboardedMember.premiumSince
+                ? `<t:${Math.floor(onboardedMember.premiumSinceTimestamp / 1000)}:R>`
+                : '`No Boosts`';
             const accountRisk = isFlagged ? '`🚨 High Risk`' : '`✅ Safe`';
             const embed = new EmbedBuilder()
                 .setColor(0x2ecc71)
                 .setTitle('👋 New Member Joined')
-                .setThumbnail(onboardedMember.user.displayAvatarURL({ dynamic: true, size: 1024 }))
+                .setThumbnail(
+                    onboardedMember.user.displayAvatarURL({ dynamic: true, size: 1024 })
+                )
                 .addFields(
-                    { name: '👤 User', value: `<@${onboardedMember.id}> (${onboardedMember.user.tag})`, inline: false },
+                    {
+                        name: '👤 User',
+                        value: `<@${onboardedMember.id}> (${onboardedMember.user.tag})`,
+                        inline: false,
+                    },
                     { name: '🤖 Is Bot?', value: isBot, inline: true },
                     { name: '📅 Account Created', value: createdAt, inline: true },
                     { name: '📥 Joined Server', value: joinedAt, inline: true },
@@ -55,21 +78,20 @@ module.exports = {
                     { name: '🎭 User Badges', value: badges, inline: true },
                     { name: '⚠️ Account Risk', value: accountRisk, inline: true },
                     { name: '💎 Nitro Status', value: nitroStatus, inline: true },
-                    { name: '🚀 Server Boosts', value: serverBoosts, inline: true },
+                    { name: '🚀 Server Boosts', value: serverBoosts, inline: true }
                 )
                 .setFooter({ text: `User ID: ${onboardedMember.id}` })
                 .setTimestamp();
             await logChannel.send({ embeds: [embed] });
-            logger.info(`📋 Successfully logged onboarding completion for ${onboardedMember.user.tag}`);
+            logger.info(
+                `📋 Successfully logged onboarding completion for ${onboardedMember.user.tag}`
+            );
         } catch (error) {
             logger.error(`❌ Error logging member join: ${error.message}`);
         }
     },
 };
-/**
- *
- * @param member
- */
+
 async function waitForOnboarding(member) {
     if (!member.pending) return member;
     return new Promise((resolve) => {
@@ -84,10 +106,7 @@ async function waitForOnboarding(member) {
         member.guild.client.on(Events.GuildMemberUpdate, updateListener);
     });
 }
-/**
- *
- * @param flags
- */
+
 function getBadges(flags) {
     if (!flags || !flags.bitfield) return '`None`';
     const BADGE_EMOJIS = {
@@ -112,23 +131,18 @@ function getBadges(flags) {
                 .map((flag) => BADGE_EMOJIS[flag])
                 .join('\n') || '`None`'
         );
-    } catch (error) {
+    } catch {
         return '`None`';
     }
 }
-/**
- *
- * @param member
- */
+
 function isUserSuspicious(member) {
     return Date.now() - member.user.createdTimestamp < 7 * 24 * 60 * 60 * 1000;
 }
-/**
- *
- * @param member
- */
+
 function getNitroStatus(member) {
-    if (member.user.avatar && member.user.avatar.startsWith('a_')) return '`✨ Nitro (Animated Avatar)`';
+    if (member.user.avatar && member.user.avatar.startsWith('a_'))
+        return '`✨ Nitro (Animated Avatar)`';
     if (member.user.banner) return '`🎨 Nitro (Profile Banner)`';
     return '`🚫 No Nitro`';
 }

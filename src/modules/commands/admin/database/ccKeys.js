@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ChannelType, PermissionFlagsBits } = require('discord.js');
 const logger = require('../../../utils/essentials/logger');
 const db = require('../../../utils/essentials/dbUtils');
+
 async function generateClanChatKey() {
     const query = 'SELECT MAX(CAST(SUBSTR(clanchat_key, LENGTH(\'chathook_\') + 1) AS INTEGER)) AS maxKey FROM clanchat_config';
     const row = await db.guild.getOne(query);

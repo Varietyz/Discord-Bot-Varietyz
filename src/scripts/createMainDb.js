@@ -1,63 +1,21 @@
-// @ts-nocheck
-/* eslint-disable no-process-exit */
-/**
- * @fileoverview
- * **Database Initialization Script** 🛠️
- *
- * This script initializes and sets up the SQLite database for the Varietyz Bot.
- * It deletes any existing database file to ensure a clean setup and then creates all necessary tables:
- * - `registered_rsn`: Stores registered RuneScape names.
- * - `clan_members`: Stores information about clan members.
- * - `recent_name_changes`: Tracks recent name changes.
- * - `player_data`: Stores various player-specific data points.
- * - `player_fetch_times`: Tracks the last time player data was fetched.
- * - `active_inactive`: Tracks active and inactive player progression.
- *
- * The script logs the success or failure of each table creation process and closes the database connection
- * gracefully upon completion.
- *
- * **External Dependencies:**
- * - **SQLite3**: For interacting with the SQLite database.
- * - **fs**: For file system operations (deleting existing database, creating directories).
- * - **path**: For constructing file paths.
- * - **logger**: For logging operations and errors.
- *
- * @module scripts/create_db
- */
-
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
-const logger = require('../modules/utils/essentials/logger'); // Import the logger
+const logger = require('../modules/utils/essentials/logger'); 
 
-/**
- * Path to the SQLite database file.
- * @constant {string}
- */
 const dbPath = path.join(__dirname, '..', 'data', 'database.sqlite');
 
-/**
- * Initializes the SQLite database by deleting any existing database file,
- * creating the necessary directories, and establishing a new database connection.
- *
- * @function initializeDatabase
- * @returns {sqlite3.Database} The new SQLite database instance.
- *
- * @example
- * const db = initializeDatabase();
- */
 function initializeDatabase() {
-    // Create the database directory if it doesn't exist.
+
     if (!fs.existsSync(path.dirname(dbPath))) {
         fs.mkdirSync(path.dirname(dbPath), { recursive: true });
         logger.info('Created database directory.');
     }
 
-    // Establish a new database connection.
     const db = new sqlite3.Database(dbPath, (err) => {
         if (err) {
             logger.error(`Error connecting to SQLite: ${err.message}`);
-            throw err; // Terminate script if connection fails.
+            throw err; 
         } else {
             logger.info(`Connected to SQLite at: ${dbPath}`);
         }
@@ -66,12 +24,6 @@ function initializeDatabase() {
     return db;
 }
 
-/**
- * Creates the 'active_inactive' table to track player activity status.
- *
- * @function createActiveInactiveTable
- * @param {sqlite3.Database} db - The SQLite database instance.
- */
 function createTables(db) {
     db.run(`
         CREATE TABLE IF NOT EXISTS registered_rsn (
@@ -166,7 +118,7 @@ function createTables(db) {
                 metric_gain INTEGER NOT NULL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (competition_id) REFERENCES competitions(competition_id)
-            
+
         );`);
     db.run(`
         CREATE TABLE IF NOT EXISTS skills_bosses ( 
@@ -195,17 +147,14 @@ function createTables(db) {
         );`);
 }
 
-// Main execution flow.
 (function main() {
     try {
         const db = initializeDatabase();
 
-        // Serialize database operations to run sequentially.
         db.serialize(() => {
             createTables(db);
         });
 
-        // Close the database connection after all tables are created.
         db.close((err) => {
             if (err) {
                 logger.error(`Error closing the database: ${err.message}`);
@@ -216,6 +165,6 @@ function createTables(db) {
         });
     } catch (error) {
         logger.error(`Database initialization failed: ${error.message}`);
-        throw error; // Exit with failure code.
+        throw error; 
     }
 })();

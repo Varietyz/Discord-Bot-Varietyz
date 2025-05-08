@@ -1,22 +1,14 @@
-const pLimit = require('p-limit'); // Ensure p-limit is installed: npm install p-limit
+const pLimit = require('p-limit'); 
 const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const logger = require('../utils/essentials/logger');
 const { runQuery, getAll, runTransaction } = require('../utils/essentials/dbUtils');
 const { setLastFetchedTime, getLastFetchedTime, ensurePlayerFetchTimesTable } = require('../utils/fetchers/lastFetchedTime');
 const { updateEventBaseline } = require('./bingo/bingoTaskManager');
 
-/**
- * Normalize a string to lower-case with underscores.
- * @param {string} str
- * @returns {string}
- */
 function normalize(str) {
     return String(str).toLowerCase().replace(/\s+/g, '_');
 }
 
-/**
- * Ensure that the player_data table exists.
- */
 async function ensurePlayerDataTable() {
     await runQuery(`
     CREATE TABLE IF NOT EXISTS player_data (
@@ -35,11 +27,6 @@ async function ensurePlayerDataTable() {
   `);
 }
 
-/**
- * Transform raw API player data into an array of rows for the database.
- * @param {object} rawData
- * @returns {Array<Object>}
- */
 function transformPlayerData(rawData) {
     const rows = [];
     const rsn = normalize(rawData.username);
@@ -115,13 +102,6 @@ function transformPlayerData(rawData) {
     return rows;
 }
 
-/**
- * Build upsert query objects for the given player data rows.
- * @param {number} player_id
- * @param {string} rsn
- * @param {Array} rows
- * @returns {Array<Object>}
- */
 function buildUpsertQueries(player_id, rsn, rows) {
     const queries = [];
     const upsertQuery = `
@@ -146,14 +126,6 @@ function buildUpsertQueries(player_id, rsn, rows) {
     return queries;
 }
 
-/**
- * Process a single player's data.
- * Determines whether to force an update or simply fetch details,
- * then transforms the data and returns DB upsert queries.
- * @param {string} playerId
- * @param {string} rsn
- * @returns {Promise<Array<Object>>}
- */
 async function processPlayer(playerId, rsn) {
     try {
         const lastFetched = await getLastFetchedTime(playerId);
@@ -186,10 +158,6 @@ async function processPlayer(playerId, rsn) {
     }
 }
 
-/**
- * Load registered players from the database.
- * @returns {Promise<Object>}
- */
 async function loadRegisteredRsnData() {
     try {
         const query = `
@@ -210,11 +178,6 @@ async function loadRegisteredRsnData() {
     }
 }
 
-/**
- * Fetch and save data for all registered players.
- * This function collects up all DB queries from processing each player,
- * then writes them in a single batch transaction.
- */
 async function fetchAndSaveRegisteredPlayerData() {
     logger.info('🔄 Starting fetch for registered player data...');
     try {
@@ -225,7 +188,7 @@ async function fetchAndSaveRegisteredPlayerData() {
             logger.warn('⚠️ No registered players found. Aborting data fetch.');
             return { fetchFailed: false };
         }
-        const limit = pLimit(2); // Limit concurrent API calls to
+        const limit = pLimit(2); 
         const allQueries = [];
         await Promise.all(
             playerEntries.map(([playerId, { rsn }]) =>
@@ -249,13 +212,6 @@ async function fetchAndSaveRegisteredPlayerData() {
     }
 }
 
-/**
- * Standalone function to save player data to the database.
- * This is provided for use by other functions that require individual data writes.
- * It transforms the provided rawData and writes it in a batch transaction.
- * @param {string} playerName
- * @param {object} rawData
- */
 async function savePlayerDataToDb(playerName, rawData) {
     await ensurePlayerDataTable();
     const cleanedPlayerName = playerName.toLowerCase().trim();
@@ -276,10 +232,6 @@ async function savePlayerDataToDb(playerName, rawData) {
     }
 }
 
-/**
- * Remove data for players not in the current registered list.
- * @param {Set} currentClanUsers - Set of current player IDs.
- */
 async function removeNonMatchingPlayers(currentClanUsers) {
     const allPlayers = await getAll('SELECT DISTINCT player_id FROM player_data');
     for (const { player_id } of allPlayers) {
@@ -290,11 +242,6 @@ async function removeNonMatchingPlayers(currentClanUsers) {
     }
 }
 
-/**
- * Main function to fetch and update player data.
- * Ensures tables exist, fetches player data in batch, cleans up old records,
- * and updates event baselines.
- */
 async function fetchAndUpdatePlayerData() {
     logger.info('🔄 Starting player data update process.');
     await ensurePlayerDataTable();

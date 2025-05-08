@@ -1,8 +1,6 @@
 const db = require('../essentials/dbUtils');
 const logger = require('../essentials/logger');
-/**
- *
- */
+
 async function fetchRankEmojis() {
     try {
         const emojiRows = await db.guild.getAll('SELECT emoji_key, emoji_format FROM guild_emojis');
@@ -10,16 +8,14 @@ async function fetchRankEmojis() {
             acc[emoji_key.replace('emoji_', '')] = emoji_format;
             return acc;
         }, {});
-        //logger.info('✅ Rank emojis loaded successfully from the database.');
+
         return emojiMap;
     } catch (error) {
         logger.error(`❌ Error fetching rank emojis: ${error.message}`);
         return {};
     }
 }
-/**
- *
- */
+
 async function getRanks() {
     const rankEmojis = await fetchRankEmojis();
     return {
@@ -207,7 +203,7 @@ async function getRanks() {
         orange: { emoji: rankEmojis.orange || '❌', role: 'Orange', color: 0xffa500 },
         page: { emoji: rankEmojis.page || '❌', role: 'Page', color: 0xf0e68c },
         paladin: { emoji: rankEmojis.paladin || '❌', role: 'Paladin', color: 0x4169e1 },
-        pawn: { emoji: rankEmojis.guest || '❌', role: 'Guest', color: 0x008d6c }, //{ emoji: rankEmojis.pawn || '❌', role: 'Pawn', color: 0xa9a9a9 }, // TODO: Replace Back to OG call before distributing
+        pawn: { emoji: rankEmojis.guest || '❌', role: 'Guest', color: 0x008d6c }, 
         pilgrim: { emoji: rankEmojis.pilgrim || '❌', role: 'Pilgrim', color: 0x8b4513 },
         pine: { emoji: rankEmojis.pine || '❌', role: 'Pine', color: 0x228b22 },
         pink: { emoji: rankEmojis.pink || '❌', role: 'Pink', color: 0xffc0cb },

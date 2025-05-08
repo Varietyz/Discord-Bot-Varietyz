@@ -1,0 +1,1151 @@
+{
+  "noCategory": [
+    {
+      "key": "welcome",
+      "name": "👋•-welcome",
+      "type": "GuildText",
+      "topic": "Welcome to the server! Start here for an overview and basic info.",
+      "permissionKey": "publicReadOnly",
+      "role": {
+        "name": "Staff",
+        "mentionable": false,
+        "color": "#FFD700"
+      }
+    },
+    {
+      "key": "rules",
+      "name": "🔰•-rules",
+      "type": "GuildText",
+      "topic": "Read the server rules.",
+      "permissionKey": "readAndReactOnly",
+      "messageKey": "rules_msg"
+    },
+    {
+      "key": "roles",
+      "name": "🔵•-roles",
+      "type": "GuildText",
+      "topic": "Pick up optional roles or progression ranks.",
+      "permissionKey": "verifiedReadReact",
+      "role": [
+        {
+          "name": "Nervous Noob",
+          "mentionable": true,
+          "color": "#95a5a6"
+        },
+        {
+          "name": "Mid-Level",
+          "mentionable": true,
+          "color": "#3498db"
+        },
+        {
+          "name": "Experienced",
+          "mentionable": true,
+          "color": "#e67e22"
+        },
+        {
+          "name": "Maxed PvMer",
+          "mentionable": true,
+          "color": "#9b59b6"
+        }
+      ],
+      "messageKey": "roles_msg"
+    },
+    {
+      "key": "name_change_channel",
+      "name": "🔃∙-name-changes",
+      "type": "GuildAnnouncement",
+      "topic": "Logs and announces the name changes.",
+      "permissionKey": "publicReadOnly",
+      "role": {
+        "name": "Clan Member",
+        "mentionable": true,
+        "color": "#2c3e50"
+      }
+    },
+    {
+      "key": "auto_roles_channel",
+      "name": "🔃∙-auto-roles",
+      "type": "GuildAnnouncement",
+      "topic": "Logs and announces the automatic role changes.",
+      "permissionKey": "publicReadOnly",
+      "role": {
+        "name": "Clan Member",
+        "mentionable": true,
+        "color": "#2c3e50"
+      }
+    }
+  ],
+  "categories": [
+    {
+      "name": "🔑 • Verification",
+      "permissionKey": "publicReadOnly",
+      "channels": [
+        {
+          "key": "verification",
+          "name": "🔑•-verify-here",
+          "type": "GuildText",
+          "topic": "React ✅ to verify and unlock the server.",
+          "permissionKey": "readAndReactOnly",
+          "role": {
+            "name": "Verified",
+            "mentionable": false,
+            "color": "#2ecc71"
+          },
+          "messageKey": "verification_msg"
+        }
+      ]
+    },
+    {
+      "name": "📜 • Server Info",
+      "permissionKey": "verifiedReadOnly",
+      "channels": [
+        {
+          "key": "server_info",
+          "name": "📜•-server-info",
+          "type": "GuildText",
+          "topic": "Server info, rules, and guidelines.",
+          "permissionKey": "verifiedReadOnly",
+          "messageKey": "server_info_msg"
+        },
+        {
+          "key": "faq",
+          "name": "❓•-faq",
+          "type": "GuildText",
+          "topic": "Frequently asked questions and answers.",
+          "permissionKey": "verifiedReadOnly"
+        }
+      ]
+    },
+    {
+      "name": "📣 • Official Info",
+      "permissionKey": "verifiedReadOnly",
+      "channels": [
+        {
+          "key": "announcements",
+          "name": "📢•-announcements",
+          "type": "GuildAnnouncement",
+          "topic": "Server-wide announcements by Staff only.",
+          "permissionKey": "verifiedReadOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": false,
+            "color": "#FFD700"
+          },
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_announcements",
+            "name": "📢 Official Announcer"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🪷 • The Den (Community)",
+      "channels": [
+        {
+          "key": "introductions",
+          "name": "👋•-introductions",
+          "type": "GuildText",
+          "topic": "Say hello to the community!",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "general_chat",
+          "name": "💬•-general",
+          "type": "GuildText",
+          "topic": "General, family-friendly discussion.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "off_topic",
+          "name": "🎉•-off-topic",
+          "type": "GuildText",
+          "topic": "Random chatter, memes, etc.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "screenshots",
+          "name": "📸•-screenshots",
+          "type": "GuildText",
+          "topic": "Share images, IRL highlights, GFX, etc.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "help",
+          "name": "❓•-help",
+          "type": "GuildText",
+          "topic": "Need assistance? Ask here!",
+          "permissionKey": "verifiedWrite"
+        }
+      ]
+    },
+    {
+      "name": "🔊 • Voice Channels",
+      "channels": [
+        {
+          "key": "voice_general",
+          "name": "🔊 General Voice",
+          "type": "GuildVoice",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "voice_bossing",
+          "name": "🎧 Bossing Voice",
+          "type": "GuildVoice",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "voice_raid1",
+          "name": "🎧 Raid Party 1",
+          "type": "GuildVoice",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "voice_raid2",
+          "name": "🎧 Raid Party 2",
+          "type": "GuildVoice",
+          "permissionKey": "verifiedWrite"
+        }
+      ]
+    },
+    {
+      "name": "🎬 • MV-G Production",
+      "permissionKey": "verifiedReadOnly",
+      "channels": [
+        {
+          "key": "mv_announcements",
+          "name": "🎥•-mv-announcements",
+          "type": "GuildAnnouncement",
+          "topic": "Updates on upcoming OSRS Music Video projects.",
+          "permissionKey": "verifiedReadOnly"
+        },
+        {
+          "key": "mv_behind_scenes",
+          "name": "🎨•-mv-behind-the-scenes",
+          "type": "GuildText",
+          "topic": "Exclusive behind-the-scenes content and Patreon-only previews.",
+          "permissionKey": "premiumOnly",
+          "role": {
+            "name": "Premium",
+            "mentionable": true,
+            "color": "#f39c12"
+          }
+        },
+        {
+          "key": "mv_character_lore",
+          "name": "📖•-character-lore",
+          "type": "GuildText",
+          "topic": "Discuss the MV-G universe, characters, and plot evolution.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "mv_community_votes",
+          "name": "📥•-community-votes",
+          "type": "GuildText",
+          "topic": "Vote on bosses, music, and cameo ideas for future MVs.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "mv_cameo_signups",
+          "name": "🎭•-cameo-signups",
+          "type": "GuildText",
+          "topic": "Apply or react to be featured in a music video cameo.",
+          "permissionKey": "verifiedReadReact"
+        }
+      ]
+    },
+    {
+      "name": "📚 • PvM Guides & Progression",
+      "permissionKey": "verifiedReadOnly",
+      "channels": [
+        {
+          "key": "pvm_resources",
+          "name": "📚•-resources",
+          "type": "GuildText",
+          "topic": "External links, spreadsheets, and community tools.",
+          "permissionKey": "verifiedReadOnly"
+        },
+        {
+          "key": "pvm_bible",
+          "name": "📖•-pvm-bible",
+          "type": "GuildText",
+          "topic": "Condensed PvM wisdom and beginner guidance.",
+          "permissionKey": "verifiedReadOnly"
+        },
+        {
+          "key": "boss_guides",
+          "name": "👹•-boss-guides",
+          "type": "GuildText",
+          "topic": "Direct and ADHD-friendly boss guides by video.",
+          "permissionKey": "verifiedReadOnly"
+        },
+        {
+          "key": "team_etiquette",
+          "name": "🎯•-team-etiquette",
+          "type": "GuildText",
+          "topic": "How to be a good teammate during raids or PvM.",
+          "permissionKey": "verifiedReadOnly"
+        },
+        {
+          "key": "busyscaper_tips",
+          "name": "🕒•-busyscaper-tips",
+          "type": "GuildText",
+          "topic": "Tips for working adults with limited time.",
+          "permissionKey": "verifiedReadOnly"
+        },
+        {
+          "key": "pvm_school",
+          "name": "📖•-pvm-school",
+          "type": "GuildForum",
+          "topic": "PvM education through structured content series.",
+          "permissionKey": "verifiedReadOnly",
+          "forumOptions": {
+            "tags": [
+              {
+                "name": "Beginner"
+              },
+              {
+                "name": "Boss Tips"
+              }
+            ],
+            "defaultReactionEmoji": "🎓",
+            "slowmode": 10,
+            "nsfw": false,
+            "guidelines": "Ask clear questions and keep responses helpful!"
+          }
+        },
+        {
+          "key": "mentorship",
+          "name": "🤝•-mentorship",
+          "type": "GuildText",
+          "topic": "Get 1-on-1 help or offer to mentor a fellow scaper.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "duo_finder",
+          "name": "🧑‍🤝‍🧑•-duo-finder",
+          "type": "GuildText",
+          "topic": "Find teammates for raids, bingo, or skilling goals.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "pvm_bingo",
+          "name": "🎯•-pvm-bingo",
+          "type": "GuildText",
+          "topic": "Monthly PvM Bingo Board events (react to sign up).",
+          "permissionKey": "verifiedReadReact"
+        },
+        {
+          "key": "progression_ranks",
+          "name": "🪜•-progression-ranks",
+          "type": "GuildText",
+          "topic": "Track your progress: Nervous Noob → Maxed PvMer.",
+          "permissionKey": "verifiedWrite",
+          "role": [
+            {
+              "name": "Nervous Noob",
+              "mentionable": true,
+              "color": "#95a5a6"
+            },
+            {
+              "name": "Mid-Level Learner",
+              "mentionable": true,
+              "color": "#3498db"
+            },
+            {
+              "name": "Experienced Lategamer",
+              "mentionable": true,
+              "color": "#e67e22"
+            },
+            {
+              "name": "Maxed PvMer",
+              "mentionable": true,
+              "color": "#9b59b6"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🤡 • Parodies & Community Events",
+      "permissionKey": "verifiedWrite",
+      "channels": [
+        {
+          "key": "meme_lounge",
+          "name": "😂•-meme-lounge",
+          "type": "GuildText",
+          "topic": "Post your OSRS memes, IRL laughs, and relatable chaos.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "parody_ideas",
+          "name": "🎭•-parody-ideas",
+          "type": "GuildText",
+          "topic": "Suggest new parody concepts or vote on community themes.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "parody_streams",
+          "name": "📺•-parody-streams",
+          "type": "GuildText",
+          "topic": "Schedule and discuss community parody streams.",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "themed_boss_events",
+          "name": "🎪•-themed-boss-events",
+          "type": "GuildText",
+          "topic": "Join fun boss events (e.g. holiday outfits, skilling cosplay).",
+          "permissionKey": "verifiedWrite"
+        },
+        {
+          "key": "content_shoutouts",
+          "name": "📢•-creator-shoutouts",
+          "type": "GuildText",
+          "topic": "Shout out creators, videos, clips from our community.",
+          "permissionKey": "verifiedWrite"
+        }
+      ]
+    },
+    {
+      "name": "🏆∙Competitions of the Week",
+      "permissionKey": "publicReadOnly",
+      "channels": [
+        {
+          "key": "top_10_channel",
+          "name": "🏅∙top-10",
+          "type": "GuildAnnouncement",
+          "topic": "Displays the top 10 rankings for weekly competitions.",
+          "permissionKey": "publicReadOnly"
+        },
+        {
+          "key": "results_channel",
+          "name": "🏅∙results",
+          "type": "GuildAnnouncement",
+          "topic": "Logs and announces the overall results for weekly competitions.",
+          "permissionKey": "publicReadOnly"
+        },
+        {
+          "key": "botw_channel",
+          "name": "🏆∙bosses🦖",
+          "type": "GuildAnnouncement",
+          "topic": "Holds data and results for the Boss of the Week competition.",
+          "permissionKey": "publicReadOnly"
+        },
+        {
+          "key": "sotw_channel",
+          "name": "🏆∙skills📊",
+          "type": "GuildAnnouncement",
+          "topic": "Holds data and results for the Skill of the Week competition.",
+          "permissionKey": "publicReadOnly"
+        },
+        {
+          "key": "notif_channel",
+          "name": "🏆∙notifications",
+          "type": "GuildAnnouncement",
+          "topic": "Broadcasts notifications and updates for weekly competitions.",
+          "permissionKey": "publicReadOnly"
+        }
+      ]
+    },
+    {
+      "name": "🏆 • Clan Activities",
+      "permissionKey": "clanOnly",
+      "channels": [
+        {
+          "key": "clan_members_channel",
+          "name": "📖∙-ingame-clannies",
+          "type": "GuildAnnouncement",
+          "topic": "Displays the clan members.",
+          "permissionKey": "publicReadOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          }
+        },
+        {
+          "key": "activity_voice_channel",
+          "name": "⌛loading..",
+          "type": "GuildVoice",
+          "permissionKey": "voiceReadNoJoin",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          }
+        },
+        {
+          "key": "clan_events",
+          "name": "📅•-events",
+          "type": "GuildAnnouncement",
+          "topic": "Boss trips, clan gatherings, or community events.",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          }
+        },
+        {
+          "key": "raid_signups",
+          "name": "📅•-raid-signups",
+          "type": "GuildText",
+          "topic": "Sign up for raids or group bossing (react to join).",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          }
+        },
+        {
+          "key": "bossing",
+          "name": "🐉•-bossing",
+          "type": "GuildText",
+          "topic": "Coordinate boss fights, share PvM tips. (Clan-oriented).",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          }
+        },
+        {
+          "key": "skilling_competitions",
+          "name": "📈•-skilling-competitions",
+          "type": "GuildText",
+          "topic": "Track skill challenges, share progress (open to all).",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          }
+        },
+        {
+          "key": "achievements",
+          "name": "🏆•-achievements",
+          "type": "GuildText",
+          "topic": "Auto-log major accomplishments (99s, big loot, etc.).",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🎲∙Bingoooo",
+      "permissionKey": "publicReadOnly",
+      "channels": [
+        {
+          "key": "bingo_notification_channel",
+          "name": "📢∙-task-completions",
+          "type": "GuildAnnouncement",
+          "topic": "📢 Real-time updates and notifications for task completions.",
+          "permissionKey": "publicReadOnly"
+        },
+        {
+          "key": "bingo_card_channel",
+          "name": "📖∙-bingo-info",
+          "type": "GuildAnnouncement",
+          "topic": "📖 Learn about the bingo, how it works and how to participate in the event.",
+          "permissionKey": "publicReadOnly"
+        },
+        {
+          "key": "bingo_leaderboard_channel",
+          "name": "🏆∙-bingo-leaderboard",
+          "type": "GuildAnnouncement",
+          "topic": "🏆 Check out the current Bingo leaderboard and see who is leading the event!",
+          "permissionKey": "publicReadOnly"
+        },
+        {
+          "key": "bingo_patterns_channel",
+          "name": "📊∙-pattern-completion",
+          "type": "GuildAnnouncement",
+          "topic": "📊 Track team and individual pattern progress throughout the Bingo event with real-time updates.",
+          "permissionKey": "publicReadOnly"
+        }
+      ]
+    },
+    {
+      "name": "🌐 ‣ Live Gains",
+      "permissionKey": "clanOnly",
+      "channels": [
+        {
+          "key": "clanchat_channel",
+          "name": "💬‣‣-clan-chat",
+          "type": "GuildAnnouncement",
+          "topic": "Logs clanchat webhook.\nCheck out '/clanchat_tutorial' to learn how you can help keep this channel up-to-date.",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          },
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_osrs_clan_chat",
+            "name": "💬OSRS | Clan Chat"
+          }
+        },
+        {
+          "key": "clue_scrolls_channel",
+          "name": "📜‣‣-clue-scrolls",
+          "type": "GuildAnnouncement",
+          "topic": "Sends ingame actions via webhook.\nCheck out '/live_gains_tutorial' to learn how to add yourself to the tracking channels.",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          },
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_osrs_clue_scroll_completed",
+            "name": "📜OSRS | Clue scroll completed"
+          }
+        },
+        {
+          "key": "collection_log_channel",
+          "name": "📖‣‣-collection-log",
+          "type": "GuildAnnouncement",
+          "topic": "Sends ingame actions via webhook.\nCheck out '/live_gains_tutorial' to learn how to add yourself to the tracking channels.",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          },
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_osrs_collectable_registered",
+            "name": "📖OSRS | Collectable registered"
+          }
+        },
+        {
+          "key": "deaths_channel",
+          "name": "💀‣‣-deaths",
+          "type": "GuildAnnouncement",
+          "topic": "Sends ingame actions via webhook.\nCheck out '/live_gains_tutorial' to learn how to add yourself to the tracking channels.",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          },
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_osrs_deceased",
+            "name": "💀OSRS | Deceased"
+          }
+        },
+        {
+          "key": "levels_channel",
+          "name": "📊‣‣-levels",
+          "type": "GuildAnnouncement",
+          "topic": "Sends ingame actions via webhook.\nCheck out '/live_gains_tutorial' to learn how to add yourself to the tracking channels.",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          },
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_osrs_level_achieved",
+            "name": "📊OSRS | Level achieved"
+          }
+        },
+        {
+          "key": "drops_channel",
+          "name": "💰‣‣-drops",
+          "type": "GuildAnnouncement",
+          "topic": "Sends ingame actions via webhook.\nCheck out '/live_gains_tutorial' to learn how to add yourself to the tracking channels.",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          },
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_osrs_received_drop",
+            "name": "💰OSRS | Received drop"
+          }
+        },
+        {
+          "key": "pets_channel",
+          "name": "🐶‣‣-pets",
+          "type": "GuildAnnouncement",
+          "topic": "Sends ingame actions via webhook.\nCheck out '/live_gains_tutorial' to learn how to add yourself to the tracking channels.",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          },
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_osrs_adopted_a_pet",
+            "name": "🐶OSRS | Adopted a pet"
+          }
+        },
+        {
+          "key": "quests_channel",
+          "name": "🧭‣‣-quests",
+          "type": "GuildAnnouncement",
+          "topic": "Sends ingame actions via webhook.\nCheck out '/live_gains_tutorial' to learn how to add yourself to the tracking channels.",
+          "permissionKey": "clanOnly",
+          "role": {
+            "name": "Clan Member",
+            "mentionable": true,
+            "color": "#2c3e50"
+          },
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_osrs_quest_completed",
+            "name": "🧭OSRS | Quest completed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎉 • Premium Lounge",
+      "permissionKey": "premiumOnly",
+      "channels": [
+        {
+          "key": "premium_chat",
+          "name": "💎•-premium-chat",
+          "type": "GuildText",
+          "topic": "Exclusive chat for Premium members (Patreon, YouTube subs, boosters).",
+          "permissionKey": "premiumOnly",
+          "role": {
+            "name": "Premium",
+            "mentionable": true,
+            "color": "#f39c12"
+          }
+        },
+        {
+          "key": "premium_voice",
+          "name": "💎 Premium Voice",
+          "type": "GuildVoice",
+          "permissionKey": "premiumOnly",
+          "role": {
+            "name": "Premium",
+            "mentionable": true,
+            "color": "#f39c12"
+          }
+        },
+        {
+          "key": "vip_showcase",
+          "name": "💎•-vip-showcase",
+          "type": "GuildText",
+          "topic": "Share advanced OSRS accomplishments or behind-the-scenes early access content.",
+          "permissionKey": "premiumOnly",
+          "role": {
+            "name": "Premium",
+            "mentionable": true,
+            "color": "#f39c12"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔒 • Maintenance & Dev",
+      "permissionKey": "staffOnly",
+      "channels": [
+        {
+          "key": "dev_collab",
+          "name": "👨‍💻•-dev-collab",
+          "type": "GuildText",
+          "topic": "Dev discussion: site/bot issues, code sharing.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": true,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "maintenance_tasks",
+          "name": "🔨•-maintenance",
+          "type": "GuildText",
+          "topic": "Scheduled downtime, site tasks, server maintenance.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": true,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "critical_logs",
+          "name": "🚨•-critical-logs",
+          "type": "GuildText",
+          "topic": "High-priority or error alerts from site/bot.",
+          "permissionKey": "staffOnly",
+          "webhook": {
+            "enabled": true,
+            "key": "webhook_critical",
+            "name": "🚨 Crit Logs"
+          },
+          "role": {
+            "name": "Developer",
+            "mentionable": true,
+            "color": "#1ABC9C"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔒 • Staff HQ",
+      "permissionKey": "staffOnly",
+      "channels": [
+        {
+          "key": "staff_chat",
+          "name": "💼•-staff-chat",
+          "type": "GuildText",
+          "topic": "Private space for staff & mods to discuss server management.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": true,
+            "color": "#3498DB"
+          }
+        },
+        {
+          "key": "staff_announcements",
+          "name": "📢•-staff-announcements",
+          "type": "GuildAnnouncement",
+          "topic": "Internal staff bulletins, leadership-only posts.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": true,
+            "color": "#3498DB"
+          }
+        },
+        {
+          "key": "staff_forum",
+          "name": "🪷•-staff-forum",
+          "type": "GuildForum",
+          "topic": "Staff & leadership forum for policies, major decisions.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": true,
+            "color": "#3498DB"
+          },
+          "forumOptions": {
+            "tags": [
+              {
+                "name": "Policy"
+              },
+              {
+                "name": "Planning"
+              },
+              {
+                "name": "Feedback"
+              }
+            ],
+            "defaultReactionEmoji": "📝",
+            "slowmode": 5,
+            "nsfw": false,
+            "guidelines": "Use this space for organized discussion only. Tag your threads clearly."
+          }
+        },
+        {
+          "key": "staff_feedback",
+          "name": "📝•-staff-feedback",
+          "type": "GuildText",
+          "topic": "Feedback on server policies, moderation, and community.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": true,
+            "color": "#3498DB"
+          }
+        },
+        {
+          "key": "staff_meetings",
+          "name": "📅•-staff-meetings",
+          "type": "GuildText",
+          "topic": "Schedule and discuss staff meetings.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": true,
+            "color": "#3498DB"
+          }
+        },
+        {
+          "key": "staff_voice",
+          "name": "🔊 Staff Meet",
+          "type": "GuildVoice",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": true,
+            "color": "#3498DB"
+          }
+        },
+        {
+          "key": "staff_notifications",
+          "name": "🔔•-staff-notifications",
+          "type": "GuildText",
+          "topic": "System or bot notifications specifically for staff.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": true,
+            "color": "#3498DB"
+          }
+        },
+        {
+          "key": "mod_notes",
+          "name": "📝•-mod-notes",
+          "type": "GuildText",
+          "topic": "All moderation actions (kicks, bans, timeouts, etc.).",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": true,
+            "color": "#3498DB"
+          }
+        },
+        {
+          "key": "web_traffic",
+          "name": "🌐•-website-traffic",
+          "type": "GuildText",
+          "topic": "Analytics feed for site visits, user signups, etc.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Staff",
+            "mentionable": true,
+            "color": "#3498DB"
+          }
+        },
+        {
+          "key": "site_signups",
+          "name": "📨•-site-signups",
+          "type": "GuildText",
+          "topic": "Notifications for new website sign-ups, contact forms, etc.",
+          "role": {
+            "name": "Staff",
+            "color": "#3498DB",
+            "mentionable": true
+          },
+          "webhook": {
+            "key": "webhook_site_signups",
+            "name": "📝 Site | New Signup",
+            "enabled": true
+          },
+          "permissionKey": "staffOnly"
+        }
+      ]
+    },
+    {
+      "name": "📁 ‣‣ Logging",
+      "permissionKey": "staffOnly",
+      "channels": [
+        {
+          "key": "transcripts",
+          "name": "📋‣-‣transcripts",
+          "type": "GuildAnnouncement",
+          "topic": "Stores chat transcripts.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "moderation_logs",
+          "name": "📋‣-‣moderation-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Logs bans, kicks, mutes, and warnings.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "message_logs",
+          "name": "📋‣-‣message-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Tracks message edits and deletions.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "member_logs",
+          "name": "📋‣-‣member-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Logs member joins, leaves, and role changes.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "role_logs",
+          "name": "📋‣-‣role-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Tracks role creations, deletions, and updates.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "server_logs",
+          "name": "📋‣-‣server-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Records important server changes.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "channel_logs",
+          "name": "📋‣-‣channel-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Logs channel creations, deletions, and updates.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "voice_logs",
+          "name": "📋‣-‣voice-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Tracks voice channel joins, leaves, and mutes.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "invite_logs",
+          "name": "📋‣-‣invite-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Logs invite link creations and uses.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "thread_logs",
+          "name": "📋‣-‣thread-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Tracks thread creations, deletions, and updates.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "reacted_logs",
+          "name": "📋‣-‣reacted-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Tracks message reactions.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "event_logs",
+          "name": "📋‣-‣event-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Logs member profile events in the server.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "stage_logs",
+          "name": "📋‣-‣stage-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Logs stage channel updates.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "boost_logs",
+          "name": "📋‣-‣boost-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Tracks when members boost the server.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "bot_logs",
+          "name": "📋‣-‣bot-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Logs bot actions and errors.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        },
+        {
+          "key": "database_logs",
+          "name": "📋‣-‣database-logs",
+          "type": "GuildAnnouncement",
+          "topic": "Logs database actions.",
+          "permissionKey": "staffOnly",
+          "role": {
+            "name": "Developer",
+            "mentionable": false,
+            "color": "#1ABC9C"
+          }
+        }
+      ]
+    }
+  ]
+}

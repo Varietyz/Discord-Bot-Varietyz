@@ -1,9 +1,5 @@
-/**
- *
- */
 function hideAllButCurrent(){
-    //by default all submenut items are hidden
-    //but we need to rehide them for search
+
     document.querySelectorAll('nav > ul').forEach(function(parent) {
         if (parent.className.indexOf('collapse_top') !== -1) {
             parent.style.display = 'none';
@@ -23,8 +19,7 @@ function hideAllButCurrent(){
             });
         }
     });
-    
-    //only current page (if it exists) should be opened
+
     var file = window.location.pathname.split('/').pop().replace(/\.html/, '');
     document.querySelectorAll('nav > ul > li > a').forEach(function(parent) {
         var href = parent.attributes.href.value.replace(/\.html/, '');

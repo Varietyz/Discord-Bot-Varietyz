@@ -7,5 +7,5 @@ module.exports = {
             return;
         }
         logger.debug(`🐞 Debug Info: ${info}`);
-    },
+    }
 };

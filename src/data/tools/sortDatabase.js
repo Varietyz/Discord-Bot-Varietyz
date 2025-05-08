@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 require('dotenv').config();
+
 async function openDatabase() {
     return open({
         filename: 'src/data/messages.db',
@@ -24,6 +25,7 @@ const systemTables = {
     KEYS: 'loot_key_rewards',
     CHAT: 'chat_messages',
 };
+
 async function reorderTable(db, tableName) {
     try {
         await db.exec('BEGIN TRANSACTION;');
@@ -52,6 +54,7 @@ async function reorderTable(db, tableName) {
         console.error(`Error reordering table "${tableName}":`, error);
     }
 }
+
 async function reorderAllTables() {
     try {
         const db = await openDatabase();

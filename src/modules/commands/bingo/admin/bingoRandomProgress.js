@@ -1,17 +1,12 @@
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const db = require('../../../utils/essentials/dbUtils');
 const logger = require('../../../utils/essentials/logger');
-const { synchronizeTaskCompletion } = require('../../../utils/essentials/syncTeamData');
+const {
+    synchronizeTaskCompletion,
+} = require('../../../utils/essentials/syncTeamData');
 const { updateBingoProgress } = require('../../../services/bingo/bingoService');
-const client = require('../../../../main');
+const client = require('../../../discordClient');
 
-// Utility: random integer in [min, max]
-/**
- *
- * @param min
- * @param max
- * @returns
- */
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -19,121 +14,166 @@ function getRandomInt(min, max) {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('random-progression')
-        .setDescription('ADMIN: Set random progression for all active tasks, skipping already completed ones.')
+        .setDescription(
+            'ADMIN: Set random progression for all active tasks, skipping already completed ones.'
+        )
         .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
-        .addStringOption((option) => option.setName('what').setDescription('Select target mode: individual, team').setRequired(true).addChoices({ name: 'RSN', value: 'individual' }, { name: 'Team', value: 'team' }))
-        .addStringOption((option) => option.setName('who').setDescription('RSN (individual) or team identifier (team) for the update').setRequired(true).setAutocomplete(true)),
+        .addStringOption((option) =>
+            option
+                .setName('what')
+                .setDescription('Select target mode: individual, team')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'RSN', value: 'individual' },
+                    { name: 'Team', value: 'team' }
+                )
+        )
+        .addStringOption((option) =>
+            option
+                .setName('who')
+                .setDescription(
+                    'RSN (individual) or team identifier (team) for the update'
+                )
+                .setRequired(true)
+                .setAutocomplete(true)
+        ),
 
     async execute(interaction) {
         await interaction.deferReply({ flags: 64 });
         const mode = interaction.options.getString('what');
         const target = interaction.options.getString('who');
 
-        // Get active event
-        const eventRow = await db.getOne('SELECT event_id FROM bingo_state WHERE state = \'ongoing\' LIMIT 1');
+        const eventRow = await db.getOne(
+            'SELECT event_id FROM bingo_state WHERE state = \'ongoing\' LIMIT 1'
+        );
         if (!eventRow) {
-            return interaction.editReply({ content: '❌ No active Bingo event found.' });
+            return interaction.editReply({
+                content: '❌ No active Bingo event found.',
+            });
         }
         const eventId = eventRow.event_id;
 
-        // Fetch active tasks
         const tasks = await db.getAll(
             `SELECT bbc.task_id, bt.parameter, bt.type, bt.value AS targetValue
              FROM bingo_board_cells bbc
              JOIN bingo_tasks bt ON bbc.task_id = bt.task_id
              WHERE bbc.board_id = (SELECT board_id FROM bingo_state WHERE event_id = ?)`,
-            [eventId],
+            [eventId]
         );
 
         if (!tasks.length) {
-            return interaction.editReply({ content: '❌ No active tasks found for the current board.' });
+            return interaction.editReply({
+                content: '❌ No active tasks found for the current board.',
+            });
         }
 
-        // Get target players
         let playerIds = [];
         if (mode === 'individual') {
             if (!target) {
-                return interaction.editReply({ content: '❌ You must provide an RSN when mode is Individual.' });
+                return interaction.editReply({
+                    content: '❌ You must provide an RSN when mode is Individual.',
+                });
             }
             const player = await db.getOne(
                 `SELECT rr.player_id 
                  FROM registered_rsn rr
                  JOIN clan_members cm ON rr.player_id = cm.player_id
                  WHERE LOWER(rr.rsn) = LOWER(?)`,
-                [target],
+                [target]
             );
             if (!player) {
-                return interaction.editReply({ content: `❌ No player found with RSN: **${target}**.` });
+                return interaction.editReply({
+                    content: `❌ No player found with RSN: **${target}**.`,
+                });
             }
             playerIds.push(player.player_id);
         } else if (mode === 'team') {
             if (!target) {
-                return interaction.editReply({ content: '❌ You must provide a team identifier when mode is Team.' });
+                return interaction.editReply({
+                    content: '❌ You must provide a team identifier when mode is Team.',
+                });
             }
-            const team = await db.getOne('SELECT team_id FROM bingo_teams WHERE LOWER(team_name) = LOWER(?) AND event_id = ?', [target, eventId]);
+            const team = await db.getOne(
+                'SELECT team_id FROM bingo_teams WHERE LOWER(team_name) = LOWER(?) AND event_id = ?',
+                [target, eventId]
+            );
 
             if (!team) {
-                return interaction.editReply({ content: `❌ No team found with identifier: **${target}**.` });
+                return interaction.editReply({
+                    content: `❌ No team found with identifier: **${target}**.`,
+                });
             }
-            const teamMembers = await db.getAll('SELECT player_id FROM bingo_team_members WHERE team_id = ?', [team.team_id]);
+            const teamMembers = await db.getAll(
+                'SELECT player_id FROM bingo_team_members WHERE team_id = ?',
+                [team.team_id]
+            );
             playerIds = teamMembers.map((m) => m.player_id);
             for (const member of teamMembers) {
-                await synchronizeTaskCompletion(eventId, member.player_id, team.team_id);
+                await synchronizeTaskCompletion(
+                    eventId,
+                    member.player_id,
+                    team.team_id
+                );
             }
         } else {
             return interaction.editReply({ content: '❌ Invalid mode specified.' });
         }
 
         if (playerIds.length === 0) {
-            return interaction.editReply({ content: `❌ No players found for **${mode}** ${target ? `(${target})` : ''}.` });
+            return interaction.editReply({
+                content: `❌ No players found for **${mode}** ${target ? `(${target})` : ''}.`,
+            });
         }
 
-        // Process each task for each player
         for (const playerId of playerIds) {
             for (const task of tasks) {
                 const { task_id, parameter, type, targetValue } = task;
 
-                // Check if already completed
                 const existingTask = await db.getOne(
                     `SELECT progress_id, status FROM bingo_task_progress
                      WHERE event_id = ? AND player_id = ? AND task_id = ?`,
-                    [eventId, playerId, task_id],
+                    [eventId, playerId, task_id]
                 );
 
                 if (existingTask?.status === 'completed') {
-                    logger.info(`[SetRandomProgression] Skipping player ${playerId} for task ${parameter} (already completed).`);
+                    logger.info(
+                        `[SetRandomProgression] Skipping player ${playerId} for task ${parameter} (already completed).`
+                    );
                     continue;
                 }
 
-                // Generate a random value unique per player
                 const randomValue = getRandomInt(
-                    Math.max(1, Math.floor(targetValue * 0.1)), // At least 10% of targetValue
-                    targetValue, // Maximum limit
+                    Math.max(1, Math.floor(targetValue * 0.1)), 
+                    targetValue 
                 );
 
-                // Determine metric type (exp, kills, score)
                 let updateColumn = 'exp';
                 if (type.toLowerCase() === 'kill') updateColumn = 'kills';
                 else if (type.toLowerCase() === 'score') updateColumn = 'score';
 
-                // Verify the player has the metric in player_data
-                const playerMetric = await db.getOne('SELECT metric FROM player_data WHERE player_id = ? AND metric = ?', [playerId, parameter]);
+                const playerMetric = await db.getOne(
+                    'SELECT metric FROM player_data WHERE player_id = ? AND metric = ?',
+                    [playerId, parameter]
+                );
                 if (!playerMetric) {
-                    logger.warn(`[SetRandomProgression] No metric found in player_data for player ${playerId} with metric ${parameter}.`);
+                    logger.warn(
+                        `[SetRandomProgression] No metric found in player_data for player ${playerId} with metric ${parameter}.`
+                    );
                     continue;
                 }
 
-                // Update player progress
                 await db.runQuery(
                     `UPDATE player_data
                      SET ${updateColumn} = ${updateColumn} + ?,
                          last_changed = CURRENT_TIMESTAMP,
                          last_updated = CURRENT_TIMESTAMP
                      WHERE player_id = ? AND metric = ?`,
-                    [randomValue, playerId, parameter],
+                    [randomValue, playerId, parameter]
                 );
 
-                logger.info(`[SetRandomProgression] Added ${randomValue} ${updateColumn} to player ${playerId} for task ${parameter}.`);
+                logger.info(
+                    `[SetRandomProgression] Added ${randomValue} ${updateColumn} to player ${playerId} for task ${parameter}.`
+                );
             }
         }
         await updateBingoProgress(client);
@@ -142,12 +182,6 @@ module.exports = {
         });
     },
 
-    /**
-     * Autocomplete handler for the "target" option.
-     * - For mode "individual", autocomplete RSNs.
-     * - For mode "team", autocomplete team names.
-     * @param interaction
-     */
     async autocomplete(interaction) {
         const focusedOption = interaction.options.getFocused(true);
         const optionName = focusedOption.name;
@@ -161,14 +195,14 @@ module.exports = {
                         `SELECT rr.rsn FROM registered_rsn rr
                          JOIN clan_members cm ON rr.player_id = cm.player_id
                          WHERE LOWER(rr.rsn) LIKE ?`,
-                        [`%${query.toLowerCase()}%`],
+                        [`%${query.toLowerCase()}%`]
                     );
                     choices = rows.map((row) => row.rsn);
                 } else if (mode === 'team') {
                     const rows = await db.getAll(
                         `SELECT team_name FROM bingo_teams
                          WHERE LOWER(team_name) LIKE ? AND event_id = (SELECT event_id FROM bingo_state WHERE state = 'ongoing' LIMIT 1)`,
-                        [`%${query.toLowerCase()}%`],
+                        [`%${query.toLowerCase()}%`]
                     );
                     choices = rows.map((row) => row.team_name);
                 }

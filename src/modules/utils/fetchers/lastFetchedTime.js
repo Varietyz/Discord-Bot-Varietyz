@@ -1,4 +1,5 @@
 const { getAll, runQuery } = require('../essentials/dbUtils');
+
 async function ensurePlayerFetchTimesTable() {
     await runQuery(`
         CREATE TABLE IF NOT EXISTS player_fetch_times (
@@ -7,6 +8,7 @@ async function ensurePlayerFetchTimesTable() {
         );
     `);
 }
+
 async function getLastFetchedTime(player_id) {
     const query = 'SELECT last_fetched_at FROM player_fetch_times WHERE player_id = ?';
     const rows = await getAll(query, [player_id]);
@@ -15,11 +17,13 @@ async function getLastFetchedTime(player_id) {
     }
     return null;
 }
+
 async function resetPlayerFetchTimesTable() {
     await runQuery(`
         DROP TABLE IF EXISTS player_fetch_times
     `);
 }
+
 async function setLastFetchedTime(player_id) {
     const now = new Date().toISOString();
     await runQuery(

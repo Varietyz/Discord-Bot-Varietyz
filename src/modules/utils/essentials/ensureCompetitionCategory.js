@@ -3,10 +3,7 @@ const {
     guild: { runQuery, getOne },
 } = require('./dbUtils');
 const logger = require('./logger');
-/**
- *
- * @param guild
- */
+
 async function ensureCompetitionCategory(guild) {
     try {
         const compCategoryName = '🏆∙Competitions of the Week';

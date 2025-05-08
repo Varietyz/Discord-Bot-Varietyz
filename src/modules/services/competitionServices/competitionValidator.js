@@ -1,63 +1,114 @@
 const logger = require('../../utils/essentials/logger');
 const WOMApiClient = require('../../../api/wise_old_man/apiClient');
+const failCache = require('../../utils/essentials/failCache'); 
+
+const FIVE_MINUTE = 5 * 60 * 1000;
+
 async function removeInvalidCompetitions(db) {
     try {
         const allCompetitions = await db.getAll('SELECT * FROM competitions');
-        logger.debug(`🔍 Fetched \`${allCompetitions.length}\` competitions from the database.`);
+        logger.debug(
+            `🔍 Fetched \`${allCompetitions.length}\` competitions from the database.`
+        );
+
+        const now = Date.now();
+
         for (const comp of allCompetitions) {
             try {
-                const womDetails = await WOMApiClient.retryRequest('competitions', 'getCompetitionDetails', comp.competition_id);
-                if (!womDetails) {
-                    await db.runQuery('DELETE FROM votes WHERE competition_id = ?', [comp.competition_id]);
-                    await db.runQuery('DELETE FROM competitions WHERE competition_id = ?', [comp.competition_id]);
-                    logger.info(`🚫 Removed competition ID \`${comp.competition_id}\` from DB (WOM "Competition not found").`);
+                const endsAt = new Date(comp.ends_at).getTime();
+                const isExpired = now > endsAt + FIVE_MINUTE;
+
+                if (isExpired) {
+                    await db.runQuery('DELETE FROM votes WHERE competition_id = ?', [
+                        comp.competition_id,
+                    ]);
+                    await db.runQuery(
+                        'DELETE FROM competitions WHERE competition_id = ?',
+                        [comp.competition_id]
+                    );
+                    logger.info(
+                        `🗑️ Removed expired competition ID \`${comp.competition_id}\` (ended over 6h ago).`
+                    );
                     continue;
                 }
-                const { id, title, metric, startsAt, endsAt } = womDetails;
-                logger.debug(`🔍 WOM Competition Details for ID \`${id}\`: Title="\`${title}\`", Metric="\`${metric}\`", StartsAt="\`${startsAt}\`", EndsAt="\`${endsAt}\`"`);
-                const dbCompetition = comp;
+
+                if (failCache.has(`comp:${comp.competition_id}`)) {
+                    logger.warn(
+                        `⚠️ Skipping WOM enrichment for comp \`${comp.competition_id}\` (cached failure).`
+                    );
+                    continue;
+                }
+
+                const womDetails = await WOMApiClient.retryRequest(
+                    'competitions',
+                    'getCompetitionDetails',
+                    comp.competition_id
+                );
+
+                if (!womDetails) {
+                    await db.runQuery('DELETE FROM votes WHERE competition_id = ?', [
+                        comp.competition_id,
+                    ]);
+                    await db.runQuery(
+                        'DELETE FROM competitions WHERE competition_id = ?',
+                        [comp.competition_id]
+                    );
+                    logger.info(
+                        `🚫 Removed competition ID \`${comp.competition_id}\` (WOM returned null).`
+                    );
+                    failCache.set(`comp:${comp.competition_id}`, true, 30 * 60); 
+                    continue;
+                }
+
+                const { id, title, metric, startsAt, endsAt: apiEndsAt } = womDetails;
+                logger.debug(
+                    `🔍 WOM Competition Details for ID \`${id}\`: Title="\`${title}\`", Metric="\`${metric}\`"`
+                );
+
                 const updates = {};
-                if (dbCompetition.title !== title) {
-                    updates.title = title;
-                    logger.info(`✏️ Updating title for competition ID \`${comp.competition_id}\`: "\`${dbCompetition.title}\`" => "\`${title}\`"`);
-                }
-                if (dbCompetition.metric !== metric) {
-                    updates.metric = metric;
-                    logger.info(`✏️ Updating metric for competition ID \`${comp.competition_id}\`: "\`${dbCompetition.metric}\`" => "\`${metric}\`"`);
-                }
-                const dbStartsAt = new Date(dbCompetition.starts_at);
-                const apiStartsAt = new Date(startsAt);
-                if (dbStartsAt.getTime() !== apiStartsAt.getTime()) {
-                    updates.starts_at = apiStartsAt.toISOString();
-                    logger.info(`✏️ Updating starts_at for competition ID \`${comp.competition_id}\`: "\`${dbCompetition.starts_at}\`" => "\`${updates.starts_at}\`"`);
-                }
-                const dbEndsAt = new Date(dbCompetition.ends_at);
-                const apiEndsAt = new Date(endsAt);
-                if (dbEndsAt.getTime() !== apiEndsAt.getTime()) {
-                    updates.ends_at = apiEndsAt.toISOString();
-                    logger.info(`✏️ Updating ends_at for competition ID \`${comp.competition_id}\`: "\`${dbCompetition.ends_at}\`" => "\`${updates.ends_at}\`"`);
-                }
-                const updateKeys = Object.keys(updates);
-                if (updateKeys.length > 0) {
-                    const setClause = updateKeys.map((key) => `${key} = ?`).join(', ');
-                    const values = updateKeys.map((key) => updates[key]);
-                    values.push(comp.competition_id);
-                    const updateQuery = `
-                        UPDATE competitions
-                        SET ${setClause}
-                        WHERE competition_id = ?
-                    `;
-                    await db.runQuery(updateQuery, values);
-                    logger.info(`✅ Updated competition ID \`${comp.competition_id}\` with new details from WOM API.`);
+                if (comp.title !== title) updates.title = title;
+                if (comp.metric !== metric) updates.metric = metric;
+
+                const dbStartsAt = new Date(comp.starts_at).getTime();
+                const womStartsAt = new Date(startsAt).getTime();
+                if (dbStartsAt !== womStartsAt)
+                    updates.starts_at = new Date(womStartsAt).toISOString();
+
+                const womEndsAt = new Date(apiEndsAt).getTime();
+                if (endsAt !== womEndsAt)
+                    updates.ends_at = new Date(womEndsAt).toISOString();
+
+                if (Object.keys(updates).length > 0) {
+                    const setClause = Object.keys(updates)
+                        .map((k) => `${k} = ?`)
+                        .join(', ');
+                    const values = [...Object.values(updates), comp.competition_id];
+                    await db.runQuery(
+                        `UPDATE competitions SET ${setClause} WHERE competition_id = ?`,
+                        values
+                    );
+                    logger.info(
+                        `✅ Synced competition ID \`${comp.competition_id}\` with WOM updates.`
+                    );
                 }
             } catch (err) {
-                logger.error(`❌ Error fetching WOM competition ID \`${comp.competition_id}\`: ${err.message}`, { competitionId: comp.competition_id, errorStack: err.stack });
+                logger.error(
+                    `❌ Error processing comp ID \`${comp.competition_id}\`: ${err.message}`,
+                    {
+                        competitionId: comp.competition_id,
+                        errorStack: err.stack,
+                    }
+                );
+                failCache.set(`comp:${comp.competition_id}`, true, 30 * 60); 
             }
         }
     } catch (err) {
-        logger.error(`❌ Failed to remove invalid competitions: ${err.message}`, { errorStack: err.stack });
+        logger.error(`❌ Failed to remove invalid competitions: ${err.message}`, {
+            errorStack: err.stack,
+        });
     }
 }
+
 module.exports = {
     removeInvalidCompetitions,
 };

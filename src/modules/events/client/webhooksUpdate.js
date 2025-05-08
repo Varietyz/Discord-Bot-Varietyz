@@ -94,10 +94,7 @@ module.exports = {
         }
     },
 };
-/**
- *
- * @param guild
- */
+
 async function getWebhookLogChannel(guild) {
     const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['webhook_logs']);
     if (!logChannelData) return null;
@@ -107,13 +104,7 @@ async function getWebhookLogChannel(guild) {
     }
     return null;
 }
-/**
- *
- * @param guild
- * @param channelId
- * @param maxAttempts
- * @param delay
- */
+
 async function fetchRecentWebhookAuditLog(guild, channelId, maxAttempts = 6, delay = 5000) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -135,10 +126,7 @@ async function fetchRecentWebhookAuditLog(guild, channelId, maxAttempts = 6, del
     }
     return null;
 }
-/**
- *
- * @param channel
- */
+
 async function compareStoredWebhooks(channel) {
     try {
         const storedWebhooks = (await getAll('SELECT webhook_key FROM guild_webhooks WHERE channel_id = ?', [channel.id])) || [];

@@ -1,8 +1,18 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const {
+    SlashCommandBuilder,
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+} = require('discord.js');
 const db = require('../../../utils/essentials/dbUtils');
 const logger = require('../../../utils/essentials/logger');
 module.exports = {
-    data: new SlashCommandBuilder().setName('live_gains_tutorial').setDescription('📜 Interactive guide for setting up RuneLite Discord Webhooks.'),
+    data: new SlashCommandBuilder()
+        .setName('live_gains_tutorial')
+        .setDescription(
+            '📜 Interactive guide for setting up RuneLite Discord Webhooks.'
+        ),
     async execute(interaction) {
         try {
             const discordId = interaction.user.id;
@@ -15,19 +25,31 @@ module.exports = {
           AND LOWER(r.rsn) = LOWER(cm.rsn)
         WHERE r.discord_id = ?
         `,
-                [discordId],
+                [discordId]
             );
             if (!validRegistration) {
                 return interaction.reply({
-                    content: '🚫 **Error:** You must be a registered clan member to use this command.',
+                    content:
+            '🚫 **Error:** You must be a registered clan member to use this command.',
                     flags: 64,
                 });
             }
             await interaction.deferReply({ flags: 64 });
-            const webhooks = await db.guild.getAll('SELECT webhook_key, webhook_url, channel_id FROM guild_webhooks');
-            const webhookMap = new Map(webhooks.map(({ webhook_key, webhook_url, channel_id }) => [webhook_key, { webhook_key, webhook_url, channel_id }]));
-            const images = await db.image.getAll('SELECT file_name, file_path FROM tutorial_files');
-            const imageMap = new Map(images.map(({ file_name, file_path }) => [file_name, file_path]));
+            const webhooks = await db.guild.getAll(
+                'SELECT webhook_key, webhook_url, channel_id FROM guild_webhooks'
+            );
+            const webhookMap = new Map(
+                webhooks.map(({ webhook_key, webhook_url, channel_id }) => [
+                    webhook_key,
+                    { webhook_key, webhook_url, channel_id },
+                ])
+            );
+            const images = await db.image.getAll(
+                'SELECT file_name, file_path FROM tutorial_files'
+            );
+            const imageMap = new Map(
+                images.map(({ file_name, file_path }) => [file_name, file_path])
+            );
             const steps = [
                 {
                     text: '**1.** Open RuneLite\n**2.** Go to \'Configuration\' in the top right corner',
@@ -92,11 +114,20 @@ module.exports = {
             const getButtons = (currentStep) => {
                 const row = new ActionRowBuilder();
                 if (currentStep > 0) {
-                    row.addComponents(new ButtonBuilder().setCustomId('prev_step').setLabel('⬅️ Previous').setStyle(ButtonStyle.Primary));
+                    row.addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('prev_step')
+                            .setLabel('⬅️ Previous')
+                            .setStyle(ButtonStyle.Primary)
+                    );
                 }
-                if (currentStep === steps.length - 1) {
-                } else {
-                    row.addComponents(new ButtonBuilder().setCustomId('next_step').setLabel('Next ➡️').setStyle(ButtonStyle.Primary));
+                if (currentStep < steps.length - 1) {
+                    row.addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('next_step')
+                            .setLabel('Next ➡️')
+                            .setStyle(ButtonStyle.Primary)
+                    );
                 }
                 return row;
             };
@@ -121,7 +152,7 @@ module.exports = {
                                 name: '📌 Channel',
                                 value: `<#${webhookData.channel_id}>`,
                                 inline: false,
-                            },
+                            }
                         );
                     } else {
                         logger.warn(`⚠️ Webhook data not found for key: ${step.webhook}`);
@@ -152,11 +183,16 @@ module.exports = {
                 files: initialFiles,
                 flags: 64,
             });
-            const collector = replyMessage.createMessageComponentCollector({ time: 600000 });
+            const collector = replyMessage.createMessageComponentCollector({
+                time: 600000,
+            });
             collector.on('collect', async (i) => {
                 if (i.customId === 'prev_step' && currentStep > 0) {
                     currentStep--;
-                } else if (i.customId === 'next_step' && currentStep < steps.length - 1) {
+                } else if (
+                    i.customId === 'next_step' &&
+          currentStep < steps.length - 1
+                ) {
                     currentStep++;
                 }
                 const newFiles = getAttachmentForStep(steps[currentStep]);

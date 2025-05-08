@@ -10,6 +10,7 @@ const { execute: setupBasicChannels } = require('./setupBasicChannels');
 const { execute: setupCompetitions } = require('./setupCompetitions');
 const { execute: setupLiveGains } = require('./setupLiveGains');
 const { execute: setupLogging } = require('./setupLogging');
+
 function createSubcommandInteraction(subcommand, interaction) {
     return {
         guild: interaction.guild,

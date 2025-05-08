@@ -1,8 +1,12 @@
-const { runQuery } = require('../modules/utils/essentials/dbUtils');
+const db = require('../modules/utils/essentials/dbUtils');
 const logger = require('../modules/utils/essentials/logger');
+
 const initializeMainTables = async () => {
     try {
-        logger.info('🔄 Ensuring all necessary tables exist...');
+        logger.info('🔄 Ensuring all necessary main tables exist...');
+
+        await db.initializationPromise;
+
         const tables = {
             registered_rsn: `
                 player_id INTEGER PRIMARY KEY,
@@ -141,15 +145,61 @@ const initializeMainTables = async () => {
     FOREIGN KEY (sender_id) REFERENCES registered_rsn(player_id),
     FOREIGN KEY (receiver_id) REFERENCES registered_rsn(player_id)
             `,
+
+            performance_stats: `
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        bot_latency INTEGER,
+        bot_uptime_ms INTEGER,
+        memory_rss_mb INTEGER,
+        cpu_load REAL,
+        system_uptime_sec INTEGER,
+        free_mem_mb INTEGER,
+        total_mem_mb INTEGER,
+        heap_used_mb INTEGER,
+        event_loop_lag_ms REAL,
+        api_requests_per_min INTEGER
+      `,
+            domain_health: `
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  domain TEXT NOT NULL UNIQUE,
+  ssl_score TEXT,
+  hsts_enabled INTEGER DEFAULT 0,
+  tls_versions TEXT,
+  headers_score TEXT,
+  headers_grade TEXT,
+  raw_response TEXT,
+  last_checked INTEGER,
+   tls_expiry INTEGER,
+ipv4 TEXT,
+ipv6 TEXT,
+ mx_records TEXT,
+ node_version TEXT,
+ server_uptime INTEGER,
+ lighthouse_score INTEGER,
+ lighthouse_grade TEXT,
+ memory_usage_mb INTEGER,
+ cpu_load_percent REAL,
+  pagespeed_score INTEGER,
+ pagespeed_fcp TEXT,
+ pagespeed_tti TEXT,
+  ocsp_stapling INTEGER,
+  hsts_max_age INTEGER,
+  headers_summary TEXT,
+  ssl_key_alg TEXT,
+  ssl_key_size INTEGER
+`,
         };
 
         for (const [table, schema] of Object.entries(tables)) {
-            await runQuery(`CREATE TABLE IF NOT EXISTS ${table} (${schema});`);
+            await db.runQuery(`CREATE TABLE IF NOT EXISTS ${table} (${schema});`);
             logger.info(`✅ Ensured "${table}" table exists.`);
         }
-        logger.info('✅ All main competition tables have been successfully initialized.');
+
+        logger.info('✅ All main tables have been successfully initialized.');
     } catch (error) {
-        logger.error(`❌ Error initializing competition tables: ${error.message}`);
+        logger.error(`❌ Error initializing main tables: ${error.message}`);
     }
 };
+
 module.exports = initializeMainTables;

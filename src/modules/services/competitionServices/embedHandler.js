@@ -2,13 +2,7 @@ const logger = require('../../utils/essentials/logger');
 const { createCompetitionEmbed, createVotingDropdown } = require('../../utils/helpers/embedUtils');
 const { chunkArray } = require('./helpers');
 const { updateLeaderboard } = require('./leaderboardUpdater');
-/**
- *
- * @param competitionType
- * @param db
- * @param client
- * @param constants
- */
+
 async function updateActiveCompetitionEmbed(competitionType, db, client, constants) {
     try {
         const nowISO = new Date().toISOString();
@@ -75,11 +69,7 @@ async function updateActiveCompetitionEmbed(competitionType, db, client, constan
         logger.error(`🚫 **Error in updateActiveCompetitionEmbed(${competitionType}):** ${err.message}`);
     }
 }
-/**
- *
- * @param compType
- * @param db
- */
+
 async function buildPollDropdown(compType, db) {
     const nowISO = new Date().toISOString();
     const competition = await db.getOne(

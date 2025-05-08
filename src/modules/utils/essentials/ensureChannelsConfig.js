@@ -1,24 +1,7 @@
-/**
- * channelConfigs.js
- *
- * This file exports:
- * 1) A permissionsMap object that provides reusable sets of permissionOverwrites.
- * 2) An array of categoryConfigs, each specifying a categoryName, optional categoryPermissionsKey,
- *    and the channels that belong in it.
- * 3) An array of noCategoryChannels for channels that should be created at the top level (no category).
- */
-
 const { PermissionsBitField } = require('discord.js');
 
-/**
- * A reusable map of permission overwrites.
- * Each key returns a function that takes `guild` and returns an array of permissionOverwrites.
- */
 const permissionsMap = {
-    /**
-     * 1) Everyone read-only (can see, can read history, cannot send).
-     * @param guild
-     */
+
     everyoneReadOnly: (guild) => [
         {
             id: guild.roles.everyone.id,
@@ -27,10 +10,6 @@ const permissionsMap = {
         },
     ],
 
-    /**
-     * 2) Everyone hidden (cannot see the channel).
-     * @param guild
-     */
     everyoneHidden: (guild) => [
         {
             id: guild.roles.everyone.id,
@@ -38,12 +17,6 @@ const permissionsMap = {
         },
     ],
 
-    /**
-     * 3) Live Gains channels:
-     *    - Everyone: can view, read, react, but cannot send or create threads.
-     *    - Admins: can send/manage messages.
-     * @param guild
-     */
     liveGainsChannels: (guild) => {
         const adminRole = guild.roles.cache.find((r) => r.permissions.has(PermissionsBitField.Flags.Administrator));
         return [
@@ -59,12 +32,6 @@ const permissionsMap = {
         ];
     },
 
-    /**
-     * 4) Logging channels:
-     *    - Everyone: hidden
-     *    - Admins: full read/write
-     * @param guild
-     */
     loggingChannels: (guild) => {
         const adminRole = guild.roles.cache.find((r) => r.permissions.has(PermissionsBitField.Flags.Administrator));
         return [
@@ -79,10 +46,6 @@ const permissionsMap = {
         ];
     },
 
-    /**
-     * 5) Voice channel where everyone can see but cannot connect.
-     * @param guild
-     */
     voiceDenyConnect: (guild) => [
         {
             id: guild.roles.everyone.id,
@@ -92,16 +55,10 @@ const permissionsMap = {
     ],
 };
 
-/**
- * An array of categories, each with:
- *  - categoryName
- *  - optional categoryPermissionsKey (permissions for the category itself)
- *  - channels[]: a list of channels to create in that category
- */
 const categoryConfigs = [
     {
         categoryName: '🏆∙Competitions of the Week',
-        categoryPermissionsKey: null, // no special overwrites at the category level
+        categoryPermissionsKey: null, 
         channels: [
             {
                 key: 'top_10_channel',
@@ -142,7 +99,7 @@ const categoryConfigs = [
     },
     {
         categoryName: '🌐 ‣ Live Gains',
-        categoryPermissionsKey: 'everyoneHidden', // hide the category from everyone
+        categoryPermissionsKey: 'everyoneHidden', 
         channels: [
             {
                 key: 'clanchat_channel',
@@ -204,7 +161,7 @@ const categoryConfigs = [
     },
     {
         categoryName: '📁 ‣‣ Logging',
-        categoryPermissionsKey: 'everyoneHidden', // hide the category from everyone
+        categoryPermissionsKey: 'everyoneHidden', 
         channels: [
             {
                 key: 'transcripts',
@@ -329,7 +286,7 @@ const categoryConfigs = [
     },
     {
         categoryName: '🎲∙Bingoooo',
-        categoryPermissionsKey: null, // no special overwrites at the category level
+        categoryPermissionsKey: null, 
         channels: [
             {
                 key: 'bingo_notification_channel',
@@ -363,9 +320,6 @@ const categoryConfigs = [
     },
 ];
 
-/**
- * An array of channels that do NOT belong to any category.
- */
 const noCategoryChannels = [
     {
         key: 'clan_members_channel',
@@ -391,7 +345,7 @@ const noCategoryChannels = [
     {
         key: 'activity_voice_channel',
         name: '⌛loading..',
-        // For voice channels, no "topic" is displayed in Discord, but you can store a purpose in this field
+
         topic: 'Voice channel for activity status — read-only to everyone, no connect.',
         type: 'GuildVoice',
         permissionsKey: 'voiceDenyConnect',

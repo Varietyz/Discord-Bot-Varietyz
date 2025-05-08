@@ -1,5 +1,6 @@
 const logger = require('../essentials/logger');
 const axios = require('axios');
+
 async function fetchPlayerData(rsn) {
     const url = `https://api.wiseoldman.net/v2/players/${encodeURIComponent(rsn)}`;
     try {

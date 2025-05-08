@@ -14,13 +14,13 @@
   "emeraldwalk.runonsave": {
     "commands": [
       {
-        "match": "\\.js$", // Match all .js files
-        "cmd": "npm run replace-ephemeral", // Run the script from package.json
+        "match": "\\.js$", 
+        "cmd": "npm run replace-ephemeral", 
         "message": "Running replace-ephemeral on save for ${fileBasename}",
         "messageAfter": "replace-ephemeral finished for ${fileBasename}"
       },
       {
-        "cmd": "npm run precommit", // Run the script from package.json
+        "cmd": "npm run precommit", 
         "message": "Packaging docs and readme",
         "messageAfter": "Finished packing docs and generating JSDOC_README.md in root folder."
       },

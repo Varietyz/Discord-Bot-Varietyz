@@ -18,10 +18,7 @@ const systemTables = {
     KEYS: 'loot_key_rewards',
     CHAT: 'chat_messages',
 };
-/**
- * 🔄 Reorder a Table & Preserve Schema
- * @param {string} tableName - The table to reorder.
- */
+
 async function reorderTable(tableName) {
     try {
         if (typeof tableName !== 'string') {
@@ -49,9 +46,6 @@ async function reorderTable(tableName) {
     }
 }
 
-/**
- *
- */
 async function reorderAllTables() {
     try {
         for (const tableName of Object.values(systemTables)) {

@@ -3,12 +3,7 @@ const { PermissionsBitField, EmbedBuilder, ChannelType, ActionRowBuilder, Button
 const db = require('../../../utils/essentials/dbUtils');
 const logger = require('../../../utils/essentials/logger');
 const { ensureLiveGainsCategory } = require('../../../utils/essentials/ensureLiveGainsCategory');
-/**
- *
- * @param compType
- * @param channel
- * @param guild
- */
+
 async function ensureWebhookAssignment(compType, channel, guild) {
     try {
         const webhookMapping = {

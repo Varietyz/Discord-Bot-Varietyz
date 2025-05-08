@@ -1,54 +1,71 @@
 const schedule = require('node-schedule');
 const logger = require('../../utils/essentials/logger');
-/**
- *
- * @param endTime
- * @param rotationCallback
- * @param scheduledJobs
- */
-function scheduleRotation(endTime, rotationCallback, scheduledJobs) {
-    const jobName = 'rotation';
-    if (scheduledJobs.has(jobName)) {
-        const existingJob = scheduledJobs.get(jobName);
+
+function scheduleRotation(
+    endTime,
+    rotationCallback,
+    scheduledJobs,
+    jobKey = 'rotation'
+) {
+
+    if (scheduledJobs.has(jobKey)) {
+        const existingJob = scheduledJobs.get(jobKey);
         existingJob.cancel();
-        scheduledJobs.delete(jobName);
-        logger.info('🚫 **Cleared existing scheduled rotation job.**');
+        scheduledJobs.delete(jobKey);
+        logger.info(
+            `🚫 **Cleared existing scheduled rotation job for ${jobKey}.**`
+        );
     }
-    let isRotating = false;
-    /**
-     *
-     */
+
+    if (!scheduledJobs.meta) scheduledJobs.meta = new Map();
+    scheduledJobs.meta.set(`${jobKey}-isRotating`, false);
+
     async function safeRotationCallback() {
-        if (isRotating) {
-            logger.warn('Rotation already in progress. Skipping duplicate call.');
+        const isRunning = scheduledJobs.meta.get(`${jobKey}-isRotating`);
+        if (isRunning) {
+            logger.warn(
+                `Rotation already in progress for ${jobKey}. Skipping duplicate call.`
+            );
             return;
         }
-        isRotating = true;
+
+        scheduledJobs.meta.set(`${jobKey}-isRotating`, true);
         try {
+            logger.info(`🔄 Executing rotation callback for ${jobKey}...`);
             await rotationCallback();
         } catch (error) {
-            logger.error('Error during rotation:', error);
+            logger.error(`Error during rotation for ${jobKey}:`, error);
         } finally {
-            isRotating = false;
+            scheduledJobs.meta.set(`${jobKey}-isRotating`, false);
         }
     }
+
     const job = schedule.scheduleJob(endTime, async () => {
-        logger.info('🔄 **Scheduled rotation triggered!** Executing rotation callback...');
+        logger.info(`🔔 Scheduled rotation triggered for ${jobKey}!`);
         await safeRotationCallback();
-        scheduledJobs.delete(jobName);
+        scheduledJobs.delete(jobKey);
     });
-    scheduledJobs.set(jobName, job);
-    logger.info(`✅ **Scheduled rotation** for \`${endTime.toISOString()}\`.`);
+    scheduledJobs.set(jobKey, job);
+    logger.info(
+        `✅ **Scheduled rotation** for ${jobKey} at ${endTime.toISOString()}.`
+    );
 }
-/**
- *
- * @param db
- * @param rotationCallback
- * @param constants
- * @param scheduledJobs
- */
-async function scheduleRotationsOnStartup(db, rotationCallback, constants, scheduledJobs) {
+
+async function scheduleRotationsOnStartup(
+    db,
+    rotationCallback,
+    constants,
+    scheduledJobs
+) {
     try {
+
+        for (const [key, job] of scheduledJobs.entries()) {
+            job.cancel();
+            logger.info(`🧹 Cleared scheduled job: ${key}`);
+        }
+        scheduledJobs.clear();
+        scheduledJobs.meta = new Map();
+
         const now = new Date().toISOString();
         const activeCompetitions = await db.getAll(
             `
@@ -58,21 +75,34 @@ async function scheduleRotationsOnStartup(db, rotationCallback, constants, sched
               AND type IN ('SOTW', 'BOTW')
             ORDER BY ends_at ASC
             `,
-            [now],
+            [now]
         );
 
         if (activeCompetitions.length === 0) {
-            logger.info('📛 **No active competitions on startup.** Scheduling immediate rotation...');
+            logger.info(
+                '📛 **No active competitions on startup.** Scheduling immediate rotation...'
+            );
             await rotationCallback();
             return;
         }
+
         const nearestEnd = activeCompetitions[0].ends_at;
-        scheduleRotation(new Date(nearestEnd), rotationCallback, scheduledJobs);
-        logger.info(`📌 **Scheduled rotation for competition ending at** \`${nearestEnd}\`.`);
+        const rotationTime = new Date(nearestEnd);
+        const compId = activeCompetitions[0].competition_id;
+        const jobKey = `rotation-${compId}`;
+
+        scheduleRotation(rotationTime, rotationCallback, scheduledJobs, jobKey);
+
+        logger.info(
+            `📌 **Scheduled rotation for competition ending at** ${nearestEnd}.`
+        );
     } catch (err) {
-        logger.error(`🚨 **Error scheduling rotations on startup:** ${err.message}`);
+        logger.error(
+            `🚨 **Error scheduling rotations on startup:** ${err.message}`
+        );
     }
 }
+
 module.exports = {
     scheduleRotation,
     scheduleRotationsOnStartup,

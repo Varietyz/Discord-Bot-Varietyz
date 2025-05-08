@@ -24,5 +24,5 @@ module.exports = {
         } catch (error) {
             logger.error('❌ Error processing raw event:', error);
         }
-    },
+    }
 };

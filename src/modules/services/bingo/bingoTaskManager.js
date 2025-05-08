@@ -1,20 +1,13 @@
-// /modules/services/bingo/bingoTaskManager.js
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 const { calculateTeamEffectiveProgress } = require('./bingoCalculations');
 
-/**
- *
- */
 async function updateAllTasks() {
     logger.info('[BingoTaskManager] updateAllTasks() → Start');
     await updateDataBasedTasks();
     logger.info('[BingoTaskManager] updateAllTasks() → Done');
 }
 
-/**
- *
- */
 async function updateDataBasedTasks() {
     const tasks = await db.getAll(`
         SELECT bbc.task_id, bt.type, bt.parameter, bt.value, bt.description
@@ -34,12 +27,6 @@ async function updateDataBasedTasks() {
     }
 }
 
-/**
- *
- * @param type
- * @param parameter
- * @returns
- */
 function getDataAttributes(type, parameter) {
     let dataType, dataMetric, dataKeyPattern;
     switch (type) {
@@ -69,11 +56,6 @@ function getDataAttributes(type, parameter) {
     return { dataType, dataMetric, dataKeyPattern };
 }
 
-/**
- * Processes a data-based task by grouping players per event and then processing
- * team and solo players separately.
- * @param {Object} task - The task object containing task_id, type, parameter, value, and description.
- */
 async function processDataTask(task) {
     const { task_id, type, parameter, value, description } = task;
     logger.info(`[BingoTaskManager] processDataTask: "${description}" (task #${task_id})`);
@@ -81,7 +63,6 @@ async function processDataTask(task) {
     const dataColumn = getDataColumn(type);
     const { dataType, dataMetric } = getDataAttributes(type, parameter);
 
-    // Get all ongoing events once
     const ongoingEvents = await db.getAll(`
     SELECT event_id
     FROM bingo_state
@@ -89,9 +70,8 @@ async function processDataTask(task) {
   `);
     if (ongoingEvents.length === 0) return;
 
-    // Process each event individually
     for (const { event_id } of ongoingEvents) {
-        // Retrieve all team players for this event
+
         const teamPlayers = await db.getAll(
             `
       SELECT btm.team_id, btm.player_id
@@ -102,7 +82,6 @@ async function processDataTask(task) {
             [event_id],
         );
 
-        // Retrieve all solo players (players not in any team for this event)
         const soloPlayers = await db.getAll(
             `
       SELECT rr.player_id
@@ -116,36 +95,21 @@ async function processDataTask(task) {
             [event_id, event_id],
         );
 
-        // Process team players: Group by team_id to avoid redundant processing.
         const teamIds = [...new Set(teamPlayers.map((p) => p.team_id))];
         for (const team_id of teamIds) {
             await processTeamTask(event_id, team_id, task_id, dataColumn, dataType, dataMetric, value);
-            //logger.info(`Processed team ${team_id} for event ${event_id} on task ${task_id}`);
+
         }
 
-        // Process solo players individually.
         for (const player of soloPlayers) {
             await processSoloPlayerTask(event_id, player.player_id, task_id, dataColumn, dataType, dataMetric, value);
-            //logger.info(`Processed solo player ${player.player_id} for event ${event_id} on task ${task_id}`);
+
         }
     }
 }
 
-/**
- * Processes a task for a solo player.
- * Uses existing logic to retrieve current progress, calculate capped progress,
- * determine status, and upsert the progress record.
- *
- * @param {number|string} event_id - The event identifier.
- * @param {number|string} player_id - The solo player's identifier.
- * @param {number|string} task_id - The task identifier.
- * @param {string} dataColumn - The column to retrieve from player_data.
- * @param {string} dataType - The type of data (e.g., "Exp", "Kill").
- * @param {string} dataMetric - The specific metric (e.g., "defence", "prayer").
- * @param {number} targetValue - The target progress required.
- */
 async function processSoloPlayerTask(event_id, player_id, task_id, dataColumn, dataType, dataMetric, targetValue) {
-    // Validate required parameters.
+
     if (!dataColumn || !dataType || !dataMetric) {
         throw new Error('Missing required parameters: dataColumn, dataType, or dataMetric');
     }
@@ -153,7 +117,7 @@ async function processSoloPlayerTask(event_id, player_id, task_id, dataColumn, d
     if (team_id === null) team_id = 0;
 
     if (team_id === 0) {
-        // Retrieve the current progress from player_data.
+
         const currentRow = await db.getOne(
             `
     SELECT ${dataColumn} AS currentValue
@@ -166,7 +130,6 @@ async function processSoloPlayerTask(event_id, player_id, task_id, dataColumn, d
         );
         const currentValue = currentRow?.currentValue || 0;
 
-        // Build the data key and fetch the baseline.
         const dataKey = `${dataType}_${dataMetric}_${dataColumn}`;
         const baselineRow = await db.getOne(
             `
@@ -180,7 +143,6 @@ async function processSoloPlayerTask(event_id, player_id, task_id, dataColumn, d
         );
         const baselineValue = baselineRow?.baselineValue || 0;
 
-        // Calculate raw progress, cap it, and determine the status.
         const rawProgress = Math.max(0, currentValue - baselineValue);
         const cappedProgress = Math.min(rawProgress, targetValue);
         let status = 'incomplete';
@@ -190,39 +152,21 @@ async function processSoloPlayerTask(event_id, player_id, task_id, dataColumn, d
             status = 'in-progress';
         }
 
-        // Upsert solo player's progress.
         await upsertTaskProgress(event_id, player_id, task_id, cappedProgress, status);
     } else {
         logger.info(`skipping upsertTaskProgress for ${player_id} whos found in team id ${team_id}`);
     }
 }
 
-/**
- * Processes a task for a team.
- * Delegates to the existing team update logic.
- *
- * @param {number|string} event_id - The event identifier.
- * @param {number|string} team_id - The team's identifier.
- * @param {number|string} task_id - The task identifier.
- * @param {string} dataColumn - The column to retrieve from player_data.
- * @param {string} dataType - The type of data (e.g., "Exp", "Kill").
- * @param {string} dataMetric - The specific metric (e.g., "defence", "prayer").
- * @param {number} targetValue - The target progress required.
- */
 async function processTeamTask(event_id, team_id, task_id, dataColumn, dataType, dataMetric, targetValue) {
-    // Validate required parameters.
+
     if (!dataColumn || !dataType || !dataMetric) {
         throw new Error('Missing required parameters: dataColumn, dataType, or dataMetric');
     }
-    // Delegate team task processing to your effective progress update function.
+
     await updateTeamEffectiveProgress(event_id, task_id, team_id, targetValue, dataColumn, dataType, dataMetric);
 }
 
-/**
- *
- * @param type
- * @returns
- */
 function getDataColumn(type) {
     switch (type) {
     case 'Kill':
@@ -238,11 +182,6 @@ function getDataColumn(type) {
     }
 }
 
-/**
- *
- * @param player_id
- * @returns
- */
 async function getPlayerTeamId(player_id) {
     try {
         const team = await db.getOne(
@@ -260,12 +199,6 @@ async function getPlayerTeamId(player_id) {
     }
 }
 
-/**
- *
- * @param event_id
- * @param task_id
- * @returns
- */
 async function isTaskOnBoard(event_id, task_id) {
     const boardCheck = await db.getOne(
         `
@@ -280,10 +213,6 @@ async function isTaskOnBoard(event_id, task_id) {
     return !!boardCheck;
 }
 
-/**
- *
- * @param eventId
- */
 async function consolidateTeamTaskProgress(eventId) {
     const teamProgressRecords = await db.getAll(
         `
@@ -328,44 +257,28 @@ async function consolidateTeamTaskProgress(eventId) {
     }
 }
 
-/**
- * Upserts task progress for an individual (solo) player.
- *
- * This function now only handles solo players.
- * For team members, team aggregation and effective progress calculations are handled separately.
- *
- * @param {number} event_id - The event ID.
- * @param {number} player_id - The player's ID.
- * @param {number} task_id - The task ID.
- * @param {number} progressVal - The progress value (already capped).
- * @param {string} status - The status (e.g., 'incomplete', 'in-progress', or 'completed').
- */
 async function upsertTaskProgress(event_id, player_id, task_id, progressVal, status) {
     try {
-        // Retrieve the team ID for the player (solo players will have team_id = 0).
+
         let team_id = await getPlayerTeamId(player_id);
         if (team_id === null) {
             team_id = 0;
         }
 
-        // Exit if the player is part of a team since team logic is handled separately.
         if (team_id !== 0) {
             logger.info(`[BingoTaskManager] Player #${player_id} is part of a team. Skipping solo upsert.`);
             return;
         }
 
-        // Fetch the task's target value.
         const taskDetails = await db.getOne('SELECT value FROM bingo_tasks WHERE task_id = ?', [task_id]);
         const targetValue = taskDetails?.value || 0;
 
-        // Check if the task is already completed.
         const isCompleted = await db.getOne('SELECT status FROM bingo_task_progress WHERE event_id = ? AND player_id = ? AND task_id = ?', [event_id, player_id, task_id]);
         if (isCompleted?.status === 'completed') {
             logger.info(`[BingoTaskManager] Task #${task_id} is already completed for Player #${player_id}. Skipping upsert.`);
             return;
         }
 
-        // Fetch existing progress for the individual.
         const existing = await db.getOne(
             `SELECT progress_id, progress_value, status FROM bingo_task_progress 
      WHERE event_id = ? AND player_id = ? AND task_id = ?`,
@@ -374,25 +287,24 @@ async function upsertTaskProgress(event_id, player_id, task_id, progressVal, sta
 
         const newCappedProgress = Math.min(progressVal, targetValue);
 
-        // If a record exists, compare the new progress to the stored progress.
         if (existing) {
             const storedProgress = existing.progress_value;
-            // Only update if there is additional progress
+
             if (newCappedProgress - storedProgress <= 0) {
-                //logger.info(`[BingoTaskManager] No new progression for Player #${player_id}, Task #${task_id}. Skipping update.`);
+
                 return;
             }
         }
 
         if (!existing) {
             if (newCappedProgress === 0) return;
-            // Ensure the task is on the board.
+
             const isOnBoard = await isTaskOnBoard(event_id, task_id);
             if (!isOnBoard) {
                 logger.warn(`[BingoTaskManager] Task #${task_id} is not on the board for Event #${event_id}. Skipping insert.`);
                 return;
             }
-            // Insert new progress record.
+
             await db.runQuery(
                 `INSERT INTO bingo_task_progress (event_id, player_id, task_id, progress_value, status, team_id)
                  VALUES (?, ?, ?, ?, ?, ?)`,
@@ -400,7 +312,7 @@ async function upsertTaskProgress(event_id, player_id, task_id, progressVal, sta
             );
             logger.info(`[BingoTaskManager] New progress record added for Player #${player_id}, Task #${task_id} - Progress: ${newCappedProgress} (${status})`);
         } else {
-            // Update existing record.
+
             await db.runQuery(
                 `UPDATE bingo_task_progress
                  SET progress_value = ?, 
@@ -417,33 +329,14 @@ async function upsertTaskProgress(event_id, player_id, task_id, progressVal, sta
     }
 }
 
-/**
- * Updates the effective progress for all team members for a given event and task.
- *
- * This function performs the following steps:
- * 1. Retrieves all team members from bingo_team_members and joins their data from player_data and bingo_event_baseline.
- * 2. Calculates each member's raw progress in memory as Math.max(0, currentValue - baselineValue).
- * 3. Uses calculateTeamEffectiveProgress to allocate the target among members.
- * 4. Updates (or inserts) each team member's bingo_task_progress record with the final effective progress.
- *
- * @param {number|string} event_id - The event ID.
- * @param {number|string} task_id - The task ID.
- * @param {number|string} team_id - The team ID.
- * @param {number} targetValue - The target progress value.
- * @param {string} dataColumn - The column in player_data for the progress metric.
- * @param {string} dataType - The type of data (e.g., "kills", "score").
- * @param {string} dataMetric - The metric name.
- */
 async function updateTeamEffectiveProgress(event_id, task_id, team_id, targetValue, dataColumn, dataType, dataMetric) {
-    // Validate required parameters.
+
     if (!dataColumn || !dataType || !dataMetric) {
         throw new Error('Missing required parameters: dataColumn, dataType, or dataMetric');
     }
 
-    // Construct the baseline key.
     const dataKey = `${dataType}_${dataMetric}_${dataColumn}`;
 
-    // Retrieve team members and their corresponding data.
     const teamData = await db.getAll(
         `
         SELECT tm.player_id,
@@ -471,29 +364,24 @@ async function updateTeamEffectiveProgress(event_id, task_id, team_id, targetVal
         [dataType, dataMetric, event_id, dataKey, event_id, task_id, team_id],
     );
 
-    // Compute each member's raw progress in memory.
     const teamProgress = teamData.map((member) => ({
         playerId: member.player_id,
         progress: Math.max(0, member.currentValue - member.baselineValue),
         last_updated: member.last_updated,
     }));
 
-    // Calculate effective progress for the team members.
     const effectiveResults = calculateTeamEffectiveProgress(teamProgress, targetValue);
 
-    // For each team member, update or insert the effective progress.
     for (const result of effectiveResults) {
         const memberRecord = teamData.find((m) => m.player_id === result.playerId);
         if (!memberRecord) continue;
 
-        // Determine the new status.
         const newStatus = result.effectiveProgress >= targetValue ? 'completed' : result.effectiveProgress > 0 ? 'in-progress' : 'incomplete';
 
-        // If a record exists, compare the new effective progress with the stored progress.
         if (memberRecord.progress_id) {
             const storedProgress = memberRecord.progress_value || 0;
             if (result.effectiveProgress - storedProgress <= 0) {
-                //logger.info(`[BingoTaskManager] No new team progression for Player #${result.playerId} on Task #${task_id}. Skipping update.`);
+
                 continue;
             }
             await db.runQuery(
@@ -527,10 +415,6 @@ async function updateTeamEffectiveProgress(event_id, task_id, team_id, targetVal
     }
 }
 
-/**
- *
- * @param eventId
- */
 async function recordEventBaseline(eventId) {
     logger.info(`[BingoTaskManager] recordEventBaseline for event #${eventId}`);
 
@@ -626,10 +510,6 @@ async function recordEventBaseline(eventId) {
     logger.info(`[BingoTaskManager] Event baseline recorded for event #${eventId}. Successful inserts: ${successfulInserts}`);
 }
 
-/**
- *
- * @param eventId
- */
 async function initializeTaskProgress(eventId) {
     logger.info(`[BingoTaskManager] initializeTaskProgress for event #${eventId}`);
 
@@ -668,9 +548,6 @@ async function initializeTaskProgress(eventId) {
     logger.info(`[BingoTaskManager] Task progress initialized for event #${eventId}`);
 }
 
-/**
- *
- */
 async function updateEventBaseline() {
     logger.info('[BingoTaskManager] updateEventBaseline() → Start');
 

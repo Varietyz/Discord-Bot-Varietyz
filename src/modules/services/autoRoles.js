@@ -102,11 +102,7 @@ const THRESHOLDS = {
         },
     },
 };
-/**
- *
- * @param metricType
- * @param metricName
- */
+
 function deriveRoleKeys(metricType, metricName) {
     switch (metricType) {
     case 'skills': {
@@ -134,11 +130,7 @@ function deriveRoleKeys(metricType, metricName) {
         return [];
     }
 }
-/**
- *
- * @param metricType
- * @param metricName
- */
+
 function getThresholdForMetric(metricType, metricName) {
     switch (metricType) {
     case 'skills': {
@@ -160,9 +152,7 @@ function getThresholdForMetric(metricType, metricName) {
         return null;
     }
 }
-/**
- *
- */
+
 async function fetchGuildRoles() {
     const query = 'SELECT role_id, role_key FROM guild_roles';
     const rows = await db.guild.getAll(query);
@@ -172,9 +162,7 @@ async function fetchGuildRoles() {
     }
     return rolesMap;
 }
-/**
- *
- */
+
 async function fetchGuildEmojis() {
     const query = 'SELECT emoji_key, emoji_format FROM guild_emojis';
     const rows = await db.guild.getAll(query);
@@ -184,11 +172,7 @@ async function fetchGuildEmojis() {
     }
     return emojisMap;
 }
-/**
- *
- * @param roleKey
- * @param emojisMap
- */
+
 function getEmojiForRoleKey(roleKey, emojisMap) {
     let keyPart = roleKey;
     if (roleKey === 'role_2277_total') {
@@ -201,14 +185,7 @@ function getEmojiForRoleKey(roleKey, emojisMap) {
     const emojiKey = `emoji_${keyPart}`;
     return emojisMap[emojiKey] || '';
 }
-/**
- *
- * @param guild
- * @param member
- * @param hiscoresData
- * @param guildRolesMap
- * @param emojisMap
- */
+
 async function processMemberRoles(guild, member, hiscoresData, guildRolesMap, emojisMap) {
     const roleUpdates = [];
     const expectedRoleKeys = new Set();
@@ -309,11 +286,7 @@ async function processMemberRoles(guild, member, hiscoresData, guildRolesMap, em
     }
     return null;
 }
-/**
- *
- * @param guild
- * @param userId
- */
+
 async function fetchAndProcessMember(guild, userId) {
     try {
         const rsns = await getUserRSNs(userId);
@@ -350,10 +323,7 @@ async function fetchAndProcessMember(guild, userId) {
         logger.error(`🚨 Error processing member ID ${userId}: ${error.message}`);
     }
 }
-/**
- *
- * @param userId
- */
+
 async function getUserRSNs(userId) {
     const query = 'SELECT rsn FROM registered_rsn WHERE CAST(discord_id AS TEXT) = ?';
     const rows = await db.getAll(query, [String(userId)]);
@@ -363,10 +333,7 @@ async function getUserRSNs(userId) {
     }
     return rows.map((row) => row.rsn);
 }
-/**
- *
- * @param rsn
- */
+
 async function getPlayerDataForRSN(rsn) {
     const normalizedRsn = normalizeRsn(rsn);
     const query = `
@@ -399,17 +366,11 @@ async function getPlayerDataForRSN(rsn) {
     }
     return result;
 }
-/**
- *
- * @param str
- */
+
 function capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
-/**
- *
- * @param rsns
- */
+
 async function mergeRsnData(rsns) {
     const merged = {};
     for (const rsn of rsns) {

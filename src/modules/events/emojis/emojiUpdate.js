@@ -60,10 +60,7 @@ module.exports = {
         }
     },
 };
-/**
- *
- * @param emoji
- */
+
 function formatEmoji(emoji) {
     return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
 }

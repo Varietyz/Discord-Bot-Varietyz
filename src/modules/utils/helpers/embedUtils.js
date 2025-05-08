@@ -1,9 +1,21 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
+const {
+    EmbedBuilder,
+    ActionRowBuilder,
+    StringSelectMenuBuilder,
+    AttachmentBuilder,
+} = require('discord.js');
 const path = require('path');
 const logger = require('../essentials/logger');
 const getEmojiWithFallback = require('../fetchers/getEmojiWithFallback');
 
-const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, competitionId) => {
+const createCompetitionEmbed = async (
+    client,
+    type,
+    metric,
+    startsAt,
+    endsAt,
+    competitionId
+) => {
     let emojiFormat;
     if (type === 'SOTW') {
         emojiFormat = await getEmojiWithFallback('emoji_overall', '📊');
@@ -12,24 +24,49 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
     }
     const womEmoji = await getEmojiWithFallback('emoji_wise_old_man', '📡');
 
-    const displayedTitle = type === 'SOTW' ? `${emojiFormat} Skill of the Week${womEmoji}` : `${emojiFormat} Boss of the Week${womEmoji}`;
+    const displayedTitle =
+    type === 'SOTW'
+        ? `${emojiFormat} Skill of the Week${womEmoji}`
+        : `${emojiFormat} Boss of the Week${womEmoji}`;
     const resourcesFolder = path.resolve(__dirname, '../../../resources');
-    const imagePath = path.join(resourcesFolder, 'skills_bosses', `${metric.toLowerCase()}.png`);
-    const bannerImagePath = type === 'SOTW' ? path.join(resourcesFolder, 'botw_sotw', 'sotw_banner.png') : path.join(resourcesFolder, 'botw_sotw', 'botw_banner.png');
+    const imagePath = path.join(
+        resourcesFolder,
+        'skills_bosses',
+        `${metric.toLowerCase()}.png`
+    );
+    const bannerImagePath =
+    type === 'SOTW'
+        ? path.join(resourcesFolder, 'botw_sotw', 'sotw_banner.png')
+        : path.join(resourcesFolder, 'botw_sotw', 'botw_banner.png');
     let imageAttachment;
     try {
-        imageAttachment = new AttachmentBuilder(imagePath, { name: `${metric}.png` });
-    } catch (err) {
-        logger.warn(`⚠️ No image found for metric "${metric}". Using default image.`);
-        imageAttachment = new AttachmentBuilder(path.join(resourcesFolder, 'default.png'), { name: 'default.png' });
+        imageAttachment = new AttachmentBuilder(imagePath, {
+            name: `${metric}.png`,
+        });
+    } catch {
+        logger.warn(
+            `⚠️ No image found for metric "${metric}". Using default image.`
+        );
+        imageAttachment = new AttachmentBuilder(
+            path.join(resourcesFolder, 'default.png'),
+            { name: 'default.png' }
+        );
     }
 
     let bannerImageAttachment;
     try {
-        bannerImageAttachment = type === 'SOTW' ? new AttachmentBuilder(bannerImagePath, { name: 'sotw_banner.png' }) : new AttachmentBuilder(bannerImagePath, { name: 'botw_banner.png' });
-    } catch (err) {
-        logger.warn(`⚠️ No image found for metric "${metric}". Using default image.`);
-        bannerImageAttachment = new AttachmentBuilder(path.join(resourcesFolder, 'default_banner.png'), { name: 'default_banner.png' });
+        bannerImageAttachment =
+      type === 'SOTW'
+          ? new AttachmentBuilder(bannerImagePath, { name: 'sotw_banner.png' })
+          : new AttachmentBuilder(bannerImagePath, { name: 'botw_banner.png' });
+    } catch {
+        logger.warn(
+            `⚠️ No image found for metric "${metric}". Using default image.`
+        );
+        bannerImageAttachment = new AttachmentBuilder(
+            path.join(resourcesFolder, 'default_banner.png'),
+            { name: 'default_banner.png' }
+        );
     }
 
     let guild;
@@ -42,15 +79,21 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
     let metricEmoji = '';
     if (guild) {
         const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_');
-        const foundEmoji = guild.emojis.cache.find((e) => e.name.toLowerCase() === normalizedMetric);
+        const foundEmoji = guild.emojis.cache.find(
+            (e) => e.name.toLowerCase() === normalizedMetric
+        );
         if (foundEmoji && foundEmoji.available) {
             metricEmoji = foundEmoji.toString();
         } else {
             metricEmoji = type === 'SOTW' ? emojiFormat : '⚔️';
-            logger.warn(`⚠️ Custom emoji "${normalizedMetric}" not found or unavailable. Using fallback ${metricEmoji}`);
+            logger.warn(
+                `⚠️ Custom emoji "${normalizedMetric}" not found or unavailable. Using fallback ${metricEmoji}`
+            );
         }
     } else {
-        logger.warn(`⚠️ Guild is undefined; cannot fetch emoji for metric: ${metric}`);
+        logger.warn(
+            `⚠️ Guild is undefined; cannot fetch emoji for metric: ${metric}`
+        );
         metricEmoji = type === 'SOTW' ? emojiFormat : '⚔️';
     }
     const formattedMetric = metric
@@ -63,7 +106,9 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
     const embed = new EmbedBuilder()
         .setTitle(`**${displayedTitle}**`)
         .setURL(`https://wiseoldman.net/competitions/${competitionId}`)
-        .setDescription(`## ${metricEmoji} [${formattedMetric}](https://oldschool.runescape.wiki/w/${metric})`)
+        .setDescription(
+            `## ${metricEmoji} [${formattedMetric}](https://oldschool.runescape.wiki/w/${metric})`
+        )
         .addFields(
             {
                 name: 'Start',
@@ -74,35 +119,57 @@ const createCompetitionEmbed = async (client, type, metric, startsAt, endsAt, co
                 name: 'Ends',
                 value: `🕛 <t:${end.unixTimestamp}:t>\n📅 <t:${end.unixTimestamp}:D>\n⌛ <t:${end.unixTimestamp}:R>`,
                 inline: true,
-            },
+            }
         )
         .setColor(type === 'SOTW' ? 0x3498db : 0xe74c3c)
         .setThumbnail(`attachment://${metric}.png`)
-        .setImage(type === 'SOTW' ? 'attachment://sotw_banner.png' : 'attachment://botw_banner.png');
+        .setImage(
+            type === 'SOTW'
+                ? 'attachment://sotw_banner.png'
+                : 'attachment://botw_banner.png'
+        );
     return { embeds: [embed], files: [imageAttachment, bannerImageAttachment] };
 };
-/**
- *
- * @param dateString
- * @returns
- */
+
 function formatTimestamp(dateString) {
     const date = new Date(dateString);
-    const unixTimestamp = Math.floor(date.getTime() / 1000); // Convert to UNIX time (seconds)
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const unixTimestamp = Math.floor(date.getTime() / 1000); 
+    const days = [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+    ];
     const dayOfWeek = days[date.getUTCDay()];
-    const options = { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC' };
+    const options = {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'UTC',
+    };
     const formattedTime = date.toLocaleTimeString('en-US', options);
-    const formattedDate = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+    const formattedDate = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'UTC',
+    });
     return { dayOfWeek, formattedTime, formattedDate, unixTimestamp };
 }
 const createVotingDropdown = (options, type) => {
     if (!options || options.length === 0) {
-        const selectMenu = new StringSelectMenuBuilder().setCustomId('vote_dropdown').setPlaceholder('⚠️ Voting is currently disabled').setDisabled(true);
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('vote_dropdown')
+            .setPlaceholder('⚠️ Voting is currently disabled')
+            .setDisabled(true);
         return new ActionRowBuilder().addComponents(selectMenu);
     }
     const dropdownOptions = options.map((opt) => {
-        const votesText = opt.voteCount !== undefined ? `Votes: ${opt.voteCount}` : '';
+        const votesText =
+      opt.voteCount !== undefined ? `Votes: ${opt.voteCount}` : '';
         return {
             label: opt.label,
             description: `${opt.description}${votesText}`,
@@ -111,7 +178,9 @@ const createVotingDropdown = (options, type) => {
     });
     const selectMenu = new StringSelectMenuBuilder()
         .setCustomId('vote_dropdown')
-        .setPlaceholder(type === 'SOTW' ? '☝️ Select a skill to vote' : '☝️ Select a boss to vote')
+        .setPlaceholder(
+            type === 'SOTW' ? '☝️ Select a skill to vote' : '☝️ Select a boss to vote'
+        )
         .addOptions(dropdownOptions);
     return new ActionRowBuilder().addComponents(selectMenu);
 };

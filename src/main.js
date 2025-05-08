@@ -1,107 +1,37 @@
-/* eslint-disable node/no-missing-require */
-const { Client, GatewayIntentBits, Partials } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
 require('dotenv').config();
-const logger = require('./modules/utils/essentials/logger');
-const initializeMainTables = require('./migrations/initializeMainTables');
-const initializeGuildTables = require('./migrations/initializeGuildTables');
-const initializeBingoTables = require('./migrations/initializeBingoTables');
-const { initializeMsgTables } = require('./modules/collection/msgDatabase');
-const { fetchAndStoreChannelHistory } = require('./modules/collection/msgFetcher');
-const { registerModal } = require('./modules/utils/essentials/modalHandler');
-const CompetitionService = require('./modules/services/competitionServices/competitionService');
-const { generateDynamicTasks } = require('./modules/services/bingo/dynamicTaskGenerator');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
-const { closeDatabases, cancelAllDbOperations } = require('./modules/utils/essentials/dbUtils');
-const globalState = require('./config/globalState');
-const WOMApiClient = require('./api/wise_old_man/apiClient');
+const https = require('https');
 
-const commands = [];
-const functions = [];
-const loadModules = (type, client) => {
-    const folderPath = path.join(__dirname, `modules/${type}`);
-    const loadedModules = [];
-    const traverseDirectory = (currentPath) => {
-        const entries = fs.readdirSync(currentPath, { withFileTypes: true });
-        for (const entry of entries) {
-            const fullPath = path.join(currentPath, entry.name);
-            if (entry.isDirectory()) {
-                traverseDirectory(fullPath);
-            } else if (entry.isFile() && entry.name.endsWith('.js')) {
-                try {
-                    const module = require(fullPath);
-                    if (type === 'commands') {
-                        if (!module.data || !module.data.description || !module.execute) {
-                            logger.error(`❌ Error: Invalid command in ${entry.name}. Missing 'description' or 'execute'.`);
-                            continue;
-                        }
-                        commands.push(module);
-                        logger.info(`✅ Loaded Command: ${module.data.name}`);
-                    } else if (type === 'services') {
-                        functions.push(module);
-                        logger.info(`✅ Loaded Service: ${path.basename(entry.name, '.js')}`);
-                    } else if (type === 'events') {
-                        if (!module.name) {
-                            logger.warn(`⚠️ Skipping event file ${entry.name} - missing event name.`);
-                            continue;
-                        }
-                        if (module.once) {
-                            client.once(module.name, (...args) => module.execute(...args, client));
-                        } else {
-                            client.on(module.name, (...args) => module.execute(...args, client));
-                        }
-                        logger.info(`✅ Loaded Event: ${module.name}`);
-                    } else if (type === 'modals') {
-                        if (!module.modalId || !module.execute) {
-                            logger.warn(`⚠️ Skipping modal file ${entry.name} - missing modalId or execute function.`);
-                            continue;
-                        }
-                        registerModal(module.modalId, module.execute);
-                        logger.info(`✅ Registered Modal: ${module.modalId}`);
-                    }
-                    loadedModules.push(module);
-                } catch (err) {
-                    logger.error(`❌ Error: Failed to load ${type} module from ${fullPath}: ${err.message}`);
-                }
-            }
-        }
-    };
-    traverseDirectory(folderPath);
-    return loadedModules;
-};
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildWebhooks,
-        GatewayIntentBits.AutoModerationConfiguration,
-        GatewayIntentBits.AutoModerationExecution,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.GuildPresences,
-        GatewayIntentBits.GuildModeration,
-        GatewayIntentBits.GuildInvites,
-        GatewayIntentBits.GuildExpressions,
-        GatewayIntentBits.GuildIntegrations,
-        GatewayIntentBits.GuildScheduledEvents,
-        GatewayIntentBits.GuildMessagePolls,
-        GatewayIntentBits.GuildModeration,
-        GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.DirectMessageReactions,
-        GatewayIntentBits.DirectMessageTyping,
-        GatewayIntentBits.DirectMessagePolls,
-    ],
-    partials: [Partials.Message, Partials.Reaction, Partials.User],
-});
+const {
+    fetchAndStoreChannelHistory,
+} = require('./modules/collection/msgFetcher');
+const {
+    generateDynamicTasks,
+} = require('./modules/services/bingo/dynamicTaskGenerator');
+
+const { initializeMsgTables } = require('./modules/collection/msgDatabase');
+const initializeBingoTables = require('./migrations/initializeBingoTables');
+const initializeGuildTables = require('./migrations/initializeGuildTables');
+const initializeMainTables = require('./migrations/initializeMainTables');
+const { loadModules, commands } = require('./moduleLoader');
+const gracefulShutdown = require('./modules/events/client/gracefulShutdown');
+
+const logger = require('./modules/utils/essentials/logger');
+const loggedIn = require('./modules/events/bot/loggedIn');
+const client = require('./modules/discordClient');
+const CompetitionService = require('./modules/services/competitionServices/competitionService');
+const { app, sslOptions } = require('./api'); 
+
+const discordToken = process.env.DISCORD_TOKEN;
+const clientId = process.env.CLIENT_ID;
+const guildId = process.env.GUILD_ID;
+
 const initializeBot = async () => {
     try {
         await initializeGuildTables();
-        await initializeMsgTables();
         await initializeMainTables();
+        await initializeMsgTables();
         await initializeBingoTables();
         await generateDynamicTasks();
         loadModules('commands', client);
@@ -110,51 +40,32 @@ const initializeBot = async () => {
         loadModules('modals', client);
         client.commands = commands;
         client.competitionService = new CompetitionService(client);
-        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-        await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: commands.map((cmd) => cmd.data.toJSON()) });
+
+        const rest = new REST({ version: '10' }).setToken(discordToken);
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+            body: commands.map((cmd) => cmd.data.toJSON()),
+        });
+
         logger.info('✅ Slash commands registered successfully.');
-        await client.login(process.env.DISCORD_TOKEN);
-        logger.info('✅ Bot logged in successfully.');
+
+        await client.login(discordToken).then(() => {
+            logger.info('✅ Discord client logged in successfully.');
+        });
+        loggedIn(client);
         await fetchAndStoreChannelHistory(client);
+
+        https.createServer(sslOptions, app).listen(3003, () => {
+            logger.info(
+                '🔒 Secure HTTPS API server running on https://localhost:3003'
+            );
+        });
     } catch (error) {
         logger.error(`🚨 Initialization Failed: ${error.message}`);
         process.exit(1);
     }
 };
+
 initializeBot();
 
-/**
- *
- * @param signal
- */
-async function gracefulShutdown(signal) {
-    logger.info(`Received ${signal}. Initiating graceful shutdown...`);
-    globalState.isShuttingDown = true; // Set the flag so dbutils can know shutdown is in progress
-    try {
-        // Remove listeners that might trigger DB operations
-        client.removeAllListeners();
-
-        cancelAllDbOperations();
-
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Close the database connections
-        await closeDatabases();
-
-        // Disconnect from Discord
-        await client.destroy();
-
-        await WOMApiClient.close();
-
-        logger.info('Shutdown complete. Exiting now.');
-        process.exit(0);
-    } catch (error) {
-        logger.error(`Error during shutdown: ${error.message}`);
-        process.exit(1);
-    }
-}
-
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-
-module.exports = client;
+process.on('SIGINT', () => gracefulShutdown('SIGINT', client));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM', client));

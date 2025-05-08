@@ -3,7 +3,6 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentTyp
 const db = require('../../../../essentials/dbUtils');
 const { getOngoingEventId } = require('./teamCommandHelpers');
 
-
 async function handleList(interaction) {
     const eventId = await getOngoingEventId();
     if (!eventId) {

@@ -1,17 +1,14 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const logger = require('../modules/utils/essentials/logger'); // Import the logger
+const logger = require('../modules/utils/essentials/logger'); 
 const dbPath = path.join(__dirname, '..', 'data', 'database.sqlite');
 
-/**
- *
- */
 function initializeDatabase() {
-    // Establish a new database connection.
+
     const db = new sqlite3.Database(dbPath, (err) => {
         if (err) {
             logger.error(`❌ Error connecting to SQLite: ${err.message}`);
-            throw err; // Terminate script if connection fails.
+            throw err; 
         } else {
             logger.info(`✅ Connected to SQLite at: ${dbPath}`);
         }
@@ -20,10 +17,6 @@ function initializeDatabase() {
     return db;
 }
 
-/**
- *
- * @param db
- */
 async function dropTables(db) {
     const tables = [
         'bingo_events',
@@ -36,8 +29,7 @@ async function dropTables(db) {
         'bingo_history',
         'bingo_leaderboard',
         'bingo_patterns_awarded',
-        //'bingo_teams',
-        //'bingo_team_members',
+
         'bingo_embeds',
         'bingo_pattern_rotation',
     ];
@@ -77,6 +69,6 @@ async function dropTables(db) {
         });
     } catch (error) {
         logger.error(`❌ Database initialization failed: ${error.message}`);
-        throw new Error('Database initialization failed'); // Throw an error instead of exiting the process.
+        throw new Error('Database initialization failed'); 
     }
 })();

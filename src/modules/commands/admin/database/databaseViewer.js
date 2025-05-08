@@ -1,7 +1,15 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const {
+    SlashCommandBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    EmbedBuilder,
+    PermissionFlagsBits
+} = require('discord.js');
 const dbUtils = require('../../../utils/essentials/dbUtils');
 const logger = require('../../../utils/essentials/logger');
 const PAGE_SIZE = 10;
+
 async function getTableNames(dbChoice) {
     const query = 'SELECT name FROM sqlite_master WHERE type=\'table\' AND name NOT LIKE \'sqlite_%\'';
     let rows;
@@ -21,8 +29,9 @@ async function getTableNames(dbChoice) {
     default:
         rows = [];
     }
-    return rows.map((row) => row.name);
+    return rows.map(row => row.name);
 }
+
 function formatRows(rows, startIndex = 0) {
     return rows
         .map((row, i) => {
@@ -38,18 +47,31 @@ module.exports.data = new SlashCommandBuilder()
     .setName('view_database')
     .setDescription('ADMIN: View information about a database and its tables (Admin only).')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addStringOption((option) =>
+    .addStringOption(option =>
         option
             .setName('database')
             .setDescription('Select the database to view')
             .setRequired(true)
-            .addChoices({ name: 'Main', value: 'main' }, { name: 'Messages', value: 'messages' }, { name: 'Images', value: 'images' }, { name: 'Guild', value: 'guild' }),
+            .addChoices(
+                { name: 'Main', value: 'main' },
+                { name: 'Messages', value: 'messages' },
+                { name: 'Images', value: 'images' },
+                { name: 'Guild', value: 'guild' }
+            )
     )
-    .addStringOption((option) => option.setName('table').setDescription('Select a table to preview (autocomplete enabled)').setAutocomplete(true));
-module.exports.execute = async (interaction) => {
+    .addStringOption(option =>
+        option
+            .setName('table')
+            .setDescription('Select a table to preview (autocomplete enabled)')
+            .setAutocomplete(true)
+    );
+module.exports.execute = async interaction => {
     try {
         if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-            return interaction.reply({ content: '❌ You do not have permission to use this command.', flags: 64 });
+            return interaction.reply({
+                content: '❌ You do not have permission to use this command.',
+                flags: 64
+            });
         }
         await interaction.deferReply({ flags: 64 });
         const dbChoice = interaction.options.getString('database');
@@ -78,7 +100,7 @@ module.exports.execute = async (interaction) => {
             }
             const embed = new EmbedBuilder()
                 .setTitle(`Tables in the ${dbChoice} Database`)
-                .setDescription(tableNames.map((t) => `- ${t}`).join('\n'))
+                .setDescription(tableNames.map(t => `- ${t}`).join('\n'))
                 .setTimestamp();
             return interaction.editReply({ embeds: [embed] });
         } else {
@@ -89,11 +111,13 @@ module.exports.execute = async (interaction) => {
                 return interaction.editReply(`Error querying table **${tableChoice}**: ${err.message}`);
             }
             if (!rows || rows.length === 0) {
-                return interaction.editReply(`No data found in table **${tableChoice}** of the **${dbChoice}** database.`);
+                return interaction.editReply(
+                    `No data found in table **${tableChoice}** of the **${dbChoice}** database.`
+                );
             }
             const totalPages = Math.ceil(rows.length / PAGE_SIZE);
             let currentPage = 0;
-            const generateEmbed = (page) => {
+            const generateEmbed = page => {
                 const startIdx = page * PAGE_SIZE;
                 const endIdx = startIdx + PAGE_SIZE;
                 const pageData = rows.slice(startIdx, endIdx);
@@ -104,7 +128,7 @@ module.exports.execute = async (interaction) => {
                     .setTimestamp();
                 return embed;
             };
-            const createPaginationButtons = (page) => {
+            const createPaginationButtons = page => {
                 return new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
                         .setCustomId('prev_page')
@@ -115,17 +139,20 @@ module.exports.execute = async (interaction) => {
                         .setCustomId('next_page')
                         .setLabel('Next ➡️')
                         .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(page === totalPages - 1),
+                        .setDisabled(page === totalPages - 1)
                 );
             };
             const replyMessage = await interaction.editReply({
                 embeds: [generateEmbed(currentPage)],
-                components: [createPaginationButtons(currentPage)],
+                components: [createPaginationButtons(currentPage)]
             });
             const collector = replyMessage.createMessageComponentCollector({ time: 60000 });
-            collector.on('collect', async (buttonInteraction) => {
+            collector.on('collect', async buttonInteraction => {
                 if (buttonInteraction.user.id !== interaction.user.id) {
-                    return await buttonInteraction.reply({ content: '❌ You cannot control this menu.', flags: 64 });
+                    return await buttonInteraction.reply({
+                        content: '❌ You cannot control this menu.',
+                        flags: 64
+                    });
                 }
                 if (buttonInteraction.customId === 'prev_page') {
                     currentPage = Math.max(0, currentPage - 1);
@@ -134,7 +161,7 @@ module.exports.execute = async (interaction) => {
                 }
                 await buttonInteraction.update({
                     embeds: [generateEmbed(currentPage)],
-                    components: [createPaginationButtons(currentPage)],
+                    components: [createPaginationButtons(currentPage)]
                 });
             });
             collector.on('end', async () => {
@@ -146,7 +173,7 @@ module.exports.execute = async (interaction) => {
         return interaction.editReply({ content: '❌ An error occurred while executing the command.' });
     }
 };
-module.exports.autocomplete = async (interaction) => {
+module.exports.autocomplete = async interaction => {
     try {
         const dbChoice = interaction.options.getString('database');
         const focusedValue = interaction.options.getFocused();
@@ -154,8 +181,10 @@ module.exports.autocomplete = async (interaction) => {
             return interaction.respond([]);
         }
         const tableNames = await getTableNames(dbChoice);
-        const filtered = tableNames.filter((name) => name.toLowerCase().startsWith(focusedValue.toLowerCase()));
-        const choices = filtered.slice(0, 25).map((name) => ({ name, value: name }));
+        const filtered = tableNames.filter(name =>
+            name.toLowerCase().startsWith(focusedValue.toLowerCase())
+        );
+        const choices = filtered.slice(0, 25).map(name => ({ name, value: name }));
         return interaction.respond(choices);
     } catch (err) {
         logger.error(`Autocomplete error in /database command: ${err.message}`);

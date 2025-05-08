@@ -4,11 +4,6 @@ const WOMApiClient = require('../../api/wise_old_man/apiClient');
 const db = require('../utils/essentials/dbUtils');
 const { calculateInactivity, calculateProgressCount } = require('../utils/helpers/calculateActivity');
 
-/**
- *
- * @param maxRetries
- * @param baseDelay
- */
 async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
     let retryCount = 0;
     logger.info(`📡 Using WOM Group ID: ${WOMApiClient.groupId}`);
@@ -50,10 +45,7 @@ async function updateActivityData(maxRetries = 3, baseDelay = 5000) {
         }
     }
 }
-/**
- *
- * @param client
- */
+
 async function updateVoiceChannel(client) {
     try {
         const guild = client.guilds.cache.get(process.env.GUILD_ID);

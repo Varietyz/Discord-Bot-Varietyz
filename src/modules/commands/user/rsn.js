@@ -133,7 +133,6 @@ module.exports.execute = async (interaction) => {
 
             await fetchAndProcessMember(guild, discordId);
 
-            // Query for clan membership by joining registered_rsn and clan_members
             const validRegistration = await getOne(
                 `
     SELECT r.*, cm.player_id AS clan_player_id

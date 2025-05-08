@@ -1,12 +1,6 @@
-// /modules/services/bingo/bingoStateManager.js
 const logger = require('../../utils/essentials/logger');
 const db = require('../../utils/essentials/dbUtils');
 
-/**
- *
- * @param eventId
- * @param newState
- */
 async function setEventState(eventId, newState) {
     try {
         logger.info(`[BingoStateManager] setEventState(#${eventId}, ${newState})`);
@@ -25,11 +19,6 @@ async function setEventState(eventId, newState) {
     }
 }
 
-/**
- *
- * @param eventId
- * @param startTime
- */
 async function scheduleEventStart(eventId, startTime) {
     try {
         const now = Date.now();
@@ -54,11 +43,6 @@ async function scheduleEventStart(eventId, startTime) {
     }
 }
 
-/**
- *
- * @param eventId
- * @param endTime
- */
 async function scheduleEventEnd(eventId, endTime) {
     try {
         await db.runQuery(

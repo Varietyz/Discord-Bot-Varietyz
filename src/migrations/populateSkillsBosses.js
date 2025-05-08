@@ -21,7 +21,7 @@ const populateSkillsBosses = async (client) => {
         for (const [key, value] of Object.entries(MetricProps)) {
             const type = determinePropType(value);
             if (!type) {
-                //logger.info(`⚠️ Excluded Property (${key}): Not a Skill or Boss`);
+
                 excludedCount += 1;
                 continue;
             }

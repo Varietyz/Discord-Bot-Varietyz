@@ -7,10 +7,6 @@ const handleList = require('../../../utils/helpers/commands/bingo/teams/handleLi
 const { getOngoingEventId } = require('../../../utils/helpers/commands/bingo/teams/teamCommandHelpers');
 const dbUtils = require('../../../utils/essentials/dbUtils');
 
-/**
- *
- * @param interaction
- */
 async function autocomplete(interaction) {
     try {
         const eventId = await getOngoingEventId();
@@ -29,7 +25,6 @@ async function autocomplete(interaction) {
     }
 }
 
-// --- Command Export --- //
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('bingo-team')
@@ -53,7 +48,7 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            // Defer the reply so that we have time to process.
+
             await interaction.deferReply({ flags: 64 });
             const subcommand = interaction.options.getSubcommand();
 
@@ -76,12 +71,8 @@ module.exports = {
         }
     },
 
-    /**
-     * Autocomplete handler for team names when using `/bingo-team join`.
-     * @param {Interaction} interaction - The Discord interaction.
-     */
     async autocomplete(interaction) {
         if (interaction.options.getSubcommand() !== 'join') return;
-        await autocomplete(interaction); // ✅ Calls the `autocomplete` function from `handleJoin.js`
+        await autocomplete(interaction); 
     },
 };

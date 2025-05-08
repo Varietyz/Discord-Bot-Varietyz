@@ -1,5 +1,6 @@
 const logger = require('../essentials/logger');
 const { sleep } = require('./sleepUtil');
+
 async function purgeChannel(channel) {
     let messagesToDelete = [];
     try {
@@ -20,5 +21,5 @@ async function purgeChannel(channel) {
     }
 }
 module.exports = {
-    purgeChannel,
+    purgeChannel
 };

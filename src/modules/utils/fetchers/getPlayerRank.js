@@ -2,11 +2,6 @@ const db = require('../essentials/dbUtils');
 const logger = require('../essentials/logger');
 const { convertRanks } = require('../helpers/rankUtils');
 
-/**
- * Get the rank name of a player by player_id in the clan_members table
- * @param {number} playerId - The player ID to check
- * @returns {Promise<string|null>} - Returns rank name or null if not found
- */
 async function getPlayerRank(playerId) {
     try {
         const query = `

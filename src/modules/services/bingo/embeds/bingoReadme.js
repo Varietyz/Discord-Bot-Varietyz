@@ -1,11 +1,3 @@
-// /modules/services/bingo/bingoReadmeFields.js
-
-/**
- * A concise, Discord-embed-friendly version of the Bingo guide,
- * styled with Markdown for clarity. You can store this text in an
- * embed's description or chunk it across multiple embeds if needed.
- */
-
 const readmeText = `
 # 🎲 **Welcome to OSRS Bingo!**
 Our **Bingo system** brings a fun, automated way to compete in RuneScape-themed challenges. Your Bingo card consists of 15 in-game tasks, such as gaining XP or defeating bosses. Complete tasks to earn points, achieve Bingo patterns, and climb the leaderboard! 🎲🏆
@@ -56,7 +48,7 @@ Earn points through tasks and **bonus patterns**:
 
 - **Weekly Bonus (SOTW/BOTW):** Tasks aligned with the current Skill/Boss of the Week grant a **+50 bonus**.
   - E.g., Gaining Fishing XP during Fishing SOTW = 50 base + 50 bonus = **100 points**.
-  
+
 - **Bingo Patterns:** Completing special patterns awards additional bonus points:
 
 ### 🎯 **Bingo Patterns: How They Work**

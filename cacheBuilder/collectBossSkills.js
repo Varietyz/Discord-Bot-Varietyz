@@ -1,16 +1,12 @@
-// cacheImages.js
-
 const axios = require('axios');
 const fs = require('fs/promises');
 const path = require('path');
-const pLimit = require('p-limit'); // Ensure p-limit@3 is installed
-const metrics = require('./metrics'); // Import the metrics list
+const pLimit = require('p-limit'); 
+const metrics = require('./metrics'); 
 
-// Configuration
 const CACHE_DIR = path.join(__dirname, 'image-cache');
-const CONCURRENCY_LIMIT = 5; // Number of concurrent downloads
+const CONCURRENCY_LIMIT = 5; 
 
-// BOTW Name Map
 const BOTW_NAME_MAP = {
     phosanis_nightmare: 'The_Nightmare.png',
     nightmare: 'The_Nightmare.png',
@@ -40,23 +36,15 @@ const BOTW_NAME_MAP = {
     zulrah: 'Zulrah_(serpentine).png',
 };
 
-// SOTW Name Map
 const SOTW_NAME_MAP = {
     runecrafting: 'Runecraft',
     overall: 'Stats',
-    // Add more SOTW metrics here if needed
+
 };
 
-// Helper Functions
-
-/**
- * Determines the type of a metric based on its category.
- * @param {string} metric - The metric name.
- * @returns {'SOTW'|'BOTW'|null} - 'SOTW' for Skills, 'BOTW' for Bosses, null otherwise.
- */
 const determineType = (metric) => {
     const bossMetrics = new Set([
-        // Boss Metrics
+
         'abyssal_sire',
         'alchemical_hydra',
         'amoxliatl',
@@ -127,7 +115,6 @@ const determineType = (metric) => {
         return 'BOTW';
     }
 
-    // Assuming all other metrics in the list are Skills
     const skillMetrics = new Set([
         'overall',
         'attack',
@@ -159,15 +146,9 @@ const determineType = (metric) => {
         return 'SOTW';
     }
 
-    // Excluded metrics
     return null;
 };
 
-/**
- *
- * @param {number} ms
- * @returns
- */
 async function sleep(ms) {
     if (typeof ms !== 'number' || ms < 0) {
         throw new TypeError('The "ms" parameter must be a non-negative number.');
@@ -175,19 +156,13 @@ async function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Generates the URL metric based on the type and metric name.
- * @param {string} metric - The metric name.
- * @param {'SOTW'|'BOTW'} type - The competition type.
- * @returns {string} - The URL metric string.
- */
 const getUrlMetric = (metric, type) => {
     if (type === 'SOTW') {
         const lower = metric.toLowerCase();
         if (SOTW_NAME_MAP[lower]) {
             return SOTW_NAME_MAP[lower];
         }
-        // Fallback: Capitalize the first letter
+
         return metric.charAt(0).toUpperCase() + metric.slice(1);
     }
 
@@ -196,59 +171,47 @@ const getUrlMetric = (metric, type) => {
         if (BOTW_NAME_MAP[lower]) {
             return BOTW_NAME_MAP[lower];
         }
-        // Fallback: "phosanis_nightmare" => "Phosanis_Nightmare"
+
         return metric
             .split('_')
             .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
             .join('_');
     }
 
-    // If type is neither SOTW nor BOTW, return the original metric
     return metric;
 };
 
-
-
-/**
- * Downloads an image from a given URL and saves it to the cache directory.
- * @param {string} url - The image URL.
- * @param {string} filename - The filename to save as.
- */
 const downloadImage = async (url, filename) => {
     try {
         const filePath = path.join(CACHE_DIR, filename);
-        // Check if file already exists
+
         try {
             await fs.access(filePath);
             console.log(`📄 Already cached: ${filename}`);
             return;
         } catch (err) {
-            // File does not exist, proceed to download
+
         }
 
         console.log(`Attempting to download: ${url}`);
         const response = await axios.get(url, { responseType: 'arraybuffer' });
         await fs.writeFile(filePath, response.data);
-        await sleep(2500); // Respect rate limiting
+        await sleep(2500); 
         console.log(`✅ Downloaded: ${filename}`);
     } catch (error) {
         console.error(`❌ Failed to download ${filename}: ${error.message}`);
     }
 };
 
-/**
- * Main function to build the image cache.
- */
 const buildImageCache = async () => {
     try {
-        // Ensure the cache directory exists using fs.mkdir with recursive option
+
         await fs.mkdir(CACHE_DIR, { recursive: true });
         console.log(`📁 Cache directory ensured at: ${CACHE_DIR}`);
 
         const limit = pLimit(CONCURRENCY_LIMIT);
         const downloadPromises = [];
 
-        // Initialize a progress bar (optional)
         const cliProgress = require('cli-progress');
         const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
         bar.start(metrics.length, 0);
@@ -256,7 +219,7 @@ const buildImageCache = async () => {
         metrics.forEach((metric) => {
             const type = determineType(metric);
             if (!type) {
-                // Excluded metrics
+
                 console.log(`🚫 Excluded Metric: ${metric}`);
                 bar.increment();
                 return;
@@ -264,20 +227,17 @@ const buildImageCache = async () => {
 
             const urlMetric = getUrlMetric(metric, type);
 
-            // Determine the image URL based on the type
             let thumbnailIMG;
             if (type === 'SOTW') {
-                // Handle specific SOTW metrics if necessary
+
                 thumbnailIMG = `https://oldschool.runescape.wiki/images/${encodeURIComponent(urlMetric)}_icon.png`;
             } else if (type === 'BOTW') {
                 thumbnailIMG = `https://oldschool.runescape.wiki/images/${encodeURIComponent(urlMetric)}`;
             }
 
-            // Determine the filename for caching
-            const imageExtension = path.extname(thumbnailIMG) || '.png'; // Default to .png if no extension
+            const imageExtension = path.extname(thumbnailIMG) || '.png'; 
             const imageFilename = `${metric}${imageExtension}`;
 
-            // Queue the download with concurrency control
             const promise = limit(async () => {
                 await downloadImage(thumbnailIMG, imageFilename);
                 bar.increment();
@@ -285,7 +245,6 @@ const buildImageCache = async () => {
             downloadPromises.push(promise);
         });
 
-        // Await all downloads
         await Promise.all(downloadPromises);
 
         bar.stop();
@@ -295,5 +254,4 @@ const buildImageCache = async () => {
     }
 };
 
-// Execute the script
 buildImageCache();

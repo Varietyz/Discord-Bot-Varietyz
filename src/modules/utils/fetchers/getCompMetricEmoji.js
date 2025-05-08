@@ -1,5 +1,6 @@
 const logger = require('../essentials/logger');
 const db = require('../essentials/dbUtils');
+
 async function getMetricEmoji(guild, metric, competitionType) {
     try {
         const normalizedMetric = metric.toLowerCase().replace(/\s+/g, '_');

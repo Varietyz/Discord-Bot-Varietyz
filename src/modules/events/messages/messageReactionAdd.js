@@ -1,48 +1,59 @@
-const {
-    guild: { getOne },
-} = require('../../utils/essentials/dbUtils');
-const logger = require('../../utils/essentials/logger');
-const { EmbedBuilder } = require('discord.js');
+const reactionRoleMap = require('../../../config/reactionRoleMap');
+const db = require('../../utils/essentials/dbUtils').guild;
+const fs = require('fs');
+const path = require('path');
+
+const boundChannels = JSON.parse(
+    fs.readFileSync(
+        path.join(__dirname, '../../../config/reactionBoundChannels.json'),
+        'utf8'
+    )
+);
+
 module.exports = {
     name: 'messageReactionAdd',
+    once: false,
     async execute(reaction, user) {
-        if (!reaction.message.guild) return;
+        if (user.bot) return;
+
+        const emoji = reaction.emoji.name ?? reaction.emoji.id;
+        const guild = reaction.message.guild;
+
+        if (!guild) return;
+
+        if (reaction.partial) {
+            try {
+                await reaction.fetch();
+            } catch (err) {
+                console.warn('⚠️ Failed to fetch partial reaction:', err);
+                return;
+            }
+        }
+
+        const channelId = reaction.message.channelId ?? reaction.message.channel.id;
+
+        const row = await db.getOne(
+            'SELECT channel_key FROM ensured_channels WHERE channel_id = ?',
+            [channelId]
+        );
+        const key = row?.channel_key;
+        if (!key || !boundChannels[key]?.includes(emoji)) return;
+
+        const roleName = reactionRoleMap[emoji];
+        if (!roleName) return;
+
         try {
-            const logChannelData = await getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['reacted_logs']);
-            if (!logChannelData) return;
-            const logChannel = await reaction.message.guild.channels.cache.get(logChannelData.channel_id);
-            if (!logChannel) return;
-            let emoji;
-            if (reaction.emoji.id) {
-                emoji = reaction.emoji.animated ? `<a:${reaction.emoji.name}:${reaction.emoji.id}>` : `<:${reaction.emoji.name}:${reaction.emoji.id}>`;
-            } else {
-                emoji = reaction.emoji.name;
+            const member = await guild.members.fetch(user.id);
+            const role = guild.roles.cache.find((r) => r.name === roleName);
+            if (!role) {
+                console.warn(`⚠️ Role "${roleName}" not found in guild.`);
+                return;
             }
-            const emojiURL = reaction.emoji.id ? `https://cdn.discordapp.com/emojis/${reaction.emoji.id}.${reaction.emoji.animated ? 'gif' : 'png'}` : null;
-            const messageLink = `https://discord.com/channels/${reaction.message.guildId}/${reaction.message.channelId}/${reaction.message.id}`;
-            const userAvatar = user.displayAvatarURL({ dynamic: true, size: 1024 });
-            const embed = new EmbedBuilder()
-                .setAuthor({ name: `${reaction.message.guild.name}`, iconURL: reaction.message.guild.iconURL({ dynamic: true }) })
-                .addFields(
-                    { name: '👤 User', value: `<@${user.id}>`, inline: true },
-                    { name: '📌 Channel', value: `<#${reaction.message.channelId}>`, inline: true },
-                    { name: '\u200b', value: `:diamond_shape_with_a_dot_inside: **Reacted:**  \`${emoji}\`\n\u200b`, inline: false },
-                    { name: '🔗 Message', value: messageLink, inline: false },
-                )
-                .setTimestamp();
-            if (emojiURL) {
-                embed.setThumbnail(emojiURL);
-                embed.setTitle(`✅ Custom Reaction Added by ${user.globalName || user.username}`);
-                embed.setColor(0xffa500);
-            } else {
-                embed.setThumbnail(userAvatar);
-                embed.setTitle(`✅ Reaction Added by ${user.globalName || user.username}`);
-                embed.setColor(0x00ff00);
-            }
-            await logChannel.send({ embeds: [embed] });
-            logger.info(`📋 Logged reaction ${emoji} from ${user.tag}.`);
-        } catch (error) {
-            logger.error(`❌ Error logging reaction addition: ${error.message}`);
+
+            await member.roles.add(role);
+            console.log(`✅ Added "${roleName}" to ${member.user.tag}`);
+        } catch (err) {
+            console.error(`❌ Failed to add role "${roleName}":`, err);
         }
     },
 };

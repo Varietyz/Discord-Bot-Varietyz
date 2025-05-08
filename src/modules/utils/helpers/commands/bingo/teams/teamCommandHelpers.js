@@ -8,12 +8,6 @@ const { synchronizeTaskCompletion } = require('../../../../essentials/syncTeamDa
 const { updateLeaderboard } = require('../../../../../services/bingo/bingoLeaderboard');
 const { notifyPatternAwards } = require('../../../../../services/bingo/embeds/bingoPatternNotifications');
 
-/**
- *
- * @param eventId
- * @param playerId
- * @param newTeamId
- */
 async function reassignTeamProgress(eventId, playerId, newTeamId = 0) {
     logger.info(`[TeamProgress] Re-assigning progress for Player ${playerId} in Event ${eventId} to Team ${newTeamId}`);
 
@@ -40,9 +34,6 @@ async function reassignTeamProgress(eventId, playerId, newTeamId = 0) {
     logger.info(`[TeamProgress] Updated team_id to ${newTeamId} for Player ${playerId} in Event ${eventId}`);
 }
 
-/**
- *@returns
- */
 async function getOngoingEventId() {
     const ongoing = await db.getOne(`
         SELECT event_id
@@ -53,11 +44,6 @@ async function getOngoingEventId() {
     return ongoing ? ongoing.event_id : null;
 }
 
-/**
- *
- * @param discordId
- * @returns
- */
 async function getActivePlayer(discordId) {
     const playerRow = await db.getOne(
         `
@@ -73,10 +59,6 @@ async function getActivePlayer(discordId) {
     return playerRow ? { playerId: playerRow.player_id, rsn: playerRow.rsn } : null;
 }
 
-/**
- *
- * @param client
- */
 async function appendBingoProgression(client) {
     logger.info('[BingoService] appendBingoProgress() → Starting...');
     let ongoingEvents;
@@ -93,7 +75,7 @@ async function appendBingoProgression(client) {
 
     for (const { event_id } of ongoingEvents) {
         try {
-            // Fetch all teams for the event.
+
             const teams = await db.getAll(
                 `
             SELECT team_id
@@ -103,7 +85,6 @@ async function appendBingoProgression(client) {
                 [event_id],
             );
 
-            // Process each team individually.
             for (const team of teams) {
                 const teamMembers = await db.getAll(
                     `
@@ -116,12 +97,11 @@ async function appendBingoProgression(client) {
                     [team.team_id],
                 );
 
-                // Iterate over each member and synchronize their task completion.
                 for (const member of teamMembers) {
                     await synchronizeTaskCompletion(event_id, team.team_id, member.player_id);
                 }
             }
-            // After processing all teams for the event, consolidate the team's task progress.
+
             await consolidateTeamTaskProgress(event_id);
             await updateLeaderboard();
             try {

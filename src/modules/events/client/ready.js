@@ -3,7 +3,9 @@ const dbUtils = require('../../utils/essentials/dbUtils');
 const tasks = require('../../../tasks');
 const populateSkillsBosses = require('../../../migrations/populateSkillsBosses');
 const populateHiscoreActivities = require('../../../migrations/populateHiscoreActivities');
-const { populateImageCache } = require('../../../migrations/populateImageCache');
+const {
+    populateImageCache,
+} = require('../../../migrations/populateImageCache');
 module.exports = {
     name: 'ready',
     once: true,
@@ -28,7 +30,9 @@ module.exports = {
                 const hours = Math.floor(task.interval / 3600);
                 const minutes = Math.floor((task.interval % 3600) / 60);
                 const intervalFormatted = `${hours > 0 ? `${hours}h ` : ''}${minutes}m`;
-                logger.info(`⏳ Scheduled task: ${task.name} every ${intervalFormatted}.`);
+                logger.info(
+                    `⏳ Scheduled task: ${task.name} every ${intervalFormatted}.`
+                );
                 setInterval(async () => {
                     logger.info(`⏳ Executing scheduled task: ${task.name}...`);
                     try {

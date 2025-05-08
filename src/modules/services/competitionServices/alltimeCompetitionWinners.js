@@ -57,10 +57,9 @@ const updateAllTimeLeaderboard = async (client) => {
             }
         }
 
-        // Refactored async leaderboard formatter.
         const formatLeaderboard = async (data, metricEmoji, metricLabel) => {
             if (!data || data.length === 0) return '_No data available_';
-            // Process each player asynchronously.
+
             const formattedPlayers = await Promise.all(
                 data.map(async (player, i) => {
                     const profileLink = await getPlayerLink(player.rsn);
@@ -74,7 +73,6 @@ const updateAllTimeLeaderboard = async (client) => {
         const botwEmoji = await getEmojiWithFallback('emoji_slayer', '🐲');
         const notifEmojiTwo = await getEmojiWithFallback('emoji_animatedarrowwhite', '-');
 
-        // Await the formatter functions.
         const sotwLeaderboard = await formatLeaderboard(topSOTW, sotwEmoji, 'XP');
         const botwLeaderboard = await formatLeaderboard(topBOTW, botwEmoji, 'KC');
 

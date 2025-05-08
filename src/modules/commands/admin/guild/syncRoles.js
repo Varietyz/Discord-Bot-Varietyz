@@ -5,10 +5,7 @@ const db = require('../../../utils/essentials/dbUtils');
 const logger = require('../../../utils/essentials/logger');
 const { Vibrant } = require('node-vibrant/node');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-/**
- *
- * @param str
- */
+
 function toTitleCase(str) {
     return str
         .replace(/_/g, ' ')
@@ -16,11 +13,7 @@ function toTitleCase(str) {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ');
 }
-/**
- *
- * @param name
- * @param type
- */
+
 function formatRoleData(name, type) {
     const formatted = toTitleCase(name);
     if (name.toLowerCase() === 'overall') {
@@ -30,18 +23,13 @@ function formatRoleData(name, type) {
     const roleKey = (type === 'Skill' ? `99_${name.toLowerCase()}` : name.toLowerCase()).replace(/\s+/g, '_');
     return { roleName, roleKey };
 }
-/**
- *
- * @param fileName
- */
+
 function formatRankData(fileName) {
     const roleName = toTitleCase(fileName);
     const roleKey = fileName.toLowerCase();
     return { roleName, roleKey };
 }
-/**
- *
- */
+
 async function fetchSkills() {
     const roles = [];
     const skillsData = await db.getAll('SELECT name FROM skills_bosses WHERE type = \'Skill\'');
@@ -52,9 +40,7 @@ async function fetchSkills() {
     }
     return roles;
 }
-/**
- *
- */
+
 async function fetchBosses() {
     const roles = [];
     const bossesData = await db.getAll('SELECT name FROM skills_bosses WHERE type = \'Boss\'');
@@ -65,9 +51,7 @@ async function fetchBosses() {
     }
     return roles;
 }
-/**
- *
- */
+
 async function fetchActivities() {
     const roles = [];
     const activitiesData = await db.getAll('SELECT name FROM hiscores_activities');
@@ -78,9 +62,7 @@ async function fetchActivities() {
     }
     return roles;
 }
-/**
- *
- */
+
 async function fetchClanRankRoles() {
     const roles = [];
     const ranksData = await db.image.getAll('SELECT file_name, file_path FROM active_ranks');
@@ -91,9 +73,7 @@ async function fetchClanRankRoles() {
     }
     return roles;
 }
-/**
- *
- */
+
 async function fetchPetRoles() {
     const roles = [];
     const petsData = await db.image.getAll('SELECT file_name, file_path FROM pets');
@@ -104,11 +84,7 @@ async function fetchPetRoles() {
     }
     return roles;
 }
-/**
- *
- * @param roleKey
- * @param imageCacheMap
- */
+
 function getRoleIcon(roleKey, imageCacheMap) {
     const baseName = roleKey.replace(/^99_/, '').toLowerCase();
     if (imageCacheMap.has(baseName)) {
@@ -124,14 +100,7 @@ function getRoleIcon(roleKey, imageCacheMap) {
     }
     return undefined;
 }
-/**
- *
- * @param roles
- * @param guild
- * @param existingRoleKeys
- * @param imageCacheMap
- * @param counters
- */
+
 async function processRoles(roles, guild, existingRoleKeys, imageCacheMap, counters) {
     for (const roleData of roles) {
         const { roleKey, roleName } = roleData;
@@ -148,17 +117,14 @@ async function processRoles(roles, guild, existingRoleKeys, imageCacheMap, count
             counters.alreadyExistsCount++;
             continue;
         }
-        // Determine icon path for role
+
         const iconPath = roleData.filePath || getRoleIcon(roleKey, imageCacheMap);
         logger.debug(`Icon path for "${roleName}": ${iconPath}`);
 
-        // Default fallback role color (Discord blurple)
         let roleColor = '#5865F2';
 
-        // Helper function to calculate brightness (0 - dark, 255 - bright)
         const getBrightness = ([r, g, b]) => (r * 299 + g * 587 + b * 114) / 1000;
 
-        // Helper function to determine if color is readable on Discord's themes
         const isReadableSwatch = (swatch) => {
             if (!swatch?.rgb) return false;
             const brightness = getBrightness(swatch.rgb);
@@ -175,10 +141,8 @@ async function processRoles(roles, guild, existingRoleKeys, imageCacheMap, count
 
                 logger.debug(`Palette extracted for "${roleName}": ${JSON.stringify(palette)}`);
 
-                // Prioritize swatches by vibrancy and readability
                 const swatchPriority = [palette.Vibrant, palette.LightVibrant, palette.Muted, palette.LightMuted, palette.DarkVibrant, palette.DarkMuted];
 
-                // Select the first readable swatch based on criteria
                 const selectedSwatch = swatchPriority.find(isReadableSwatch) || swatchPriority.find((swatch) => swatch?.hex) || null;
 
                 if (selectedSwatch?.hex) {
@@ -199,16 +163,7 @@ async function processRoles(roles, guild, existingRoleKeys, imageCacheMap, count
         await createRoleWithRetry(roleData, guild, lookupKey, roleColor, iconPath, existingRoleKeys, counters);
     }
 }
-/**
- *
- * @param roleData
- * @param guild
- * @param lookupKey
- * @param roleColor
- * @param iconPath
- * @param existingRoleKeys
- * @param counters
- */
+
 async function createRoleWithRetry(roleData, guild, lookupKey, roleColor, iconPath, existingRoleKeys, counters) {
     const maxRetries = 3;
     let attempt = 0;
@@ -251,11 +206,7 @@ async function createRoleWithRetry(roleData, guild, lookupKey, roleColor, iconPa
     }
     logger.error(`❌ Failed to create role "${roleData.roleName}" after ${maxRetries} attempts.`);
 }
-/**
- *
- * @param guild
- * @param imageCacheMap
- */
+
 async function updateRolesWithIcons(guild, imageCacheMap) {
     if (guild.premiumTier < 2) {
         logger.info(`⚠️ Skipping role icon updates. Server Boost Level: ${guild.premiumTier}`);

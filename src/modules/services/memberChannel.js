@@ -10,14 +10,7 @@ const { syncClanRankEmojis } = require('../utils/essentials/syncClanRanks');
 const { cleanupOrphanedPlayers } = require('../utils/essentials/orphanCleaner');
 const getPlayerLink = require('../utils/fetchers/getPlayerLink');
 require('dotenv').config();
-/**
- *
- * @param member
- * @param roleName - The role name to assign (e.g. from RANKS mapping)
- * @param guild
- * @param player - The RSN (for logging)
- * @param rank - The rank from the API for this particular RSN
- */
+
 async function handleMemberRoles(member, roleName, guild, player, rank) {
     if (!player || rank.toLowerCase() === 'private') return;
 
@@ -27,8 +20,6 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
         return;
     }
 
-    // Query the database to get all the clan_member ranks registered for this Discord user.
-    // This joins registered_rsn with clan_members so that we know which ranks the user's RSNs have.
     const registeredRanksData = await db.getAll(
         `
         SELECT cm.rank
@@ -39,22 +30,16 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
         [member.id],
     );
 
-    // Build a set of the allowed rank names (in lowercase).
     const allowedRanks = new Set(registeredRanksData.map((row) => row.rank.toLowerCase()));
-    //logger.info(`[handleMemberRoles] Allowed ranks for ${player}: ${[...allowedRanks].join(', ')}`);
 
-    // Determine target role position using rankHierarchy.
     const targetRolePosition = rankHierarchy[roleName.toLowerCase()];
 
-    // Filter member roles for removal:
-    // Remove roles if they are lower than the target role,
-    // unless the role name is among the allowedRanks (i.e. one of the registered RSN ranks).
     const rolesToRemove = member.roles.cache.filter((r) => {
         const roleKey = r.name.toLowerCase();
         const position = rankHierarchy[roleKey];
-        // If the role is among the registered ranks, do not remove it.
+
         if (allowedRanks.has(roleKey)) return false;
-        // Otherwise, if the role's hierarchy position is defined and is lower than the target, mark it for removal.
+
         return position !== undefined && position < targetRolePosition;
     });
 
@@ -78,19 +63,12 @@ async function handleMemberRoles(member, roleName, guild, player, rank) {
         logger.info(`✅ [handleMemberRoles] Removed roles for ${player}: ${removedRoles}`);
     }
 
-    // Add the target role if not already assigned.
     if (!member.roles.cache.has(targetRole.id)) {
         await member.roles.add(targetRole);
         logger.info(`✅ [handleMemberRoles] Assigned role '${roleName}' to ${player} 🎉`);
     }
 }
 
-/**
- *
- * @param client
- * @param root0
- * @param root0.forceChannelUpdate
- */
 async function updateData(client, { forceChannelUpdate = false } = {}) {
     try {
         logger.info('📡 Fetching clan members from Wise Old Man API...');
@@ -150,25 +128,26 @@ async function updateData(client, { forceChannelUpdate = false } = {}) {
         logger.error(`❌ Failed to update clan data: ${error.message}`);
     }
 }
-/**
- *
- * @param newData
- */
+
 async function updateDatabase(newData) {
     try {
+        if (!newData || newData.length === 0) {
+            logger.warn('⚠️ Skipping updateDatabase: empty or missing newData — potential fetch failure.');
+            return false;
+        }
+
         const currentData = await db.getAll('SELECT player_id, rsn, rank, joined_at FROM clan_members');
         const currentDataMap = new Map(currentData.map(({ player_id, rsn, rank, joined_at }) => [player_id, { rsn, rank, joined_at }]));
         let hasChanges = false;
         const updates = [];
         for (const { playerId, rsn, rank, joinedAt } of newData) {
             const existingEntry = currentDataMap.get(playerId);
-            //logger.info(`🔍 Checking: ${playerId}, ${rsn}, ${rank}, ${joinedAt}`);
-            //logger.info(`📌 DB Entry: ${existingEntry ? JSON.stringify(existingEntry) : 'None'}`);
+
             if (!existingEntry) {
                 logger.warn(`🆕 New player detected: ${rsn} (ID: ${playerId})`);
                 hasChanges = true;
                 updates.push({ playerId, rsn, rank, joinedAt });
-            } else if (existingEntry.rsn !== rsn || existingEntry.rank !== rank || (existingEntry.joined_at !== joinedAt && joinedAt !== null)) {
+            } else if (existingEntry.rsn !== rsn || existingEntry.rank !== rank) {
                 logger.warn(`🔄 Change detected for ${rsn}:`);
                 if (existingEntry.rsn !== rsn) {
                     logger.warn(`   🏷 RSN: ${existingEntry.rsn} → ${rsn}`);
@@ -176,11 +155,8 @@ async function updateDatabase(newData) {
                 if (existingEntry.rank !== rank) {
                     logger.warn(`   🎖 Rank: ${existingEntry.rank} → ${rank}`);
                 }
-                if (existingEntry.joined_at !== joinedAt && joinedAt !== null) {
-                    logger.warn(`   📅 Joined At: ${existingEntry.joined_at} → ${joinedAt}`);
-                }
                 hasChanges = true;
-                updates.push({ playerId, rsn, rank, joinedAt });
+                updates.push({ playerId, rsn, rank});
             }
         }
         if (updates.length > 0) {
@@ -190,8 +166,7 @@ async function updateDatabase(newData) {
           VALUES (?, ?, ?, ?)
           ON CONFLICT(player_id) DO UPDATE SET
             rsn = excluded.rsn,
-            rank = excluded.rank,
-            joined_at = COALESCE(excluded.joined_at, clan_members.joined_at)
+            rank = excluded.rank
         `;
                 try {
                     await db.runQuery(updateQuery, [playerId, rsn, rank, joinedAt]);
@@ -210,20 +185,30 @@ async function updateDatabase(newData) {
                 }
             }
             logger.info(`✅ Updated ${updates.length} records in the database.`);
+
         } else {
             logger.info('✅ No changes detected. Skipping database update.');
         }
+
+        const newIds = new Set(newData.map(d => d.playerId));
+        const stalePlayers = currentData.filter(d => !newIds.has(d.player_id));
+        if (stalePlayers.length > 0) {
+            const idsToRemove = stalePlayers.map(d => d.player_id);
+            await db.runQuery(
+                `DELETE FROM clan_members WHERE player_id IN (${idsToRemove.map(() => '?').join(',')})`,
+                idsToRemove
+            );
+            logger.warn(`🧹 Removed ${idsToRemove.length} inactive clan members from the database.`);
+            hasChanges = true;
+        }
+
         return hasChanges;
     } catch (error) {
         logger.error(`❌ Failed to update database: ${error.message}`);
         return false;
     }
 }
-/**
- *
- * @param array
- * @param chunkSize
- */
+
 function chunkArray(array, chunkSize) {
     const chunks = [];
     for (let i = 0; i < array.length; i += chunkSize) {
@@ -231,11 +216,7 @@ function chunkArray(array, chunkSize) {
     }
     return chunks;
 }
-/**
- *
- * @param channel
- * @param embeds
- */
+
 async function sendEmbedsInBatches(channel, embeds) {
     const batches = chunkArray(embeds, 10);
     for (const batch of batches) {
@@ -246,11 +227,7 @@ async function sendEmbedsInBatches(channel, embeds) {
         }
     }
 }
-/**
- *
- * @param client
- * @param cachedData
- */
+
 async function updateClanChannel(client, cachedData) {
     const row = await db.guild.getOne('SELECT channel_id FROM ensured_channels WHERE channel_key = ?', ['clan_members_channel']);
     if (!row) {
@@ -263,7 +240,7 @@ async function updateClanChannel(client, cachedData) {
     const embeds = [];
     let index = 1;
     for (const { player, rank, experience, lastProgressed } of cachedData) {
-        //if (!player || rank.toLowerCase() === 'guest') continue;
+
         const color = await getRankColor(rank);
         const profileLink = await getPlayerLink(player);
         let lastProgressedTimestamp = null;
