@@ -28,10 +28,11 @@ def mirror_backup_path(original_path, root_dir, backup_root):
     return os.path.join(backup_root, rel_path)
 
 def clean_comments_with_backup_tree(root_dir, extensions=('.js', '.jsx', '.json')):
+    target_dir = os.path.join(root_dir, 'src')
     backup_root = os.path.join(root_dir, '_backups')
     os.makedirs(backup_root, exist_ok=True)
 
-    for subdir, _, files in os.walk(root_dir):
+    for subdir, _, files in os.walk(target_dir):
         if '_backups' in subdir or 'node_modules' in subdir:
             continue
         for file in files:
@@ -49,7 +50,6 @@ def clean_comments_with_backup_tree(root_dir, extensions=('.js', '.jsx', '.json'
                     f.write(cleaned)
 
                 print(f'🧼 Cleaned: {src_path} → backup: {dst_path}')
-
 
 if __name__ == '__main__':
     project_root = os.path.dirname(os.path.abspath(__file__))

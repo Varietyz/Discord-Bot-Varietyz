@@ -21,7 +21,7 @@ const logger = require('./modules/utils/essentials/logger');
 const loggedIn = require('./modules/events/bot/loggedIn');
 const client = require('./modules/discordClient');
 const CompetitionService = require('./modules/services/competitionServices/competitionService');
-const { app, sslOptions } = require('./api'); 
+const { app, sslOptions } = require('./api');
 
 const discordToken = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;

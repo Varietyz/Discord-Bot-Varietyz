@@ -40,7 +40,7 @@ async function getCachedDomainHealth() {
 async function runLighthouse(url = `https://${DOMAIN}`) {
     try {
 
-        const { default: lighthouse } = await import('lighthouse');
+        const lighthouse = require('lighthouse');
 
         const browser = await puppeteer.launch({
             headless: 'new',
