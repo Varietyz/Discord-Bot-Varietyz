@@ -19,22 +19,6 @@ module.exports = {
 
     rules: {
 
-        'jsdoc/check-alignment': 'warn',              
-        'jsdoc/check-indentation': 'warn',            
-        'jsdoc/check-param-names': 'warn',            
-        'jsdoc/require-jsdoc': [
-            'warn',
-            {
-                require: {
-                    FunctionDeclaration: true,          
-                    MethodDefinition: true,            
-                    ClassDeclaration: true             
-                }
-            }
-        ],
-        'jsdoc/require-param': 'warn',                 
-        'jsdoc/require-returns': 'warn',               
-
         'node/no-missing-require': [ 'error',{ allowModules: ['@discordjs/rest', 'p-queue'] }],            
         'node/no-unpublished-require': 'error',        
         'node/no-deprecated-api': 'error',              
