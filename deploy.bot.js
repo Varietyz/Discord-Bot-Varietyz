@@ -1,6 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
-const fetch = require('node-fetch');
+const { fetch } = globalThis;
+
 const { NodeSSH } = require('node-ssh');
 const path = require('path');
 
@@ -23,26 +24,66 @@ function logStep(msg) {
     console.log(line);
 }
 
-async function sendDiscordWebhook() {
-    const content = `🛰️ **varietyz_bot Deployed & Restarted**\n✅ Deployment completed successfully.\n⏱️ Timestamp: <t:${Math.floor(Date.now() / 1000)}:F>`;
+async function sendDiscordWebhook(success, backupFilename, startTime) {
+    const endTime = Date.now();
+    const duration = ((endTime - startTime) / 1000).toFixed(2);
+    const color = success ? 0x33cc33 : 0xff0000;
+    const finishedTimestamp = Math.floor(endTime / 1000);
+    const finishedRelative = `<t:${finishedTimestamp}:R>`;
+
     const embed = {
-        color: 0x00ff99,
-        title: '🤖 Bot Deployment Success',
-        description: stepLog.join('\n'),
+        color,
+        thumbnail: { url: 'https://banes-lab.com/assets/images/Logo.png' },
+        fields: [
+            {
+                name: 'Backup File 📁',
+                value: backupFilename || 'N/A',
+                inline: true
+            },
+            {
+                name: 'Duration (s) ⏱️',
+                value: `\`${duration}\``,
+                inline: true
+            },
+            {
+                name: 'Finished 🕓',
+                value: finishedRelative,
+                inline: true
+            },
+            {
+                name: 'Key Steps 👟',
+                value: `\`\`\`${stepLog.join('\n').slice(0, 900)}\`\`\``,
+                inline: false
+            }
+        ],
         timestamp: new Date().toISOString()
     };
-    await fetch(DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, embeds: [embed] })
-    });
+
+    try {
+        await fetch(DISCORD_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                content: success
+                    ? '<@406828985696387081>\n# ✅ Deployment Successful'
+                    : '<@406828985696387081>\n# ❌ Deployment Failed',
+                embeds: [embed]
+            })
+        });
+    } catch (err) {
+        console.warn('⚠️ Discord notification failed:', err.message);
+    }
 }
+
+
 
 async function main() {
     if (!SSH_HOST || !SSH_USER || !SSH_KEY_PATH || !DISCORD_WEBHOOK_URL) {
         console.error('Missing required environment variables.');
         process.exit(1);
     }
+
+    const startTime = Date.now();
 
     if (fs.existsSync(TMP_DEPLOY)) fs.rmSync(TMP_DEPLOY, { recursive: true });
     fs.mkdirSync(`${TMP_DEPLOY}/src`, { recursive: true });
@@ -74,6 +115,11 @@ async function main() {
     copyFiltered('src', `${TMP_DEPLOY}/src`);
     fs.copyFileSync('package.json', `${TMP_DEPLOY}/package.json`);
     fs.copyFileSync('package-lock.json', `${TMP_DEPLOY}/package-lock.json`);
+    if (fs.existsSync('.env')) {
+    fs.copyFileSync('.env', `${TMP_DEPLOY}/.env`);
+    logStep('🔐 Copied .env into deployment package.');
+}
+
     logStep('📦 Prepared stripped bot deployment package.');
 
     const keyPath = path.resolve(SSH_KEY_PATH);
@@ -92,9 +138,10 @@ async function main() {
     const remoteTmp = `/tmp/${backupFilename}`;
     logStep(`📁 Backing up remote ${REMOTE_PATH} to ${remoteTmp}...`);
     const tarResult = await ssh.execCommand(`tar -czf ${remoteTmp} ${REMOTE_PATH}`);
-    if (tarResult.stderr) {
-        throw new Error(`Remote backup failed: ${tarResult.stderr}`);
+    if (tarResult.code !== 0) {
+    throw new Error(`Remote backup failed: ${tarResult.stderr || 'Unknown error'}`);
     }
+
     logStep(`✅ Remote backup created: ${remoteTmp}`);
 
     const localBackupDir = path.join(process.cwd(), 'backups');
@@ -120,22 +167,39 @@ async function main() {
         });
     }
 
-    logStep(`🧹 Removing remote: ${REMOTE_PATH}/*`);
-    await ssh.execCommand(`rm -rf ${REMOTE_PATH}/*`);
+    logStep('🧹 Removing remote src/* except data/, and deleting package.json and lock...');
+
+    await ssh.execCommand(`
+    cd ${REMOTE_PATH} && \
+    find src -mindepth 1 -maxdepth 1 ! -name data -exec rm -rf {} + && \
+    rm -f package.json package-lock.json
+    `);
 
     await ssh.putDirectory(TMP_DEPLOY, REMOTE_PATH, {
-        recursive: true,
-        concurrency: 5,
-        tick: (local, remote, error) => {
-            if (error) console.error(`❌ ${local} → ${remote}`);
+    recursive: true,
+    concurrency: 5,
+    tick: (local, remote, error) => {
+        if (error) console.error(`❌ ${local} → ${remote}`);
+    },
+        validate: (localPath) => {
+            const relPath = path.relative(TMP_DEPLOY, localPath);
+            const skip = relPath.startsWith('src/data') ||
+                        relPath.endsWith('.db') ||
+                        relPath.endsWith('.sqlite') ||
+                        relPath.endsWith('cache.js');
+            if (skip) console.log(`⏭️ Skipping ${relPath}`);
+            return !skip;
         }
-    });
+
+
+});
+
     logStep(`📤 Deployed stripped package to ${REMOTE_PATH}`);
 
     logStep('📦 Running npm install...');
     const install = await ssh.execCommand(`cd ${REMOTE_PATH} && npm install`);
-    if (install.stderr) {
-        console.error('npm install failed:', install.stderr);
+    if (install.code !== 0 || /ERR!/i.test(install.stdout)) {
+        console.error('❌ npm install failed:', install.stdout || install.stderr);
         process.exit(1);
     }
     logStep('📦 npm install complete.');
@@ -148,13 +212,14 @@ async function main() {
     }
     logStep('✅ PM2 restarted bot.');
 
-    await sendDiscordWebhook();
+    await sendDiscordWebhook(true, backupFilename, startTime);
     ssh.dispose();
     logStep('✅ Done. SSH connection closed.');
     process.exit(0);
 }
 
-main().catch(err => {
+main().catch(async err => {
     console.error('❌ Fatal error:', err);
+    await sendDiscordWebhook(false, '', Date.now());
     process.exit(1);
 });

@@ -245,12 +245,24 @@ async function fetchAndCacheDomainHealth() {
     pagespeed.score < 0 &&
     lighthouse_score < 0;
 
-    if (allDefaults && cached) {
-        _domainHealthCache = cached;
-        _lastDomainHealthCheck = now;
-        console.warn('⚠️ All external fetches failed—skipping update');
-        return cached;
+    const sslOk = sslData.ssl_grade !== 'Unavailable';
+    const pageSpeedOk = pagespeed.score >= 0;
+    const lighthouseOk = lighthouse_score >= 0;
+
+    if (!sslOk) console.warn('⚠️ SSL fetch incomplete.');
+    if (!pageSpeedOk) console.warn('⚠️ PageSpeed fetch incomplete.');
+    if (!lighthouseOk) console.warn('⚠️ Lighthouse fetch incomplete.');
+
+    if (!sslOk || !pageSpeedOk || !lighthouseOk) {
+        console.warn('⚠️ Skipping domain health update — One or more fetches failed.');
+        if (cached) {
+            _domainHealthCache = cached;
+            _lastDomainHealthCheck = now;
+            return cached;
+        }
+        return null;
     }
+
 
     const payload = {
         domain: DOMAIN,

@@ -86,16 +86,19 @@ async function scheduleRotationsOnStartup(
             return;
         }
 
-        const nearestEnd = activeCompetitions[0].ends_at;
-        const rotationTime = new Date(nearestEnd);
-        const compId = activeCompetitions[0].competition_id;
-        const jobKey = `rotation-${compId}`;
-
-        scheduleRotation(rotationTime, rotationCallback, scheduledJobs, jobKey);
+        for (const comp of activeCompetitions) {
+    const rotationTime = new Date(comp.ends_at);
+    const jobKey = `rotation-${comp.competition_id}`;
+    scheduleRotation(rotationTime, rotationCallback, scheduledJobs, jobKey);
+}
 
         logger.info(
             `📌 **Scheduled rotation for competition ending at** ${nearestEnd}.`
         );
+        logger.info(
+    `🗂️ Total scheduled rotation jobs: ${scheduledJobs.size} (${[...scheduledJobs.keys()].join(', ')})`
+);
+
     } catch (err) {
         logger.error(
             `🚨 **Error scheduling rotations on startup:** ${err.message}`

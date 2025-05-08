@@ -284,26 +284,32 @@ class CompetitionService {
             }
 
             const rotationTime = new Date(overallNearestEndTime);
-            const comp = await db.getOne(
-                'SELECT competition_id FROM competitions WHERE ends_at = ? ORDER BY ends_at ASC LIMIT 1',
-                [rotationTime.toISOString()]
-            );
-            if (!comp) {
+            const comps = await db.getAll(
+    'SELECT competition_id, ends_at FROM competitions WHERE ends_at >= ? ORDER BY ends_at ASC',
+    [new Date().toISOString()]
+);
+
+            if (!comps) {
                 logger.warn(`⚠️ No competition found ending at ${rotationTime.toISOString()}. Rotation not scheduled.`);
                 return;
             }
+            for (const comp of comps) {
             const jobKey = `rotation-${comp.competition_id}`;
+            const endTime = new Date(comp.ends_at);
 
             scheduleRotation(
-                rotationTime,
+                endTime,
                 () => this.startNextCompetitionCycle(),
                 this.scheduledJobs,
                 jobKey
             );
-            const readableTime = `<t:${Math.floor(rotationTime.getTime() / 1000)}:f>`; 
-            logger.info(
-                `📆 Scheduled new rotation for ${jobKey} at ${readableTime}.`
-            );
+
+            const readableTime = `<t:${Math.floor(endTime.getTime() / 1000)}:f>`;
+            logger.info(`📆 Scheduled new rotation for ${jobKey} at ${readableTime}.`);
+            logger.info(`🗂️ Total scheduled jobs after rotation finalize: ${this.scheduledJobs.size}`);
+
+        }
+
 
             await migrateEndedCompetitions();
         } else {

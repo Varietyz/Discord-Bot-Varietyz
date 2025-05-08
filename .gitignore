@@ -51,3 +51,5 @@ docs/scripts/nav.js
 /readme_collection
 /logs
 /src/data/BackupData
+/backups
+/.tmp_deploy

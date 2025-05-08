@@ -1,9 +1,0 @@
-.eslintrc.js
-.vscode/
-*.code-workspace
-node_modules/
-.git
-.inv
-dist/
-logs/
-docs
